@@ -24,6 +24,7 @@
     <ProjectGuid>{5d4965db-92e5-4bc0-b210-3df103864e10}</ProjectGuid>
     <RootNamespace>VulkanBaseProject</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>Pyrrhasterized</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -113,7 +114,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>F:\Programmation\SDKs\Vulkan\Include;C:\Users\Pyrrha\Documents\Visual Studio 2022\Libraries\glfw-3.3.8.bin.WIN64\glfw-3.3.8.bin.WIN64\include;C:\Users\Pyrrha\Documents\Visual Studio 2022\Libraries\glm\glm;F:\Programmation\SDKs\Vulkan\VulkanUserLibraries\VulkanMemoryAllocator-Hpp\include;F:\Programmation\SDKs\Vulkan\VulkanUserLibraries\VulkanMemoryAllocator-master\include;F:\Programmation\SDKs\Vulkan\VulkanUserLibraries\SPIRV-Reflect;F:\Programmation\SDKs\C++ Libs\stb-master\stb-master;F:\Programmation\C++\Vulkan Projects\Vulkan_Base_Project\Include;F:\Programmation\C++\Vulkan Projects\Vulkan_Base_Project\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>F:\Programmation\SDKs\Vulkan\Include;C:\Users\Pyrrha\Documents\Visual Studio 2022\Libraries\glfw-3.3.8.bin.WIN64\glfw-3.3.8.bin.WIN64\include;C:\Users\Pyrrha\Documents\Visual Studio 2022\Libraries\glm\glm;F:\Programmation\SDKs\Vulkan\VulkanUserLibraries\VulkanMemoryAllocator-Hpp\include;F:\Programmation\SDKs\Vulkan\VulkanUserLibraries\VulkanMemoryAllocator-master\include;F:\Programmation\SDKs\Vulkan\VulkanUserLibraries\SPIRV-Reflect;F:\Programmation\SDKs\C++ Libs\stb-master\stb-master;F:\Programmation\C++\Vulkan Projects\Pyrrhasterized\Include;F:\Programmation\C++\Vulkan Projects\Pyrrhasterized\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -131,7 +132,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>F:\Programmation\SDKs\Vulkan\Include;C:\Users\Pyrrha\Documents\Visual Studio 2022\Libraries\glfw-3.3.8.bin.WIN64\glfw-3.3.8.bin.WIN64\include;C:\Users\Pyrrha\Documents\Visual Studio 2022\Libraries\glm\glm;F:\Programmation\SDKs\Vulkan\VulkanUserLibraries\VulkanMemoryAllocator-Hpp\include;F:\Programmation\SDKs\Vulkan\VulkanUserLibraries\VulkanMemoryAllocator-master\include;F:\Programmation\SDKs\Vulkan\VulkanUserLibraries\SPIRV-Reflect;F:\Programmation\SDKs\C++ Libs\stb-master\stb-master;F:\Programmation\C++\Vulkan Projects\Vulkan_Base_Project\Include;F:\Programmation\C++\Vulkan Projects\Vulkan_Base_Project\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>F:\Programmation\SDKs\Vulkan\Include;C:\Users\Pyrrha\Documents\Visual Studio 2022\Libraries\glfw-3.3.8.bin.WIN64\glfw-3.3.8.bin.WIN64\include;C:\Users\Pyrrha\Documents\Visual Studio 2022\Libraries\glm\glm;F:\Programmation\SDKs\Vulkan\VulkanUserLibraries\VulkanMemoryAllocator-Hpp\include;F:\Programmation\SDKs\Vulkan\VulkanUserLibraries\VulkanMemoryAllocator-master\include;F:\Programmation\SDKs\Vulkan\VulkanUserLibraries\SPIRV-Reflect;F:\Programmation\SDKs\C++ Libs\stb-master\stb-master;F:\Programmation\C++\Vulkan Projects\Pyrrhasterized\Include;F:\Programmation\C++\Vulkan Projects\Pyrrhasterized\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
