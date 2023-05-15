@@ -18,8 +18,8 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     //Rendering pipeline creation
     createRenderPasses();
     createPipelineLayout();
-    createMainGraphicsPipeline("F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/vertexTexture.spv", "F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/fragmentTexture.spv");
-    createShadowGraphicsPipeline("F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/vertexShadow.spv", "F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/fragmentShadow.spv");
+    createMainGraphicsPipeline("F:/Programmation/C++/Vulkan Projects/Pyrrhasterized/Shaders/vertexTexture.spv", "F:/Programmation/C++/Vulkan Projects/Pyrrhasterized/Shaders/fragmentTexture.spv");
+    createShadowGraphicsPipeline("F:/Programmation/C++/Vulkan Projects/Pyrrhasterized/Shaders/vertexShadow.spv", "F:/Programmation/C++/Vulkan Projects/Pyrrhasterized/Shaders/fragmentShadow.spv");
     createShadowFramebufferAttachments(); //Created outside of createFramebuffers function because it is not dependent on window size.
     createFramebuffers();
    
@@ -826,7 +826,7 @@ void VulkanRenderer::createDefaultTexture()
     VulkanImageViewParams imageViewParams{
         .aspectFlags = vk::ImageAspectFlagBits::eColor,
     };
-    m_defaultTexture = new VulkanImage(m_context, imageParams, imageViewParams, "F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Ressources/defaultTexture.png");
+    m_defaultTexture = new VulkanImage(m_context, imageParams, imageViewParams, "F:/Programmation/C++/Vulkan Projects/Pyrrhasterized/Ressources/defaultTexture.png");
 }
 #pragma endregion
 
@@ -1053,7 +1053,7 @@ void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32
     //Draws each scene
     for (auto& scene : m_scenes) 
     {
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, scene->m_descriptorSets[swapchainImageIndex], nullptr);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, scene->m_descriptorSets[m_currentFrame], nullptr);
         commandBuffer.bindVertexBuffers(0, 1, &scene->m_vertexBuffer, &offset);
         commandBuffer.bindIndexBuffer(scene->m_indexBuffer, 0, vk::IndexType::eUint32);
 
@@ -1089,7 +1089,7 @@ void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32
     //Draws each scene
     for (auto& scene : m_scenes)
     {
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scene->m_descriptorSets[swapchainImageIndex], m_shadowDescriptorSets[swapchainImageIndex]}, nullptr);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scene->m_descriptorSets[m_currentFrame], m_shadowDescriptorSets[swapchainImageIndex]}, nullptr);
         commandBuffer.bindVertexBuffers(0, 1, &scene->m_vertexBuffer, &offset);
         commandBuffer.bindIndexBuffer(scene->m_indexBuffer, 0, vk::IndexType::eUint32);
 
@@ -1163,7 +1163,7 @@ void VulkanRenderer::drawFrame() {
     m_commandBuffers[m_currentFrame].reset(); //Reset to record the command buffer
     
 
-    updateUniformBuffers(imageIndex); //TODO abstract application dependent code.
+    updateUniformBuffers(m_currentFrame); //TODO abstract application dependent code.
     recordCommandBuffer(m_commandBuffers[m_currentFrame], imageIndex);
   
     //Submitting the command buffer

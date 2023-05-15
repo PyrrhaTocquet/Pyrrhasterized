@@ -530,7 +530,7 @@ void VulkanContext::createSwapchain()
 	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
 		imageCount = swapChainSupport.capabilities.maxImageCount;
 	}
-
+	std::cout << imageCount << std::endl;
 	vk::SwapchainCreateInfoKHR createInfo{
 		.surface = m_surface,
 		.minImageCount = imageCount,
