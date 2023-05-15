@@ -95,7 +95,6 @@ void VulkanRenderer::createPipelineLayout() {
 
     std::array<vk::DescriptorSetLayout, 2> layouts = { m_mainDescriptorSetLayout, m_shadowDescriptorSetLayout };
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo = {
-       .sType = vk::StructureType::ePipelineLayoutCreateInfo,
        .setLayoutCount = layouts.size(),
        .pSetLayouts = layouts.data(),
        .pushConstantRangeCount = static_cast<uint32_t>(m_pushConstantRanges.size()),
@@ -149,14 +148,12 @@ VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
 
     vk::PipelineShaderStageCreateInfo shaderStages[] = {
         {
-            .sType = vk::StructureType::ePipelineShaderStageCreateInfo,
             .flags = vk::PipelineShaderStageCreateFlags(),
             .stage = vk::ShaderStageFlagBits::eVertex,
             .module = static_cast<VkShaderModule>(vertShaderModule),
             .pName = vertShaderModuleInfo.GetEntryPointName()
         },
         {
-            .sType = vk::StructureType::ePipelineShaderStageCreateInfo,
             .flags = vk::PipelineShaderStageCreateFlags(),
             .stage = vk::ShaderStageFlagBits::eFragment,
             .module = static_cast<VkShaderModule>(fragShaderModule),
@@ -169,7 +166,6 @@ VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
     auto attributeDescriptions = Vertex::getAttributeDescriptions();
 
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo = {
-        .sType = vk::StructureType::ePipelineVertexInputStateCreateInfo,
         .vertexBindingDescriptionCount = 1,
         .pVertexBindingDescriptions = &bindingDescription,
         .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
@@ -177,7 +173,6 @@ VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
     };
 
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly = {
-        .sType = vk::StructureType::ePipelineInputAssemblyStateCreateInfo,
         .topology = vk::PrimitiveTopology::eTriangleList,
         .primitiveRestartEnable = VK_FALSE,
     };
@@ -216,7 +211,6 @@ VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
     };
 
     vk::PipelineMultisampleStateCreateInfo multisampling = {
-        .sType = vk::StructureType::ePipelineMultisampleStateCreateInfo,
         .rasterizationSamples = pipelineInfo.isMultisampled ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
         .sampleShadingEnable = VK_TRUE,
         .minSampleShading = 1.f,
@@ -248,7 +242,6 @@ VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
 
 
     vk::PipelineDepthStencilStateCreateInfo depthStencilState{
-        .sType = vk::StructureType::ePipelineDepthStencilStateCreateInfo,
         .depthTestEnable = pipelineInfo.depthTestEnable,
         .depthWriteEnable = pipelineInfo.depthWriteEnable,
         .depthCompareOp = vk::CompareOp::eLess,
@@ -262,7 +255,6 @@ VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
 
 
     vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {
-        .sType = vk::StructureType::eGraphicsPipelineCreateInfo,
         .stageCount = 2,
         .pStages = shaderStages,
         .pVertexInputState = &vertexInputInfo,
@@ -308,7 +300,6 @@ vk::ShaderModule VulkanRenderer::createShaderModule(std::vector<char>& shaderCod
 {
     try {
         vk::ShaderModuleCreateInfo createInfo{
-            .sType = vk::StructureType::eShaderModuleCreateInfo,
             .flags = vk::ShaderModuleCreateFlags(),
             .codeSize = shaderCode.size(),
             .pCode = reinterpret_cast<const uint32_t*>(shaderCode.data())
@@ -407,7 +398,6 @@ void VulkanRenderer::createShadowRenderPass() {
 
     std::array<vk::SubpassDependency, 2> dependencies{ inDependency, outDependency };
     vk::RenderPassCreateInfo renderPassInfo{
-        .sType = vk::StructureType::eRenderPassCreateInfo,
         .attachmentCount = 1,
         .pAttachments = &shadowDepthWriteDescription,
         .subpassCount = 1,
@@ -504,7 +494,6 @@ void VulkanRenderer::createMainRenderPass()
     std::array<vk::AttachmentDescription, 4> attachments { colorDescription, depthDescription, colorDescriptionResolve, shadowMapReadDescription };
 
     vk::RenderPassCreateInfo renderPassInfo{
-        .sType = vk::StructureType::eRenderPassCreateInfo,
         .attachmentCount = static_cast<uint32_t>(attachments.size()),
         .pAttachments = attachments.data(),
         .subpassCount = 1,
@@ -549,13 +538,11 @@ void VulkanRenderer::createDescriptorSetLayout()
     bindingFlags[1] = vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eVariableDescriptorCount; //Necessary for Dynamic indexing (VK_EXT_descriptor_indexing)
 
     vk::DescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreateInfo{
-        .sType = vk::StructureType::eDescriptorSetLayoutBindingFlagsCreateInfo,
         .bindingCount = 2,
         .pBindingFlags = bindingFlags,
     };
     
     vk::DescriptorSetLayoutCreateInfo layoutInfo{
-        .sType = vk::StructureType::eDescriptorSetLayoutCreateInfo,
         .pNext = &bindingFlagsCreateInfo,
         .bindingCount = 2,
         .pBindings = bindings,
@@ -578,7 +565,6 @@ void VulkanRenderer::createDescriptorSetLayout()
     };
 
     vk::DescriptorSetLayoutCreateInfo shadowLayoutInfo{
-        .sType = vk::StructureType::eDescriptorSetLayoutCreateInfo,
         .bindingCount = 1,
         .pBindings = &shadowSamplerLayoutBinding,
     };
@@ -602,7 +588,6 @@ void VulkanRenderer::createDescriptorPools() {
     poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * MAX_TEXTURE_COUNT; //Dynamic Indexing
 
     vk::DescriptorPoolCreateInfo poolInfo{
-        .sType = vk::StructureType::eDescriptorPoolCreateInfo,
         .maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
         .poolSizeCount = static_cast<uint32_t>(2),
         .pPoolSizes = poolSizes,
@@ -622,7 +607,6 @@ void VulkanRenderer::createDescriptorPools() {
     shadowPoolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
     vk::DescriptorPoolCreateInfo shadowPoolInfo{
-        .sType = vk::StructureType::eDescriptorPoolCreateInfo,
         .maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
         .poolSizeCount = 1,
         .pPoolSizes = &shadowPoolSize,
@@ -648,7 +632,6 @@ void VulkanRenderer::createShadowDescriptorSets() {
     std::vector<vk::DescriptorSetLayout> shadowLayouts(MAX_FRAMES_IN_FLIGHT, m_shadowDescriptorSetLayout);
 
     vk::DescriptorSetAllocateInfo allocInfo = {
-         .sType = vk::StructureType::eDescriptorSetAllocateInfo,
          .descriptorPool = m_shadowDescriptorPool,
          .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
          .pSetLayouts = shadowLayouts.data()
@@ -663,7 +646,6 @@ void VulkanRenderer::createShadowDescriptorSets() {
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vk::WriteDescriptorSet writeDescriptorSet;
-        writeDescriptorSet.sType = vk::StructureType::eWriteDescriptorSet;
         writeDescriptorSet.dstSet = m_shadowDescriptorSets[i];
         writeDescriptorSet.dstBinding = 0;
         writeDescriptorSet.descriptorCount = 1;
@@ -726,13 +708,11 @@ std::vector<vk::DescriptorSet> VulkanRenderer::createDescriptorSets(VulkanScene*
     uint32_t textureMaxCount = MAX_TEXTURE_COUNT;
     std::vector<uint32_t> textureMaxCounts(MAX_FRAMES_IN_FLIGHT, textureMaxCount);
     vk::DescriptorSetVariableDescriptorCountAllocateInfo setCounts{
-        .sType = vk::StructureType::eDescriptorSetVariableDescriptorCountAllocateInfo,
         .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
         .pDescriptorCounts = textureMaxCounts.data(),
     }; 
 
     vk::DescriptorSetAllocateInfo allocInfo = {
-     .sType = vk::StructureType::eDescriptorSetAllocateInfo,
      .pNext = &setCounts, 
      .descriptorPool = m_mainDescriptorPool,
      .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
@@ -755,7 +735,6 @@ std::vector<vk::DescriptorSet> VulkanRenderer::createDescriptorSets(VulkanScene*
         };      
 
         std::vector<vk::WriteDescriptorSet> descriptorWrites(2);
-        descriptorWrites[0].sType = vk::StructureType::eWriteDescriptorSet;
         descriptorWrites[0].dstSet = descriptorSets[i];
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].dstArrayElement = 0;
@@ -763,7 +742,6 @@ std::vector<vk::DescriptorSet> VulkanRenderer::createDescriptorSets(VulkanScene*
         descriptorWrites[0].descriptorCount = 1;
         descriptorWrites[0].pBufferInfo = &bufferInfo;
 
-        descriptorWrites[1].sType = vk::StructureType::eWriteDescriptorSet;
         descriptorWrites[1].dstSet = descriptorSets[i];
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].descriptorCount = textureImageInfo.size();
@@ -807,7 +785,6 @@ void VulkanRenderer::createTextureSampler() {
     vk::PhysicalDeviceProperties properties = m_context->getProperties();
 
     vk::SamplerCreateInfo samplerInfo{
-        .sType = vk::StructureType::eSamplerCreateInfo,
         .magFilter = vk::Filter::eLinear, //Linear filtering
         .minFilter = vk::Filter::eLinear,
         .mipmapMode = vk::SamplerMipmapMode::eLinear,
@@ -880,7 +857,6 @@ void VulkanRenderer::createShadowFramebuffer() {
     for (size_t i = 0; i < imageCount; i++) {
 
         vk::FramebufferCreateInfo framebufferInfo{
-           .sType = vk::StructureType::eFramebufferCreateInfo,
            .renderPass = m_shadowRenderPass, //Renderpass that is compatible with the framebuffer
            .attachmentCount = 1,
            .pAttachments = &m_shadowDepthAttachment->m_imageView,
@@ -936,7 +912,6 @@ void VulkanRenderer::createMainFramebuffer() {
         vk::Extent2D extent = getRenderPassExtent(RenderPassesId::MainRenderPass);
 
         vk::FramebufferCreateInfo framebufferInfo{
-            .sType = vk::StructureType::eFramebufferCreateInfo,
             .renderPass = m_mainRenderPass, //Renderpass that is compatible with the framebuffer
             .attachmentCount = static_cast<uint32_t>(attachments.size()),
             .pAttachments = attachments.data(),
@@ -1041,7 +1016,6 @@ void VulkanRenderer::createCommandBuffers() {
     m_commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
     vk::CommandBufferAllocateInfo allocInfo{
-        .sType = vk::StructureType::eCommandBufferAllocateInfo,
         .commandPool = m_context->getCommandPool(),
         .level = vk::CommandBufferLevel::ePrimary, //Primary : Can be submitted to a queue for execution, Secondary : Can be called from primary command buffers
         .commandBufferCount = static_cast<uint32_t>(m_commandBuffers.size()),
@@ -1059,11 +1033,10 @@ void VulkanRenderer::createCommandBuffers() {
 //Records the main command buffer for frame generation
 void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex) 
 {
-    vk::CommandBufferBeginInfo beginInfo{ .sType = vk::StructureType::eCommandBufferBeginInfo };
+    vk::CommandBufferBeginInfo beginInfo{};
     commandBuffer.begin(beginInfo);
 
     vk::RenderPassBeginInfo renderPassInfo{
-        .sType = vk::StructureType::eRenderPassBeginInfo,
         .renderPass = m_shadowRenderPass,
         .framebuffer = m_shadowFramebuffers[swapchainImageIndex],
         .renderArea = {
@@ -1100,7 +1073,6 @@ void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32
     commandBuffer.endRenderPass();
 
     renderPassInfo = vk::RenderPassBeginInfo{
-       .sType = vk::StructureType::eRenderPassBeginInfo,
        .renderPass = m_mainRenderPass,
        .framebuffer = m_mainFramebuffers[swapchainImageIndex],
        .renderArea = {
@@ -1149,14 +1121,9 @@ void VulkanRenderer::createSyncObjects()
     m_renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     m_inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
-    vk::SemaphoreCreateInfo semaphoreInfo{
-        .sType = vk::StructureType::eSemaphoreCreateInfo,
-    };
+    vk::SemaphoreCreateInfo semaphoreInfo{};
 
-    vk::FenceCreateInfo fenceInfo{
-        .sType = vk::StructureType::eFenceCreateInfo,
-        .flags = vk::FenceCreateFlagBits::eSignaled, //Signaled by default so that the mainloop doesn't block at the first frame
-    };
+    vk::FenceCreateInfo fenceInfo{.flags = vk::FenceCreateFlagBits::eSignaled};//Signaled by default so that the mainloop doesn't block at the first frame
 
     try {
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -1204,7 +1171,6 @@ void VulkanRenderer::drawFrame() {
     vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
     vk::Semaphore signalSemaphores[] = { m_renderFinishedSemaphores[m_currentFrame] };
     vk::SubmitInfo submitInfo{
-        .sType = vk::StructureType::eSubmitInfo,
         .waitSemaphoreCount = 1, //Specifies which semaphores to wait on before executions begin and on which stage to wait.
         .pWaitSemaphores = waitSemaphores,
         .pWaitDstStageMask = waitStages, //Vertex shader can be ran while the image is not yet available. (Stages are linked to waitSemaphores indexes)
@@ -1241,7 +1207,6 @@ bool VulkanRenderer::present(vk::Semaphore *signalSemaphores, uint32_t imageInde
 
     vk::SwapchainKHR swapchains[] = { m_context->getSwapchain()};
     vk::PresentInfoKHR presentInfo{
-        .sType = vk::StructureType::ePresentInfoKHR,
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = signalSemaphores,
         .swapchainCount = 1,

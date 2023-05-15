@@ -6,7 +6,6 @@
 void VulkanImage::constructVkImage(VulkanContext* context, VulkanImageParams imageParams)
 {
 	vk::ImageCreateInfo imageInfo{
-		.sType = vk::StructureType::eImageCreateInfo,
 		.imageType = vk::ImageType::e2D,
 		.format = imageParams.format,
 		.extent {
@@ -40,7 +39,6 @@ void VulkanImage::constructVkImage(VulkanContext* context, VulkanImageParams ima
 void VulkanImage::constructVkImageView(VulkanContext* context, VulkanImageParams imageParams, VulkanImageViewParams imageViewParams)
 {
 	vk::ImageViewCreateInfo imageViewInfo{
-		.sType = vk::StructureType::eImageViewCreateInfo,
 		.image = m_image,
 		.viewType = vk::ImageViewType::e2D,
 		.format = imageParams.format,
@@ -144,7 +142,6 @@ void VulkanImage::generateMipmaps(VulkanContext* context, vk::Image image, vk::F
 	vk::CommandBuffer commandBuffer = context->beginSingleTimeCommands();
 
 	vk::ImageMemoryBarrier barrier{
-		.sType = vk::StructureType::eImageMemoryBarrier,
 		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		.image = m_image,
@@ -223,7 +220,6 @@ void VulkanImage::transitionImageLayout(VulkanContext* context, vk::Format forma
 
 
 	vk::ImageMemoryBarrier barrier{
-		.sType = vk::StructureType::eImageMemoryBarrier,
 		.oldLayout = oldLayout,
 		.newLayout = newLayout,
 		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, //Only useful to transfer queue family ownerships

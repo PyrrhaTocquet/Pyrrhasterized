@@ -108,7 +108,6 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 //Populates the DebugUtilsMessengerCreateInfo
 vk::DebugUtilsMessengerCreateInfoEXT VulkanContext::populateDebugMessengerCreateInfo() {
 	return vk::DebugUtilsMessengerCreateInfoEXT{
-		.sType = vk::StructureType::eDebugUtilsMessengerCreateInfoEXT,
 		.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose,
 		.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation,
 		.pfnUserCallback = debugCallback,
@@ -165,7 +164,6 @@ bool VulkanContext::checkDeviceExtensionsSupport(const vk::PhysicalDevice& physi
 void VulkanContext::createInstance()
 {
 	vk::ApplicationInfo appInfo{
-	.sType = vk::StructureType::eApplicationInfo,
 	.pApplicationName = applicationName,
 	.applicationVersion = applicationVersion,
 	.apiVersion = VK_API_VERSION_1_3,
@@ -175,7 +173,6 @@ void VulkanContext::createInstance()
 	auto extensions = getRequiredExtensions();
 
 	vk::InstanceCreateInfo createInfo{
-	.sType = vk::StructureType::eInstanceCreateInfo,
 	.pApplicationInfo = &appInfo,
 	.enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
 	.ppEnabledExtensionNames = extensions.data()
@@ -192,7 +189,6 @@ void VulkanContext::createInstance()
 		//Best practices layer, added to the debugMessenger's pNext.
 		vk::ValidationFeatureEnableEXT enables[] = { vk::ValidationFeatureEnableEXT::eBestPractices };
 		vk::ValidationFeaturesEXT features{
-			.sType = vk::StructureType::eValidationFeaturesEXT,
 			.enabledValidationFeatureCount = 1,
 			.pEnabledValidationFeatures = enables,
 		};
@@ -493,7 +489,6 @@ void VulkanContext::createSwapchainImageViews()
 	m_swapchainImageViews.resize(m_swapchainImages.size());
 
 	vk::ImageViewCreateInfo createInfo = {
-		.sType = vk::StructureType::eImageViewCreateInfo,
 		.viewType = vk::ImageViewType::e2D,
 		.format = m_swapchainFormat,
 		.components = {
@@ -537,7 +532,6 @@ void VulkanContext::createSwapchain()
 	}
 
 	vk::SwapchainCreateInfoKHR createInfo{
-		.sType = vk::StructureType::eSwapchainCreateInfoKHR,
 		.surface = m_surface,
 		.minImageCount = imageCount,
 		.imageFormat = surfaceFormat.format,
@@ -619,7 +613,6 @@ void VulkanContext::createLogicalDevice()
 	for (uint32_t queueFamily : uniqueQueueFamilies) {
 
 		queueCreateInfos.push_back(vk::DeviceQueueCreateInfo{
-		.sType = vk::StructureType::eDeviceQueueCreateInfo,
 		.queueFamilyIndex = queueFamily,
 		.queueCount = 1,
 		.pQueuePriorities = &queuePriority
@@ -636,7 +629,6 @@ void VulkanContext::createLogicalDevice()
 	};
 
 	vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{
-		.sType = vk::StructureType::ePhysicalDeviceDescriptorIndexingFeatures,
 		.shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
 		.descriptorBindingPartiallyBound = VK_TRUE,
 		.descriptorBindingVariableDescriptorCount = VK_TRUE,
@@ -645,7 +637,6 @@ void VulkanContext::createLogicalDevice()
 ;
 
 	vk::DeviceCreateInfo createInfo{
-	.sType = vk::StructureType::eDeviceCreateInfo,
 	.pNext = &descriptorIndexingFeatures,
 	.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
 	.pQueueCreateInfos = queueCreateInfos.data(),
@@ -747,7 +738,6 @@ vma::Allocator VulkanContext::getAllocator()
 std::pair<vk::Buffer, vma::Allocation> VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::MemoryUsage memoryUsage) 
 {
 	vk::BufferCreateInfo bufferInfo{
-		.sType = vk::StructureType::eBufferCreateInfo,
 		.size = size,
 		.usage = usage, 
 		.sharingMode = vk::SharingMode::eExclusive,
@@ -821,7 +811,6 @@ uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, Vk
 vk::CommandBuffer VulkanContext::beginSingleTimeCommands() {
 
 	vk::CommandBufferAllocateInfo allocInfo{
-		.sType = vk::StructureType::eCommandBufferAllocateInfo,
 		.commandPool = m_commandPool,
 		.level = vk::CommandBufferLevel::ePrimary,
 		.commandBufferCount = 1,
@@ -830,7 +819,6 @@ vk::CommandBuffer VulkanContext::beginSingleTimeCommands() {
 	vk::CommandBuffer commandBuffer = m_device.allocateCommandBuffers(allocInfo)[0];
 
 	vk::CommandBufferBeginInfo beginInfo{
-		.sType = vk::StructureType::eCommandBufferBeginInfo,
 		.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
 	};
 
@@ -842,7 +830,6 @@ void VulkanContext::endSingleTimeCommands(vk::CommandBuffer commandBuffer) {
 	commandBuffer.end();
 
 	vk::SubmitInfo submitInfo{
-		.sType = vk::StructureType::eSubmitInfo,
 		.commandBufferCount = 1,
 		.pCommandBuffers = &commandBuffer,
 	};
@@ -875,7 +862,6 @@ void VulkanContext::createCommandPool()
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies();
 
 	vk::CommandPoolCreateInfo poolInfo{
-		.sType = vk::StructureType::eCommandPoolCreateInfo,
 		.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer, //Hint that command buffers are rerecorded with new commands very often (VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT : Allow command buffers to be rerecorded individually, without this flag they all have to be reset together)
 		.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value()
 	};
@@ -914,7 +900,6 @@ ImGui_ImplVulkan_InitInfo VulkanContext::getImGuiInitInfo() {
 
 
 	vk::DescriptorPoolCreateInfo poolInfo = {
-		.sType = vk::StructureType::eDescriptorPoolCreateInfo,
 		.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
 		.maxSets = 1000,
 		.poolSizeCount = std::size(poolSizes),
