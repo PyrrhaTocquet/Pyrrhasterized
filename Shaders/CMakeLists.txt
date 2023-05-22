@@ -1,0 +1,19 @@
+
+file(GLOB_RECURSE SHADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.vert" "${CMAKE_CURRENT_SOURCE_DIR}/*.frag")
+
+if(WIN32)
+	add_custom_target( shaders-build 
+		ALL
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		COMMAND  ${CMAKE_CURRENT_SOURCE_DIR}/compile.bat
+		DEPENDS ${SHADER_FILES} )
+elseif(UNIX AND NOT APPLE)
+ 	add_custom_target(shaders-build
+ 			ALL
+			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                       COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/compile.sh
+			DEPENDS ${SHADER_FILES} )
+endif()
+
+
+
