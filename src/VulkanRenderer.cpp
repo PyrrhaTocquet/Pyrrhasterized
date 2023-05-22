@@ -30,6 +30,7 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     
     //IMGUI
     ImGui_ImplVulkan_InitInfo initInfo = m_context->getImGuiInitInfo();
+    initInfo.MSAASamples = static_cast<VkSampleCountFlagBits>(ENABLE_MSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1);
     ImGui_ImplVulkan_Init(&initInfo, m_mainRenderPass);
     m_device.waitIdle();
 
@@ -45,7 +46,7 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
 
 VulkanRenderer::~VulkanRenderer()
 {
-    delete m_colorAttachment;
+    if(ENABLE_MSAA)delete m_colorAttachment;
     delete m_depthAttachment;
     delete m_shadowDepthAttachment;
     delete m_defaultTexture;
@@ -137,6 +138,11 @@ void VulkanRenderer::createMainGraphicsPipeline(const char* vertShaderCodePath,c
 }
 
 VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
+    if (!ENABLE_MSAA)
+    {
+        pipelineInfo.isMultisampled = false;
+    }
+
     auto vertShaderCode = vkTools::readFile(pipelineInfo.vertPath);
     auto fragShaderCode = vkTools::readFile(pipelineInfo.fragPath);
 
@@ -212,7 +218,7 @@ VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
 
     vk::PipelineMultisampleStateCreateInfo multisampling = {
         .rasterizationSamples = pipelineInfo.isMultisampled ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
-        .sampleShadingEnable = VK_TRUE,
+        .sampleShadingEnable = pipelineInfo.isMultisampled ? VK_TRUE : VK_FALSE,
         .minSampleShading = 1.f,
     };
 
@@ -417,23 +423,23 @@ void VulkanRenderer::createMainRenderPass()
     //MSAA color target
     vk::AttachmentDescription colorDescription{
         .format = m_context->getSwapchainFormat(),
-        .samples = m_msaaSampleCount,
+        .samples = ENABLE_MSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eDontCare, //Best practice with multisampled images is to make the best of lazy allocation with don't care
         .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
         .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
         .initialLayout = vk::ImageLayout::eUndefined,
-        .finalLayout = vk::ImageLayout::eColorAttachmentOptimal,
+        .finalLayout = ENABLE_MSAA ? vk::ImageLayout::eColorAttachmentOptimal : vk::ImageLayout::ePresentSrcKHR,
     };
     vk::AttachmentReference colorAttachmentRef = {
         .attachment = 0,
-        .layout = vk::ImageLayout::eColorAttachmentOptimal,
+        .layout = ENABLE_MSAA ? vk::ImageLayout::eColorAttachmentOptimal : vk::ImageLayout::ePresentSrcKHR,
     };
 
     //MSAA depth target
     vk::AttachmentDescription depthDescription{
         .format = findDepthFormat(),
-        .samples = m_msaaSampleCount,
+        .samples = ENABLE_MSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eDontCare,
         .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
@@ -471,13 +477,13 @@ void VulkanRenderer::createMainRenderPass()
     };
 
     vk::AttachmentReference colorAttachmentResolveRef = {
-        .attachment = 2,
+        .attachment = 3,
         .layout = vk::ImageLayout::eColorAttachmentOptimal,
     };
 
 
     vk::AttachmentReference shadowMapReadRef = {
-        .attachment = 3,
+        .attachment = 2,
         .layout = vk::ImageLayout::eDepthStencilReadOnlyOptimal
     };
 
@@ -487,11 +493,12 @@ void VulkanRenderer::createMainRenderPass()
         .pInputAttachments = &shadowMapReadRef,
         .colorAttachmentCount = 1,
         .pColorAttachments = &colorAttachmentRef,
-        .pResolveAttachments = &colorAttachmentResolveRef,
+        .pResolveAttachments = ENABLE_MSAA ? &colorAttachmentResolveRef : nullptr,
         .pDepthStencilAttachment = &depthAttachmentRef,
     };
 
-    std::array<vk::AttachmentDescription, 4> attachments { colorDescription, depthDescription, colorDescriptionResolve, shadowMapReadDescription };
+    std::vector<vk::AttachmentDescription> attachments { colorDescription, depthDescription, shadowMapReadDescription };
+    if(ENABLE_MSAA)attachments.push_back(colorDescriptionResolve);
 
     vk::RenderPassCreateInfo renderPassInfo{
         .attachmentCount = static_cast<uint32_t>(attachments.size()),
@@ -902,13 +909,26 @@ void VulkanRenderer::createMainFramebuffer() {
     uint32_t imageCount = swapchainImageViews.size();
     m_mainFramebuffers.resize(m_context->getSwapchainImagesCount());
 
+    std::vector<vk::ImageView> attachments;
     for (size_t i = 0; i < imageCount; i++) {
-        std::vector<vk::ImageView> attachments = { //Order corresponds to the attachment references
+        if (ENABLE_MSAA)
+        {
+            attachments = { //Order corresponds to the attachment references
             m_colorAttachment->m_imageView,
             m_depthAttachment->m_imageView,
+            m_shadowDepthAttachment->m_imageView,
             swapchainImageViews[i],
-            m_shadowDepthAttachment->m_imageView
-        };
+            };
+        }
+        else {
+            
+            attachments = {
+                swapchainImageViews[i],
+                m_depthAttachment->m_imageView,
+                m_shadowDepthAttachment->m_imageView,
+            };
+        }
+
         vk::Extent2D extent = getRenderPassExtent(RenderPassesId::MainRenderPass);
 
         vk::FramebufferCreateInfo framebufferInfo{
@@ -949,7 +969,7 @@ void VulkanRenderer::recreateSwapchainSizedObjects() {
 void VulkanRenderer::cleanSwapchainSizedObjects() {
     vkDeviceWaitIdle(m_device);
 
-    delete m_colorAttachment;
+    if(ENABLE_MSAA)delete m_colorAttachment;
     delete m_depthAttachment;
 
     for (const auto& pipeline : m_pipelines) {
@@ -987,7 +1007,7 @@ void VulkanRenderer::createMainFramebufferAttachments()
         .width = extent.width,
         .height = extent.height,
         .mipLevels = 1,
-        .numSamples = m_msaaSampleCount,
+        .numSamples = ENABLE_MSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
         .format = m_context->getSwapchainFormat(),
         .tiling = vk::ImageTiling::eOptimal,
         .usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
@@ -998,7 +1018,7 @@ void VulkanRenderer::createMainFramebufferAttachments()
         .aspectFlags = vk::ImageAspectFlagBits::eColor,
     };
 
-    m_colorAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
+    if(ENABLE_MSAA)m_colorAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
 
     imageParams.format = findDepthFormat();
     imageParams.usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eDepthStencilAttachment;

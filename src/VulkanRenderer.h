@@ -22,6 +22,9 @@ const uint32_t DESCRIPTOR_SET_LAYOUT_BINDINGS = 3;
 const uint32_t PUSH_CONSTANTS_COUNT = 1;
 const uint32_t MAX_TEXTURE_COUNT = 2048;
 
+const bool ENABLE_MSAA = false;
+
+
 /* ENUMS */
 enum RenderPassesId {
 	ShadowMappingPass,
