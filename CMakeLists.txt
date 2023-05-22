@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.7 FATAL_ERROR)
 cmake_policy(VERSION 2.8)
-set(NAME VulkanQuickStart)
+set(NAME Pyrrhasterized)
 project(${NAME})
 
 set(CMAKE_CXX_STANDARD 20)
