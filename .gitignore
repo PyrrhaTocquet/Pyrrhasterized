@@ -362,3 +362,20 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/build
+/CMakeFiles/3.26.0-rc2/CompilerIdC
+/CMakeFiles
+/third_party/CMakeFiles
+/third_party/spirv-reflect.vcxproj.filters
+/third_party/spirv-reflect.vcxproj
+/third_party/imgui.vcxproj.filters
+/third_party/imgui.vcxproj
+/third_party/cmake_install.cmake
+/ZERO_CHECK.vcxproj.filters
+/ZERO_CHECK.vcxproj
+/VulkanQuickStart.sln
+/ProjectName.sln
+/cmake_install.cmake
+/CMakeCache.txt
+/ALL_BUILD.vcxproj.filters
+/ALL_BUILD.vcxproj
