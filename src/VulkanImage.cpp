@@ -182,10 +182,10 @@ void VulkanImage::generateMipmaps(VulkanContext* context, vk::Image image, vk::F
 			},
 		};
 
-		blit.srcOffsets[0] = { 0, 0, 0 }; //Determines the 3D region that the data will be blitted from
-		blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
-		blit.dstOffsets[0] = { 0, 0, 0 };
-		blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };//divide by two !
+		blit.srcOffsets[0] = vk::Offset3D{ 0, 0, 0 }; //Determines the 3D region that the data will be blitted from
+		blit.srcOffsets[1] = vk::Offset3D{ mipWidth, mipHeight, 1 };
+		blit.dstOffsets[0] = vk::Offset3D{ 0, 0, 0 };
+		blit.dstOffsets[1] = vk::Offset3D{ mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };//divide by two !
 
 		commandBuffer.blitImage(m_image, vk::ImageLayout::eTransferSrcOptimal, m_image, vk::ImageLayout::eTransferDstOptimal, blit, vk::Filter::eLinear);
 		

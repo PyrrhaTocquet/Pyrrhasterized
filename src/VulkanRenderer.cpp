@@ -1089,7 +1089,7 @@ void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32
     //Draws each scene
     for (auto& scene : m_scenes)
     {
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scene->m_descriptorSets[m_currentFrame], m_shadowDescriptorSets[swapchainImageIndex]}, nullptr);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scene->m_descriptorSets[m_currentFrame], m_shadowDescriptorSets[m_currentFrame]}, nullptr);
         commandBuffer.bindVertexBuffers(0, 1, &scene->m_vertexBuffer, &offset);
         commandBuffer.bindIndexBuffer(scene->m_indexBuffer, 0, vk::IndexType::eUint32);
 
