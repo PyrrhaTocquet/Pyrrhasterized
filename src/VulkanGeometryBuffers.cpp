@@ -13,7 +13,7 @@ VulkanGeometryBuffers::VulkanGeometryBuffers(VulkanContext* context)
 
 	m_allocator = context->getAllocator();
 
-	loadObj("/home/pyrrha/Programming/Vulkan/Vulkan_Base_Project/assets/PikachuObj/model.obj");
+	loadObj("F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Ressources/PikachuObj/model.obj");
 
 	
 	createVertexBuffer(context);

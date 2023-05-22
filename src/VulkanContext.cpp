@@ -30,6 +30,11 @@ VulkanContext::VulkanContext()
 	createSurface();
 	pickPhysicalDevice();
 	createLogicalDevice();
+	pfnDebugMarkerSetObjectTag = (PFN_vkDebugMarkerSetObjectTagEXT)vkGetDeviceProcAddr(m_device, "vkDebugMarkerSetObjectTagEXT");
+	pfnDebugMarkerSetObjectName = (PFN_vkDebugMarkerSetObjectNameEXT)vkGetDeviceProcAddr(m_device, "vkDebugMarkerSetObjectNameEXT");
+	pfnCmdDebugMarkerBegin = (PFN_vkCmdDebugMarkerBeginEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerBeginEXT");
+	pfnCmdDebugMarkerEnd = (PFN_vkCmdDebugMarkerEndEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerEndEXT");
+	pfnCmdDebugMarkerInsert = (PFN_vkCmdDebugMarkerInsertEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerInsertEXT");
 	createCommandPool();
 	createAllocator();
 	createSwapchain();
@@ -51,8 +56,8 @@ VulkanContext::~VulkanContext()
 	}
 	vkDestroyDescriptorPool(m_device, m_imGUIDescriptorPool, nullptr);
 	ImGui_ImplVulkan_Shutdown();
+
 	glfwDestroyWindow(m_window);
-	ImGui::DestroyContext();
 	glfwTerminate();
 	m_instance.destroySurfaceKHR(m_surface);
 	m_allocator.destroy();
@@ -60,7 +65,6 @@ VulkanContext::~VulkanContext()
 	m_instance.destroy();
 
 }
-
 
 #pragma region VALIDATION_LAYERS
 //Checks if the constant list of validation layers is supported
@@ -135,6 +139,7 @@ std::vector<const char*> VulkanContext::getRequiredExtensions()
 	//Adds the extension required for custom callbacks for debug messages
 	if (enableValidationLayers) {
 		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 	}
 	return extensions;
 }
@@ -397,6 +402,14 @@ vk::Extent2D VulkanContext::getSwapchainExtent() const
 	}
 }
 
+bool VulkanContext::isFramebufferResized() {
+	return m_framebufferResized;
+}
+
+void VulkanContext::clearFramebufferResized() {
+	m_framebufferResized = false;
+}
+
 void VulkanContext::cleanupSwapchain() {
 	for (auto imageView : m_swapchainImageViews)
 	{
@@ -407,7 +420,6 @@ void VulkanContext::cleanupSwapchain() {
 
 void VulkanContext::recreateSwapchain() {
 	int width = 0, height = 0;
-	
 	while (width == 0 || height == 0) {
 		glfwGetFramebufferSize(m_window, &width, &height);
 		glfwWaitEvents();
@@ -518,7 +530,7 @@ void VulkanContext::createSwapchain()
 	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
 		imageCount = swapChainSupport.capabilities.maxImageCount;
 	}
-
+	std::cout << imageCount << std::endl;
 	vk::SwapchainCreateInfoKHR createInfo{
 		.surface = m_surface,
 		.minImageCount = imageCount,
@@ -905,7 +917,7 @@ ImGui_ImplVulkan_InitInfo VulkanContext::getImGuiInitInfo() {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
-	
+	ImGui_ImplGlfw_InitForVulkan(m_window, true);
 	
 	ImGui_ImplVulkan_InitInfo initGuiInfo{
 		.Instance = m_instance,
@@ -914,11 +926,28 @@ ImGui_ImplVulkan_InitInfo VulkanContext::getImGuiInitInfo() {
 		.QueueFamily = m_queueIndices.graphicsFamily.value(),
 		.Queue = m_graphicsQueue,
 		.DescriptorPool = m_imGUIDescriptorPool,
+		.Subpass = 0,
 		.MinImageCount = MAX_FRAMES_IN_FLIGHT,
 		.ImageCount = MAX_FRAMES_IN_FLIGHT,
+		.MSAASamples = static_cast<VkSampleCountFlagBits>(getMaxUsableSampleCount()),
+
 	};
 
 	return initGuiInfo;
 }
 #pragma engregion IMGUI
 
+void VulkanContext::setDebugObjectName(uint64_t object, VkDebugReportObjectTypeEXT objectType, const char* name)
+{
+
+	// Check for a valid function pointer
+	if (pfnDebugMarkerSetObjectName)
+	{
+		VkDebugMarkerObjectNameInfoEXT nameInfo = {};
+		nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
+		nameInfo.objectType = objectType;
+		nameInfo.object = object;
+		nameInfo.pObjectName = name;
+		pfnDebugMarkerSetObjectName(m_device, &nameInfo);
+	}
+}

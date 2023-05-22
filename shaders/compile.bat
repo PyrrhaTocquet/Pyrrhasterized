@@ -9,4 +9,5 @@ glslc fragmentDebugTextureCoords.frag -o fragmentDebugTextureCoords.spv
 glslc vertexTextureNoLight.vert -o vertexTextureNoLight.spv
 glslc fragmentTextureNoLight.frag -o fragmentTextureNoLight.spv
 glslc fragmentDepth.frag -o fragmentDepth.spv
-
+glslc fragmentShadow.frag -o fragmentShadow.spv
+glslc vertexShadow.vert -o vertexShadow.spv

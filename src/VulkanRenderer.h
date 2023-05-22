@@ -13,27 +13,40 @@
 #include "VulkanImage.h"
 #include "VulkanScene.h"
 #include <glm/gtc/matrix_transform.hpp>
-#include <chrono>
+
 
 
 /* CONSTANTS */
-const uint32_t DESCRIPTOR_SET_LAYOUT_BINDINGS = 2;
+const uint32_t DESCRIPTOR_SET_LAYOUT_BINDINGS = 3;
 const uint32_t PUSH_CONSTANTS_COUNT = 1;
 const uint32_t MAX_TEXTURE_COUNT = 2048;
 
-const bool m_enableMSAA = false;
+/* ENUMS */
+enum RenderPassesId {
+	ShadowMappingPass,
+	MainRenderPass,
+};
 
 
 //TODO Organise better
-constexpr std::array<vk::ClearValue, 2> setClearColors() {
-	constexpr vk::ClearColorValue CLEAR_COLOR = vk::ClearColorValue{.float32= std::array<float, 4>{.8f, .8f, .8f, 1.0f}};
-	constexpr vk::ClearDepthStencilValue CLEAR_DEPTH = vk::ClearDepthStencilValue({ 1.0f, 0 });
+constexpr vk::ClearColorValue CLEAR_COLOR = vk::ClearColorValue(std::array<float, 4>{.8f, .8f, .8f, 1.0f});
+constexpr vk::ClearDepthStencilValue CLEAR_DEPTH = vk::ClearDepthStencilValue({ 1.0f, 0 });
+
+constexpr std::array<vk::ClearValue, 2> setMainClearColors() {
 	std::array<vk::ClearValue, 2> clearValues{};
-	clearValues[0].setColor(CLEAR_COLOR);
 	clearValues[1].setDepthStencil(CLEAR_DEPTH);
+	clearValues[0].setColor(CLEAR_COLOR);
 	return clearValues;
 }
-constexpr std::array<vk::ClearValue, 2> CLEAR_VALUES = setClearColors();
+
+constexpr std::array<vk::ClearValue, 1> setShadowClearColors() {
+	std::array<vk::ClearValue, 1> clearValues{};
+	clearValues[0].setDepthStencil(CLEAR_DEPTH);
+	return clearValues;
+}
+
+constexpr std::array<vk::ClearValue, 2> MAIN_CLEAR_VALUES = setMainClearColors();
+constexpr std::array<vk::ClearValue, 1> SHADOW_DEPTH_CLEAR_VALUES = setShadowClearColors();
 
 
 struct TexturedMesh;
@@ -42,6 +55,8 @@ struct Model;
 struct UniformBufferObject {
 	glm::mat4 view;
 	glm::mat4 proj;
+	glm::mat4 lightView;
+	glm::mat4 lightProj;
 };
 
 struct ModelPushConstant {
@@ -60,6 +75,8 @@ struct PipelineInfo {
 	float lineWidth = 1.0f;
 	vk::Bool32 depthTestEnable = VK_TRUE;
 	vk::Bool32 depthWriteEnable = VK_TRUE;
+	RenderPassesId renderPassId = RenderPassesId::MainRenderPass;
+	bool isMultisampled = true;
 };
 
 struct VulkanPipeline {
@@ -93,15 +110,16 @@ private:
 	vma::Allocator m_allocator;
 
 	//FRAMEBUFFER
-	VulkanImage *m_colorAttachment, *m_depthAttachment = nullptr;
-	std::vector<vk::Framebuffer> m_framebuffers;
+	VulkanImage *m_colorAttachment, *m_depthAttachment, *m_shadowDepthAttachment = nullptr;
+	std::vector<vk::Framebuffer> m_mainFramebuffers, m_shadowFramebuffers;
 
 	//COMMAND BUFFER
 	std::vector<vk::CommandBuffer> m_commandBuffers;
 
 	//DESCRIPTORS
-	vk::DescriptorSetLayout m_descriptorSetLayout = VK_NULL_HANDLE;
-	vk::DescriptorPool m_descriptorPool = VK_NULL_HANDLE;
+	vk::DescriptorSetLayout m_mainDescriptorSetLayout = VK_NULL_HANDLE;
+	vk::DescriptorSetLayout m_shadowDescriptorSetLayout = VK_NULL_HANDLE;
+	vk::DescriptorPool m_mainDescriptorPool, m_shadowDescriptorPool = VK_NULL_HANDLE;
 
 	//PUSH CONSTANTS
 	std::vector<vk::PushConstantRange> m_pushConstantRanges;
@@ -112,9 +130,10 @@ private:
 	std::vector<VulkanPipeline> m_pipelines;
 	uint32_t m_currentPipelineId = 0;
 	vk::PipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+	VulkanPipeline m_shadowPipeline;
 
 	//RENDER PASS
-	vk::RenderPass m_mainRenderPass = VK_NULL_HANDLE;
+	vk::RenderPass m_mainRenderPass, m_shadowRenderPass = VK_NULL_HANDLE;
 	vk::Format m_depthFormat = vk::Format::eUndefined; //use findDepthFormat instead of reading it directly
 
 	//RENDERING FLOW
@@ -131,13 +150,12 @@ private:
 	vk::Sampler m_textureSampler = VK_NULL_HANDLE;
 	uint32_t m_mipLevels = 1;
 	VulkanImage* m_defaultTexture = nullptr;
+
+	std::vector<vk::DescriptorSet> m_shadowDescriptorSets;
 	/*-------------------------------------------*/
 
 	std::vector<VulkanScene*> m_scenes;
 	CameraCoords m_camera;
-
-	bool m_shouldRecreateSwapchain = false;
-
 public:
 	VulkanRenderer(VulkanContext* context);
 	void mainloop();
@@ -154,25 +172,35 @@ private:
 	void createMainGraphicsPipeline(const char* vertShaderCodePath, const char* fragShaderCodePath);
 	void createPipelineLayout();
 	[[nodiscard]] vk::ShaderModule createShaderModule(std::vector<char>& shaderCode);
+	void createShadowGraphicsPipeline(const char* vertShaderCodePath, const char* fragShaderCodePath);
 
 	//RENDER PASS
 	[[nodiscard]] vk::Format findDepthFormat();
-	void createRenderPass();
+	void createRenderPasses();
+	void createMainRenderPass();
+	void createShadowRenderPass();
+	vk::RenderPass getRenderPass(RenderPassesId id);
+	vk::Extent2D getRenderPassExtent(RenderPassesId id);
+
 
 	//DESCRIPTORS
 	void createDescriptorSetLayout();
-	void createDescriptorPool();
+	void createDescriptorPools();
 	[[nodiscard]] std::vector<vk::DescriptorSet> createDescriptorSets(VulkanScene* scene);
 	void createDescriptorObjects();
 	void createDefaultTexture();
+	void createShadowDescriptorSets();
 
 	//PUSH CONSTANTS
 	void createPushConstantRanges();
 
 	//FRAMEBUFFERS
+	void createMainFramebuffer();
+	void createMainFramebufferAttachments();
 	void createFramebuffers();
-	void createFramebufferAttachments();
-	
+	void createShadowFramebuffer();
+	void createShadowFramebufferAttachments();
+
 	void cleanSwapchainSizedObjects();
 
 	//COMMAND BUFFERS

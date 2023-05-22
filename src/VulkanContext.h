@@ -7,12 +7,8 @@
 #include "imgui_impl_vulkan.h"
 #include "imgui_impl_glfw.h"
 
-
 #include<iostream>
 #include <optional>
-#include <limits>
-#include <filesystem>
-
 
 
 /* STRUCTS */
@@ -43,8 +39,9 @@ const std::vector<const char*> requiredExtensions = {
 };
 
 /* CONSTANTS */
-const int DEFAULT_WIDTH = 1000;
-const int DEFAULT_HEIGHT = 1000;
+const int DEFAULT_WIDTH = 1920;
+const int DEFAULT_HEIGHT = 1080;
+const int SHADOW_MAP_SIZE = 4096;
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 
@@ -83,15 +80,13 @@ private:
 	vk::SurfaceFormatKHR m_surfaceFormat;
 	GLFWwindow* m_window;
 
+	bool m_framebufferResized = false;
 	
 	vk::DescriptorPool m_imGUIDescriptorPool = VK_NULL_HANDLE;
 
-
-	std::filesystem::path m_currentPath;
 public:
 	VulkanContext();
 	~VulkanContext();
-
 
 	//ACCESSORS
 	[[nodiscard]] vk::Device getDevice();
@@ -127,7 +122,6 @@ public:
 	bool isWindowOpen() const;
 	void manageWindow();
 	GLFWwindow* getWindowPtr();
-	void createWindow();
 
 	//BUFFERS
 	[[nodiscard("Release the allocation when the buffer is no longer used")]] std::pair<vk::Buffer, vma::Allocation> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::MemoryUsage memoryUsage);
@@ -145,6 +139,8 @@ public:
 	//IMGUI
 	[[nodiscard]]ImGui_ImplVulkan_InitInfo getImGuiInitInfo();
 
+
+	void setDebugObjectName(uint64_t object, VkDebugReportObjectTypeEXT objectType, const char* name);
 private:
 	//VALIDATION LAYERS
 	[[nodiscard]] bool checkValidationLayerSupport();
@@ -172,6 +168,7 @@ private:
 
 	//SURFACE
 	void createSurface();
+	void createWindow();
 
 
 	//SWAPCHAIN
@@ -186,6 +183,13 @@ private:
 	//ALLOCATORS
 	void createAllocator();
 	
+	//FunctionPointers
+	PFN_vkDebugMarkerSetObjectTagEXT pfnDebugMarkerSetObjectTag;
+	PFN_vkDebugMarkerSetObjectNameEXT pfnDebugMarkerSetObjectName;
+	PFN_vkCmdDebugMarkerBeginEXT pfnCmdDebugMarkerBegin;
+	PFN_vkCmdDebugMarkerEndEXT pfnCmdDebugMarkerEnd;
+	PFN_vkCmdDebugMarkerInsertEXT pfnCmdDebugMarkerInsert;
+
 
 };
 

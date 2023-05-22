@@ -78,8 +78,6 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 
 	//Texture file read
 	int texWidth, texHeight, texChannels;
-	//std::string absolutePath = context->getCurrentPath() + std::string("\\") + path;
-	std::cout << path << std::endl;
 	stbi_uc* pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha); //Forces the image to be loaded with an alpha channel for consistency
 	if (!pixels) {
 		throw std::runtime_error("failed to load texture image!");
@@ -184,10 +182,10 @@ void VulkanImage::generateMipmaps(VulkanContext* context, vk::Image image, vk::F
 			},
 		};
 
-		blit.srcOffsets[0] = vk::Offset3D{ 0, 0, 0 }; //Determines the 3D region that the data will be blitted from
-		blit.srcOffsets[1] = vk::Offset3D{ mipWidth, mipHeight, 1 };
-		blit.dstOffsets[0] = vk::Offset3D{ 0, 0, 0 };
-		blit.dstOffsets[1] = vk::Offset3D{ mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };//divide by two !
+		blit.srcOffsets[0] = { 0, 0, 0 }; //Determines the 3D region that the data will be blitted from
+		blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
+		blit.dstOffsets[0] = { 0, 0, 0 };
+		blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };//divide by two !
 
 		commandBuffer.blitImage(m_image, vk::ImageLayout::eTransferSrcOptimal, m_image, vk::ImageLayout::eTransferDstOptimal, blit, vk::Filter::eLinear);
 		

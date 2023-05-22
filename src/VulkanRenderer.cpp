@@ -1,5 +1,6 @@
 #include "VulkanRenderer.h"
 
+#pragma region CONSTRUCTORS_DESTRUCTORS
 VulkanRenderer::VulkanRenderer(VulkanContext* context)
 {
      //Retrieving important values and references from VulkanContext
@@ -11,23 +12,24 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     //Uniform buffers creation
     createPushConstantRanges();
     createDescriptorSetLayout();
-    createDescriptorPool();
+    createDescriptorPools();
     createDescriptorObjects();
 
     //Rendering pipeline creation
-    createRenderPass();
+    createRenderPasses();
     createPipelineLayout();
     createMainGraphicsPipeline("shaders/vertexTexture.spv", "shaders/fragmentTexture.spv");
+    createShadowGraphicsPipeline("shaders/vertexShadow.spv", "shaders/fragmentShadow.spv");
+    createShadowFramebufferAttachments(); //Created outside of createFramebuffers function because it is not dependent on window size.
     createFramebuffers();
    
     //Command execution related objects
     createCommandBuffers();
     createSyncObjects();
+    createShadowDescriptorSets();
     
     //IMGUI
     ImGui_ImplVulkan_InitInfo initInfo = m_context->getImGuiInitInfo();
-    initInfo.MSAASamples = static_cast<VkSampleCountFlagBits>(m_enableMSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1);
-    ImGui_ImplGlfw_InitForVulkan(m_context->getWindowPtr(), true);
     ImGui_ImplVulkan_Init(&initInfo, m_mainRenderPass);
     m_device.waitIdle();
 
@@ -43,13 +45,16 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
 
 VulkanRenderer::~VulkanRenderer()
 {
-    if (m_enableMSAA)delete m_colorAttachment;
+    delete m_colorAttachment;
     delete m_depthAttachment;
+    delete m_shadowDepthAttachment;
     delete m_defaultTexture;
 
     m_device.destroySampler(m_textureSampler);
-    m_device.destroyDescriptorPool(m_descriptorPool);
-    m_device.destroyDescriptorSetLayout(m_descriptorSetLayout);
+    m_device.destroyDescriptorPool(m_mainDescriptorPool);
+    m_device.destroyDescriptorPool(m_shadowDescriptorPool);
+    m_device.destroyDescriptorSetLayout(m_mainDescriptorSetLayout);
+    m_device.destroyDescriptorSetLayout(m_shadowDescriptorSetLayout);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         m_allocator.destroyBuffer(m_uniformBuffers[i], m_uniformBuffersAllocations[i]);
@@ -59,20 +64,25 @@ VulkanRenderer::~VulkanRenderer()
         m_device.destroyFence(m_inFlightFences[i]);
     }
 
-    for (auto framebuffer : m_framebuffers) {
+    for (auto framebuffer : m_mainFramebuffers) {
         m_device.destroyFramebuffer(framebuffer);
     }
+    for (auto framebuffer : m_shadowFramebuffers) {
+        m_device.destroyFramebuffer(framebuffer);
+    }
+
+
     m_device.freeCommandBuffers(m_context->getCommandPool(), m_commandBuffers);
     for (auto pipeline : m_pipelines) {
         m_device.destroyPipeline(pipeline.pipeline);
     }
+    m_device.destroyPipeline(m_shadowPipeline.pipeline);
 
     m_device.destroyPipelineLayout(m_pipelineLayout);
     m_device.destroyRenderPass(m_mainRenderPass);
-
-
-
+    m_device.destroyRenderPass(m_shadowRenderPass);
 }
+#pragma endregion
 
 #pragma region PIPELINE
 //adds a pipeline to the pipeline list
@@ -83,11 +93,12 @@ void VulkanRenderer::addPipeline(VulkanPipeline pipeline) {
 //creates the main Pipeline Layout used for all pipelines
 void VulkanRenderer::createPipelineLayout() {
 
+    std::array<vk::DescriptorSetLayout, 2> layouts = { m_mainDescriptorSetLayout, m_shadowDescriptorSetLayout };
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo = {
-   .setLayoutCount = 1,
-   .pSetLayouts = &m_descriptorSetLayout,
-   .pushConstantRangeCount = static_cast<uint32_t>(m_pushConstantRanges.size()),
-   .pPushConstantRanges = m_pushConstantRanges.data(),
+       .setLayoutCount = layouts.size(),
+       .pSetLayouts = layouts.data(),
+       .pushConstantRangeCount = static_cast<uint32_t>(m_pushConstantRanges.size()),
+       .pPushConstantRanges = m_pushConstantRanges.data(),
     };
 
     try {
@@ -97,14 +108,31 @@ void VulkanRenderer::createPipelineLayout() {
         throw std::runtime_error("failed to create pipeline layout!");
     }
 }
+
+void VulkanRenderer::createShadowGraphicsPipeline(const char* vertShaderCodePath, const char* fragShaderCodePath) {
+
+    PipelineInfo pipelineInfo{
+    .vertPath = vertShaderCodePath,
+    .fragPath = fragShaderCodePath,
+    .cullmode = vk::CullModeFlagBits::eNone,
+    .renderPassId = RenderPassesId::ShadowMappingPass,
+    .isMultisampled = false,
+    };
+
+    m_shadowPipeline = createPipeline(pipelineInfo);
+
+}
+
 //Creates the main graphics pipeline
 void VulkanRenderer::createMainGraphicsPipeline(const char* vertShaderCodePath,const char* fragShaderCodePath)
 {
     PipelineInfo pipelineInfo{
         .vertPath = vertShaderCodePath,
-        .fragPath = fragShaderCodePath
+        .fragPath = fragShaderCodePath,
     };
-    m_pipelines.push_back(createPipeline(pipelineInfo));
+
+    VulkanPipeline pipeline = createPipeline(pipelineInfo);
+    m_pipelines.push_back(pipeline);
 
 }
 
@@ -149,7 +177,8 @@ VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
         .primitiveRestartEnable = VK_FALSE,
     };
 
-    vk::Extent2D extent = m_context->getSwapchainExtent();
+    vk::Extent2D extent = getRenderPassExtent(pipelineInfo.renderPassId);
+
     vk::Viewport viewport = {
         .x = 0.0f,
         .y = 0.0f,
@@ -182,8 +211,8 @@ VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
     };
 
     vk::PipelineMultisampleStateCreateInfo multisampling = {
-        .rasterizationSamples = m_enableMSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
-        .sampleShadingEnable = m_enableMSAA ? VK_TRUE : VK_FALSE,
+        .rasterizationSamples = pipelineInfo.isMultisampled ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
+        .sampleShadingEnable = VK_TRUE,
         .minSampleShading = 1.f,
     };
 
@@ -236,7 +265,7 @@ VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
         .pDepthStencilState = &depthStencilState,
         .pColorBlendState = &colorBlending,
         .layout = m_pipelineLayout,
-        .renderPass = m_mainRenderPass,
+        .renderPass = getRenderPass(pipelineInfo.renderPassId),
         .subpass = 0,
         .basePipelineHandle = nullptr,
     };
@@ -252,9 +281,13 @@ VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
     m_device.destroyShaderModule(vertShaderModule);
     m_device.destroyShaderModule(fragShaderModule);
     
+    vk::Pipeline pipeline = pipelineResult.value;
+    m_context->setDebugObjectName((uint64_t)static_cast<VkPipeline>(pipeline), static_cast<VkDebugReportObjectTypeEXT>(pipeline.debugReportObjectType), "PARCE QUE C'EST NOTRE PIPELINE");
+
+
     return VulkanPipeline {
-         .pipelineInfo = pipelineInfo,
-        .pipeline = pipelineResult.value
+        .pipelineInfo = pipelineInfo,
+        .pipeline = pipeline
     };
 }
 
@@ -281,6 +314,35 @@ vk::ShaderModule VulkanRenderer::createShaderModule(std::vector<char>& shaderCod
 #pragma endregion
 
 #pragma region RENDER_PASSES
+vk::RenderPass VulkanRenderer::getRenderPass(RenderPassesId id) {
+    switch (id){
+        case RenderPassesId::ShadowMappingPass:
+            return m_shadowRenderPass;
+            break;
+        case RenderPassesId::MainRenderPass:
+            return m_mainRenderPass;
+            break;
+        default:
+            std::runtime_error("Unsupported Render Pass Id");
+    }
+}
+
+vk::Extent2D VulkanRenderer::getRenderPassExtent(RenderPassesId id) {
+    switch (id) {
+    case RenderPassesId::ShadowMappingPass:
+        return vk::Extent2D{
+            .width = SHADOW_MAP_SIZE,
+            .height = SHADOW_MAP_SIZE,
+        };
+        break;
+    case RenderPassesId::MainRenderPass:
+        return m_context->getSwapchainExtent();
+        break;
+    default:
+        std::runtime_error("Unsupported Render Pass Id");
+    }
+}
+
 //returns the best depth format provided by the device used by the VulkanContext
 vk::Format VulkanRenderer::findDepthFormat() {
     if (m_depthFormat == vk::Format::eUndefined) {
@@ -289,19 +351,79 @@ vk::Format VulkanRenderer::findDepthFormat() {
     return m_depthFormat;
 }
 
-//Creates the default and only render pass
-void VulkanRenderer::createRenderPass()
+//Creates the render pass for shadow mapping
+void VulkanRenderer::createShadowRenderPass() {
+    
+    vk::AttachmentDescription shadowDepthWriteDescription{
+        .format = findDepthFormat(),
+        .samples = vk::SampleCountFlagBits::e1,
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eStore,
+        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+        .initialLayout = vk::ImageLayout::eUndefined,
+        .finalLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
+    };
+
+    vk::AttachmentReference shadowDepthWriteAttachmentRef = {
+        .attachment = 0,
+        .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal, //layout during render pass
+    };
+
+    vk::SubpassDependency inDependency{
+        .srcSubpass = VK_SUBPASS_EXTERNAL, //implicit first subpass
+        .dstSubpass = 0,
+        .srcStageMask = vk::PipelineStageFlagBits::eFragmentShader,// output stage so that the swapchain finishes to read the image before we can access it
+        .dstStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests,
+        .srcAccessMask = vk::AccessFlagBits::eShaderRead, //Waits for it to be written,
+        .dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+        .dependencyFlags = vk::DependencyFlagBits::eByRegion,
+    };
+
+    vk::SubpassDependency outDependency{
+        .srcSubpass = 0, //implicit first subpass
+        .dstSubpass = VK_SUBPASS_EXTERNAL,
+        .srcStageMask = vk::PipelineStageFlagBits::eLateFragmentTests,
+        .dstStageMask = vk::PipelineStageFlagBits::eFragmentShader,
+        .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite, //Waits for it to be written,
+        .dstAccessMask = vk::AccessFlagBits::eShaderRead,
+        .dependencyFlags = vk::DependencyFlagBits::eByRegion
+    };
+
+    vk::SubpassDescription subpass{
+        .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+        .colorAttachmentCount = 0,
+        .pDepthStencilAttachment = &shadowDepthWriteAttachmentRef,
+    };
+
+    std::array<vk::SubpassDependency, 2> dependencies{ inDependency, outDependency };
+    vk::RenderPassCreateInfo renderPassInfo{
+        .attachmentCount = 1,
+        .pAttachments = &shadowDepthWriteDescription,
+        .subpassCount = 1,
+        .pSubpasses = &subpass,
+        .dependencyCount = static_cast<uint32_t>(dependencies.size()),
+        .pDependencies = dependencies.data(),
+    };
+
+    if (m_device.createRenderPass(&renderPassInfo, nullptr, &m_shadowRenderPass) != vk::Result::eSuccess) {
+        throw std::runtime_error("failed to create render pass");
+    }
+}
+
+//Creates the main render pass that renders the scene
+void VulkanRenderer::createMainRenderPass()
 {
     //MSAA color target
     vk::AttachmentDescription colorDescription{
         .format = m_context->getSwapchainFormat(),
-        .samples = m_enableMSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
+        .samples = m_msaaSampleCount,
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eDontCare, //Best practice with multisampled images is to make the best of lazy allocation with don't care
         .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
         .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
         .initialLayout = vk::ImageLayout::eUndefined,
-        .finalLayout = m_enableMSAA ? vk::ImageLayout::eColorAttachmentOptimal : vk::ImageLayout::ePresentSrcKHR,
+        .finalLayout = vk::ImageLayout::eColorAttachmentOptimal,
     };
     vk::AttachmentReference colorAttachmentRef = {
         .attachment = 0,
@@ -310,14 +432,25 @@ void VulkanRenderer::createRenderPass()
 
     //MSAA depth target
     vk::AttachmentDescription depthDescription{
-    .format = findDepthFormat(),
-    .samples = m_enableMSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
-    .loadOp = vk::AttachmentLoadOp::eClear,
-    .storeOp = vk::AttachmentStoreOp::eDontCare,
-    .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-    .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-    .initialLayout = vk::ImageLayout::eUndefined,
-    .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+        .format = findDepthFormat(),
+        .samples = m_msaaSampleCount,
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eDontCare,
+        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+        .initialLayout = vk::ImageLayout::eUndefined,
+        .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+    };
+
+    vk::AttachmentDescription shadowMapReadDescription{
+        .format = findDepthFormat(),
+        .samples = vk::SampleCountFlagBits::e1,
+        .loadOp = vk::AttachmentLoadOp::eLoad,
+        .storeOp = vk::AttachmentStoreOp::eDontCare,
+        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+        .initialLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
+        .finalLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal, //layout after render pass
     };
 
     vk::AttachmentReference depthAttachmentRef = {
@@ -338,45 +471,44 @@ void VulkanRenderer::createRenderPass()
     };
 
     vk::AttachmentReference colorAttachmentResolveRef = {
-    .attachment = 2,
-    .layout = vk::ImageLayout::eColorAttachmentOptimal,
+        .attachment = 2,
+        .layout = vk::ImageLayout::eColorAttachmentOptimal,
     };
 
-    vk::SubpassDescription subpass{
+
+    vk::AttachmentReference shadowMapReadRef = {
+        .attachment = 3,
+        .layout = vk::ImageLayout::eDepthStencilReadOnlyOptimal
+    };
+
+    vk::SubpassDescription subpass = vk::SubpassDescription{
         .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+        .inputAttachmentCount = 1,
+        .pInputAttachments = &shadowMapReadRef,
         .colorAttachmentCount = 1,
         .pColorAttachments = &colorAttachmentRef,
+        .pResolveAttachments = &colorAttachmentResolveRef,
         .pDepthStencilAttachment = &depthAttachmentRef,
     };
 
-    //Synchronise the implicit first subpass with new available images
-    vk::SubpassDependency dependency{
-        .srcSubpass = VK_SUBPASS_EXTERNAL, //implicit first subpass
-        .dstSubpass = 0, //First explicit subpass
-        .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests, //Waiting on the color attachment output stage so that the swapchain finishes to read the image before we can access it
-        .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
-        .srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite, //Waits for it to be written,
-        .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite
-    };
-    std::vector<vk::AttachmentDescription> attachments = { colorDescription, depthDescription };
-    if (m_enableMSAA)
-    {
-        attachments.push_back(colorDescriptionResolve);
-        subpass.pResolveAttachments = &colorAttachmentResolveRef;
-    }
+    std::array<vk::AttachmentDescription, 4> attachments { colorDescription, depthDescription, colorDescriptionResolve, shadowMapReadDescription };
 
     vk::RenderPassCreateInfo renderPassInfo{
         .attachmentCount = static_cast<uint32_t>(attachments.size()),
         .pAttachments = attachments.data(),
         .subpassCount = 1,
         .pSubpasses = &subpass,
-        .dependencyCount = 1,
-        .pDependencies = &dependency
+        .dependencyCount = 0,
     };
 
     if (m_device.createRenderPass(&renderPassInfo, nullptr, &m_mainRenderPass) != vk::Result::eSuccess) {
         throw std::runtime_error("failed to create render pass");
     }
+}
+
+void VulkanRenderer::createRenderPasses() {
+    createMainRenderPass();
+    createShadowRenderPass();
 }
 #pragma endregion
 
@@ -385,6 +517,7 @@ void VulkanRenderer::createRenderPass()
 //creates the main descriptor set layout
 void VulkanRenderer::createDescriptorSetLayout()
 {
+    //Set 0: Transforms Uniform Buffer, Texture sampler
     vk::DescriptorSetLayoutBinding uboLayoutBinding{
         .binding = 0,
         .descriptorType = vk::DescriptorType::eUniformBuffer,
@@ -399,38 +532,56 @@ void VulkanRenderer::createDescriptorSetLayout()
         .stageFlags = vk::ShaderStageFlagBits::eFragment,
     };
 
-    vk::DescriptorSetLayoutBinding bindings[DESCRIPTOR_SET_LAYOUT_BINDINGS] = { uboLayoutBinding, samplerLayoutBinding };
-   
-
-    /* Indexed descriptors */
-    vk::DescriptorBindingFlags bindingFlags[DESCRIPTOR_SET_LAYOUT_BINDINGS];
+    vk::DescriptorSetLayoutBinding bindings[2] = { uboLayoutBinding, samplerLayoutBinding};
+    //Descriptor indexing
+    vk::DescriptorBindingFlags bindingFlags[2];
     bindingFlags[1] = vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eVariableDescriptorCount; //Necessary for Dynamic indexing (VK_EXT_descriptor_indexing)
 
     vk::DescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreateInfo{
-        .bindingCount = DESCRIPTOR_SET_LAYOUT_BINDINGS,
+        .bindingCount = 2,
         .pBindingFlags = bindingFlags,
     };
     
     vk::DescriptorSetLayoutCreateInfo layoutInfo{
         .pNext = &bindingFlagsCreateInfo,
-        .bindingCount = static_cast<uint32_t>(DESCRIPTOR_SET_LAYOUT_BINDINGS),
+        .bindingCount = 2,
         .pBindings = bindings,
     };
 
     try {
-        m_descriptorSetLayout = m_device.createDescriptorSetLayout(layoutInfo);
+        m_mainDescriptorSetLayout = m_device.createDescriptorSetLayout(layoutInfo);
     }
     catch (vk::SystemError err)
     {
         throw std::runtime_error("could not create descriptor set layout");
     }
     
-    
-}
-//Creates the main descriptor pool
-void VulkanRenderer::createDescriptorPool() {
+    //Set 1: Shadow map sampler
+    vk::DescriptorSetLayoutBinding shadowSamplerLayoutBinding{
+        .binding = 0,
+        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+        .descriptorCount = 1,
+        .stageFlags = vk::ShaderStageFlagBits::eFragment,
+    };
 
-    vk::DescriptorPoolSize poolSizes[DESCRIPTOR_SET_LAYOUT_BINDINGS];
+    vk::DescriptorSetLayoutCreateInfo shadowLayoutInfo{
+        .bindingCount = 1,
+        .pBindings = &shadowSamplerLayoutBinding,
+    };
+
+     try {
+        m_shadowDescriptorSetLayout = m_device.createDescriptorSetLayout(shadowLayoutInfo);
+    }
+    catch (vk::SystemError err)
+    {
+        throw std::runtime_error("could not create descriptor set layout");
+    }
+}
+
+//Creates the main descriptor pool
+void VulkanRenderer::createDescriptorPools() {
+
+    vk::DescriptorPoolSize poolSizes[2];
     poolSizes[0].type = vk::DescriptorType::eUniformBuffer;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     poolSizes[1].type = vk::DescriptorType::eCombinedImageSampler;
@@ -438,21 +589,85 @@ void VulkanRenderer::createDescriptorPool() {
 
     vk::DescriptorPoolCreateInfo poolInfo{
         .maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
-        .poolSizeCount = static_cast<uint32_t>(DESCRIPTOR_SET_LAYOUT_BINDINGS),
+        .poolSizeCount = static_cast<uint32_t>(2),
         .pPoolSizes = poolSizes,
     };
 
     try {
-        m_descriptorPool = m_device.createDescriptorPool(poolInfo);
+        m_mainDescriptorPool = m_device.createDescriptorPool(poolInfo);
+    }
+    catch (vk::SystemError err)
+    {
+        throw std::runtime_error("could not create descriptor pool");
+    }
+
+
+    vk::DescriptorPoolSize shadowPoolSize;
+    shadowPoolSize.type = vk::DescriptorType::eCombinedImageSampler;//Dynamic Indexing
+    shadowPoolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    vk::DescriptorPoolCreateInfo shadowPoolInfo{
+        .maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
+        .poolSizeCount = 1,
+        .pPoolSizes = &shadowPoolSize,
+    };
+
+    try {
+        m_shadowDescriptorPool = m_device.createDescriptorPool(shadowPoolInfo);
     }
     catch (vk::SystemError err)
     {
         throw std::runtime_error("could not create descriptor pool");
     }
 }
+
+void VulkanRenderer::createShadowDescriptorSets() {
+    vk::DescriptorImageInfo shadowTextureImageInfo{
+        .sampler = m_textureSampler,
+        .imageView = m_shadowDepthAttachment->m_imageView,
+        .imageLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
+    };
+
+    m_shadowDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    std::vector<vk::DescriptorSetLayout> shadowLayouts(MAX_FRAMES_IN_FLIGHT, m_shadowDescriptorSetLayout);
+
+    vk::DescriptorSetAllocateInfo allocInfo = {
+         .descriptorPool = m_shadowDescriptorPool,
+         .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
+         .pSetLayouts = shadowLayouts.data()
+    };
+
+    try {
+        m_shadowDescriptorSets = m_device.allocateDescriptorSets(allocInfo);
+    }
+    catch (vk::SystemError err) {
+        throw std::runtime_error("could not allocate descriptor sets");
+    }
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vk::WriteDescriptorSet writeDescriptorSet;
+        writeDescriptorSet.dstSet = m_shadowDescriptorSets[i];
+        writeDescriptorSet.dstBinding = 0;
+        writeDescriptorSet.descriptorCount = 1;
+        writeDescriptorSet.dstArrayElement = 0;
+        writeDescriptorSet.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+        writeDescriptorSet.pImageInfo = &shadowTextureImageInfo;
+
+        try {
+            m_device.updateDescriptorSets(writeDescriptorSet, nullptr);
+        }
+        catch (vk::SystemError err)
+        {
+            throw std::runtime_error("could not create descriptor sets");
+        }
+    }
+
+}
+
 //creates and populates the scene's descriptors
 std::vector<vk::DescriptorSet> VulkanRenderer::createDescriptorSets(VulkanScene* scene) 
 {
+
     //Creates a vector of descriptorImageInfo from the scene's textures
     std::vector<vk::DescriptorImageInfo> textureImageInfo;
     uint32_t textureId = 0;
@@ -487,7 +702,7 @@ std::vector<vk::DescriptorSet> VulkanRenderer::createDescriptorSets(VulkanScene*
 
     std::vector<vk::DescriptorSet> descriptorSets;
     descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout);
+    std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_mainDescriptorSetLayout);
 
     /* Dynamic Descriptor Counts */
     uint32_t textureMaxCount = MAX_TEXTURE_COUNT;
@@ -499,7 +714,7 @@ std::vector<vk::DescriptorSet> VulkanRenderer::createDescriptorSets(VulkanScene*
 
     vk::DescriptorSetAllocateInfo allocInfo = {
      .pNext = &setCounts, 
-     .descriptorPool = m_descriptorPool,
+     .descriptorPool = m_mainDescriptorPool,
      .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
      .pSetLayouts = layouts.data()
     };
@@ -533,6 +748,7 @@ std::vector<vk::DescriptorSet> VulkanRenderer::createDescriptorSets(VulkanScene*
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
         descriptorWrites[1].pImageInfo = textureImageInfo.data();
+
 
         try {
             m_device.updateDescriptorSets(descriptorWrites, nullptr);
@@ -630,32 +846,70 @@ void VulkanRenderer::createPushConstantRanges()
 #pragma endregion
 
 #pragma region FRAMEBUFFERS
-//Creates the framebuffers for swapchain presentation
-void VulkanRenderer::createFramebuffers() {
-    createFramebufferAttachments();
+void VulkanRenderer::createShadowFramebuffer() {
+    //createShadowFramebufferAttachments();
+    vk::Extent2D extent = getRenderPassExtent(RenderPassesId::ShadowMappingPass);
 
     std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
     uint32_t imageCount = swapchainImageViews.size();
-    m_framebuffers.resize(m_context->getSwapchainImagesCount());
+    m_shadowFramebuffers.resize(m_context->getSwapchainImagesCount());
 
-    std::vector<vk::ImageView> attachments;
     for (size_t i = 0; i < imageCount; i++) {
-        if (m_enableMSAA)
-        {
-            attachments = { //Order corresponds to the pipeline attachements order
+
+        vk::FramebufferCreateInfo framebufferInfo{
+           .renderPass = m_shadowRenderPass, //Renderpass that is compatible with the framebuffer
+           .attachmentCount = 1,
+           .pAttachments = &m_shadowDepthAttachment->m_imageView,
+           .width = extent.width,
+           .height = extent.height,
+           .layers = 1,
+        };
+
+        try {
+            m_shadowFramebuffers[i] = m_device.createFramebuffer(framebufferInfo, nullptr);
+        }
+        catch (vk::SystemError err) {
+            throw std::runtime_error("failed to create framebuffer !");
+        }
+    }
+}
+
+void VulkanRenderer::createShadowFramebufferAttachments() {
+
+    vk::Extent2D extent = getRenderPassExtent(RenderPassesId::ShadowMappingPass);
+    VulkanImageParams imageParams{
+       .width = extent.width,
+       .height = extent.height,
+       .mipLevels = 1,
+       .numSamples = vk::SampleCountFlagBits::e1,
+       .format = findDepthFormat(),
+       .tiling = vk::ImageTiling::eOptimal,
+       .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
+       .useDedicatedMemory = true,
+    };
+
+    VulkanImageViewParams imageViewParams{
+     .aspectFlags = vk::ImageAspectFlagBits::eDepth,
+    };
+
+    m_shadowDepthAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
+}
+
+//Creates the framebuffers for swapchain presentation
+void VulkanRenderer::createMainFramebuffer() {
+    createMainFramebufferAttachments();
+    std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
+    uint32_t imageCount = swapchainImageViews.size();
+    m_mainFramebuffers.resize(m_context->getSwapchainImagesCount());
+
+    for (size_t i = 0; i < imageCount; i++) {
+        std::vector<vk::ImageView> attachments = { //Order corresponds to the attachment references
             m_colorAttachment->m_imageView,
             m_depthAttachment->m_imageView,
-            swapchainImageViews[i]
-            };
-        }
-        else {
-           attachments = { //Order corresponds to the pipeline attachements order
-           swapchainImageViews[i],
-           m_depthAttachment->m_imageView,
-            };
-        }
-
-        vk::Extent2D extent = m_context->getSwapchainExtent();
+            swapchainImageViews[i],
+            m_shadowDepthAttachment->m_imageView
+        };
+        vk::Extent2D extent = getRenderPassExtent(RenderPassesId::MainRenderPass);
 
         vk::FramebufferCreateInfo framebufferInfo{
             .renderPass = m_mainRenderPass, //Renderpass that is compatible with the framebuffer
@@ -667,7 +921,7 @@ void VulkanRenderer::createFramebuffers() {
         };
 
         try {
-            m_framebuffers[i] = m_device.createFramebuffer(framebufferInfo, nullptr);
+            m_mainFramebuffers[i] = m_device.createFramebuffer(framebufferInfo, nullptr);
         } catch(vk::SystemError err){
             throw std::runtime_error("failed to create framebuffer !");
         }
@@ -677,50 +931,63 @@ void VulkanRenderer::createFramebuffers() {
 }
 //Recreate objects that depend on the swapchain image size to handle window resizing
 void VulkanRenderer::recreateSwapchainSizedObjects() {
-   
     cleanSwapchainSizedObjects();
     m_context->recreateSwapchain();
-    createRenderPass();
+
     createPipelineLayout();
     for (int i = 0; i < m_pipelines.size(); i++)
     {
         m_pipelines[i] = createPipeline(m_pipelines[i].pipelineInfo);
     }
-    createFramebuffers();
-    m_shouldRecreateSwapchain = false;
+    m_shadowPipeline = createPipeline(m_shadowPipeline.pipelineInfo);
 
+    createFramebuffers();
+    
 }
 
 //Destroys  objects that depend on the swapchain image size to handle window resizing
 void VulkanRenderer::cleanSwapchainSizedObjects() {
     vkDeviceWaitIdle(m_device);
 
-    if (m_enableMSAA)delete m_colorAttachment; //m_colorAttachment not created when no MSAA
+    delete m_colorAttachment;
     delete m_depthAttachment;
 
     for (const auto& pipeline : m_pipelines) {
         m_device.destroyPipeline(pipeline.pipeline);
     }
+    m_device.destroyPipeline(m_shadowPipeline.pipeline);
     m_device.destroyPipelineLayout(m_pipelineLayout);
-    for (const auto& framebuffer : m_framebuffers)
+    for (const auto& framebuffer : m_mainFramebuffers)
     {
         m_device.destroyFramebuffer(framebuffer);
     }
-    m_device.destroyRenderPass(m_mainRenderPass);
+    for (const auto& framebuffer : m_shadowFramebuffers)
+    {
+        m_device.destroyFramebuffer(framebuffer);
+    }
+
+
+
     m_context->cleanupSwapchain();
 
 
 }
 
+void VulkanRenderer::createFramebuffers() {
+    createShadowFramebuffer();
+    createMainFramebuffer();
+}
+
 //Create the framebuffer attachments (Here color and depth targets)
-void VulkanRenderer::createFramebufferAttachments() 
+void VulkanRenderer::createMainFramebufferAttachments() 
 {
     vk::Extent2D extent = m_context->getSwapchainExtent();
+
     VulkanImageParams imageParams{
         .width = extent.width,
         .height = extent.height,
         .mipLevels = 1,
-        .numSamples = m_enableMSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
+        .numSamples = m_msaaSampleCount,
         .format = m_context->getSwapchainFormat(),
         .tiling = vk::ImageTiling::eOptimal,
         .usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
@@ -731,17 +998,14 @@ void VulkanRenderer::createFramebufferAttachments()
         .aspectFlags = vk::ImageAspectFlagBits::eColor,
     };
 
-    if (m_enableMSAA)
-    {
-        m_colorAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
-    }
- 
+    m_colorAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
 
     imageParams.format = findDepthFormat();
-    imageParams.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+    imageParams.usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eDepthStencilAttachment;
     imageViewParams.aspectFlags = vk::ImageAspectFlagBits::eDepth;
 
     m_depthAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
+
 
 }
 #pragma endregion
@@ -773,18 +1037,18 @@ void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32
     commandBuffer.begin(beginInfo);
 
     vk::RenderPassBeginInfo renderPassInfo{
-        .renderPass = m_mainRenderPass,
-        .framebuffer = m_framebuffers[swapchainImageIndex],
+        .renderPass = m_shadowRenderPass,
+        .framebuffer = m_shadowFramebuffers[swapchainImageIndex],
         .renderArea = {
             .offset = {0, 0},
-            .extent = m_context->getSwapchainExtent(),
+            .extent = getRenderPassExtent(RenderPassesId::ShadowMappingPass),
         },
-        .clearValueCount = static_cast<uint32_t>(CLEAR_VALUES.size()),
-        .pClearValues = CLEAR_VALUES.data(),
+        .clearValueCount = static_cast<uint32_t>(SHADOW_DEPTH_CLEAR_VALUES.size()),
+        .pClearValues = SHADOW_DEPTH_CLEAR_VALUES.data(),
     };
     
     commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines[m_currentPipelineId].pipeline); //Only one pipeline per frame in this renderer
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_shadowPipeline.pipeline);
     VkDeviceSize offset = 0;
     //Draws each scene
     for (auto& scene : m_scenes) 
@@ -805,6 +1069,43 @@ void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32
             }
         }
     }
+   
+    commandBuffer.endRenderPass();
+
+    renderPassInfo = vk::RenderPassBeginInfo{
+       .renderPass = m_mainRenderPass,
+       .framebuffer = m_mainFramebuffers[swapchainImageIndex],
+       .renderArea = {
+           .offset = {0, 0},
+           .extent = getRenderPassExtent(RenderPassesId::MainRenderPass),
+       },
+       .clearValueCount = static_cast<uint32_t>(MAIN_CLEAR_VALUES.size()),
+       .pClearValues = MAIN_CLEAR_VALUES.data(),
+    };
+    commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines[m_currentPipelineId].pipeline); //Only one main draw pipeline per frame in this renderer
+    offset = 0;
+    //Draws each scene
+    for (auto& scene : m_scenes)
+    {
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scene->m_descriptorSets[m_currentFrame], m_shadowDescriptorSets[swapchainImageIndex]}, nullptr);
+        commandBuffer.bindVertexBuffers(0, 1, &scene->m_vertexBuffer, &offset);
+        commandBuffer.bindIndexBuffer(scene->m_indexBuffer, 0, vk::IndexType::eUint32);
+
+        uint32_t indexOffset = 0;
+        //Draws each model in a scene
+        for (auto& model : scene->m_models) {
+            //Draws each mesh with a unique texture
+            for (auto& mesh : model.texturedMeshes)
+            {
+                updatePushConstants(commandBuffer, model, mesh);
+                commandBuffer.drawIndexed(mesh.indices.size(), 1, indexOffset, 0, 0);
+                indexOffset += mesh.indices.size();
+            }
+        }
+    }
+    
     renderImGui(commandBuffer);
     commandBuffer.endRenderPass();
     commandBuffer.end();
@@ -820,12 +1121,9 @@ void VulkanRenderer::createSyncObjects()
     m_renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     m_inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
-    vk::SemaphoreCreateInfo semaphoreInfo{
-    };
+    vk::SemaphoreCreateInfo semaphoreInfo{};
 
-    vk::FenceCreateInfo fenceInfo{
-        .flags = vk::FenceCreateFlagBits::eSignaled, //Signaled by default so that the mainloop doesn't block at the first frame
-    };
+    vk::FenceCreateInfo fenceInfo{.flags = vk::FenceCreateFlagBits::eSignaled};//Signaled by default so that the mainloop doesn't block at the first frame
 
     try {
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -848,8 +1146,8 @@ void VulkanRenderer::mainloop() {
     while (m_context->isWindowOpen())
     {
         m_context->manageWindow();
-                
         manageInput();
+
         drawFrame();
     }
     m_device.waitIdle();
@@ -863,11 +1161,12 @@ void VulkanRenderer::drawFrame() {
     uint32_t imageIndex = m_context->acquireNextSwapchainImage(m_imageAvailableSemaphores[m_currentFrame]);
     m_device.resetFences(m_inFlightFences[m_currentFrame]); //Always reset fences (after being sure we are going to submit work
     m_commandBuffers[m_currentFrame].reset(); //Reset to record the command buffer
-    updateUniformBuffers(m_currentFrame); //TODO abstract application dependent code.
-            
-    recordCommandBuffer(m_commandBuffers[m_currentFrame], imageIndex);
-    //Submitting the command buffer
+    
 
+    updateUniformBuffers(m_currentFrame); //TODO abstract application dependent code.
+    recordCommandBuffer(m_commandBuffers[m_currentFrame], imageIndex);
+  
+    //Submitting the command buffer
     vk::Semaphore waitSemaphores[] = { m_imageAvailableSemaphores[m_currentFrame] };
     vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
     vk::Semaphore signalSemaphores[] = { m_renderFinishedSemaphores[m_currentFrame] };
@@ -880,6 +1179,7 @@ void VulkanRenderer::drawFrame() {
         .signalSemaphoreCount = 1,  //Semaphores to signal once the buffers have finished execution
         .pSignalSemaphores = signalSemaphores,
     };
+
     //inFlightFence will be signaled when the command buffers finished executing
     try {
         m_context->getGraphicsQueue().submit(submitInfo, m_inFlightFences[m_currentFrame]);
@@ -888,10 +1188,13 @@ void VulkanRenderer::drawFrame() {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
 
+
     if (!present(signalSemaphores, imageIndex)) {
         recreateSwapchainSizedObjects();
     }
+
     m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+
 }
 
 /// <summary>
@@ -915,8 +1218,9 @@ bool VulkanRenderer::present(vk::Semaphore *signalSemaphores, uint32_t imageInde
 
     vk::Result result = m_context->getPresentQueue().presentKHR(presentInfo);
     
-    if (m_shouldRecreateSwapchain || result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+    if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || m_context->isFramebufferResized())
     {
+        m_context->clearFramebufferResized();
         return false;
     }
     else if (result != vk::Result::eSuccess) {
@@ -931,8 +1235,8 @@ void VulkanRenderer::updateUniformBuffers(uint32_t imageIndex) {
     static auto startTime = std::chrono::high_resolution_clock::now();
 
     auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-    vk::Extent2D extent = m_context->getSwapchainExtent();
+    float time = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - startTime).count();
+    vk::Extent2D extent = getRenderPassExtent(RenderPassesId::MainRenderPass);
 
     float speed = 0.1f;
     //Model View Proj
@@ -940,6 +1244,11 @@ void VulkanRenderer::updateUniformBuffers(uint32_t imageIndex) {
     ubo.view = glm::lookAt(m_camera.cameraPos, m_camera.cameraPos - m_camera.getDirection(), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float)extent.height, 0.1f, 1000.0f); //45deg vertical field of view, aspect ratio, near and far view planes
     ubo.proj[1][1] *= -1; //Designed for openGL but the Y coordinate of the clip coordinates is inverted
+    ubo.lightView = glm::lookAt(glm::vec3(0.f, 4.f * sin(time), 18.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 0.f, 1.f));
+    ubo.lightProj = glm::perspective(glm::radians(45.0f), 1.f, 1.f, 100.0f);
+    ubo.lightProj[1][1] *= -1;
+    
+
 
     void* data = m_allocator.mapMemory(m_uniformBuffersAllocations[imageIndex]);
     memcpy(data, &ubo, sizeof(ubo));
@@ -1050,7 +1359,7 @@ void VulkanRenderer::manageInput() {
 }
 #pragma endregion
 
-//TODO Ranger
+#pragma region IMGUI
 void VulkanRenderer::renderImGui(vk::CommandBuffer commandBuffer) {
 
     ImGui_ImplVulkan_NewFrame();
@@ -1071,3 +1380,4 @@ void VulkanRenderer::renderImGui(vk::CommandBuffer commandBuffer) {
     ImGui::Render();
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
 }
+#pragma endregion IMGUI

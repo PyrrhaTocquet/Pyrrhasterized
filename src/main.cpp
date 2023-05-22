@@ -56,39 +56,39 @@ int main() {
     peachTransform = glm::rotate(peachTransform, glm::radians(90.f), glm::vec3(0.f, 0.f, 1.f));
     
     scene.addObjModel("assets/Sponza/", sponzaTransform);
-    /*scene.addObjModel("F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Ressources/Ganon/", ganonTransform);
-    scene.addObjModel("F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Ressources/PikachuObj/", pikachuTransform);
-    scene.addObjModel("F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Ressources/peach/", peachTransform);
-    scene.addObjModel("F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Ressources/Link/", linkTransform);
-    */
+    scene.addObjModel("assets/Ganon/", ganonTransform);
+    scene.addObjModel("assets/PikachuObj/", pikachuTransform);
+    scene.addObjModel("assets/peach/", peachTransform);
+    scene.addObjModel("assets/Link/", linkTransform);
+
     renderer.addScene(&scene);
+    
+    PipelineInfo pipelineInfo;
 
-    /*PipelineInfo pipelineInfo;
-
-    pipelineInfo.vertPath = "F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/vertexTextureNoLight.spv";
-    pipelineInfo.fragPath = "F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/fragmentTextureNoLight.spv";
+    pipelineInfo.vertPath = "shaders/vertexTextureNoLight.spv";
+    pipelineInfo.fragPath = "shaders/fragmentTextureNoLight.spv";
     renderer.addPipeline(renderer.createPipeline(pipelineInfo));
 
-    pipelineInfo.vertPath = "F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/vertexDebugNormals.spv";
-    pipelineInfo.fragPath = "F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/fragmentDebugNormals.spv";
+    pipelineInfo.vertPath = "shaders/vertexDebugNormals.spv";
+    pipelineInfo.fragPath = "shaders/fragmentDebugNormals.spv";
     renderer.addPipeline(renderer.createPipeline(pipelineInfo));
 
-    pipelineInfo.vertPath = "F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/vertexDebugTextureCoords.spv";
-    pipelineInfo.fragPath = "F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/fragmentDebugTextureCoords.spv";
+    pipelineInfo.vertPath = "shaders/vertexDebugTextureCoords.spv";
+    pipelineInfo.fragPath = "shaders/fragmentDebugTextureCoords.spv";
     renderer.addPipeline(renderer.createPipeline(pipelineInfo));
 
 
 
-    pipelineInfo.vertPath = "F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/vertexTextureNoLight.spv";
-    pipelineInfo.fragPath = "F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/fragmentDepth.spv";
+    pipelineInfo.vertPath = "shaders/vertexTextureNoLight.spv";
+    pipelineInfo.fragPath = "shaders/fragmentDepth.spv";
     renderer.addPipeline(renderer.createPipeline(pipelineInfo));
 
-    pipelineInfo.vertPath = "F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/vertexTextureNoLight.spv";
-    pipelineInfo.fragPath = "F:/Programmation/C++/Vulkan Projects/Vulkan_Base_Project/Shaders/fragmentTextureNoLight.spv";
+    pipelineInfo.vertPath = "shaders/vertexTextureNoLight.spv";
+    pipelineInfo.fragPath = "shaders/fragmentTextureNoLight.spv";
     pipelineInfo.polygonMode = vk::PolygonMode::eLine;
 
     renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-    */
+    
 
     renderer.mainloop();
 
