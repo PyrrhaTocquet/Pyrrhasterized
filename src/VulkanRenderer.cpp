@@ -1265,7 +1265,7 @@ void VulkanRenderer::updateUniformBuffers(uint32_t imageIndex) {
     ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float)extent.height, 0.1f, 1000.0f); //45deg vertical field of view, aspect ratio, near and far view planes
     ubo.proj[1][1] *= -1; //Designed for openGL but the Y coordinate of the clip coordinates is inverted
     ubo.lightView = glm::lookAt(glm::vec3(0.f, 4.f * sin(time), 18.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 0.f, 1.f));
-    ubo.lightProj = glm::perspective(glm::radians(45.0f), 1.f, 1.f, 100.0f);
+    ubo.lightProj = glm::perspective(glm::radians(45.0f), 1.f, 1.5f, 80.0f);
     ubo.lightProj[1][1] *= -1;
     
 
