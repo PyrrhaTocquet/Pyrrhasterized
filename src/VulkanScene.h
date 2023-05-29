@@ -11,6 +11,7 @@ struct Vertex {
 	glm::vec3 pos;
 	glm::vec2 texCoord;
 	glm::vec3 normal;
+	glm::vec4 tangent; //w: handles handedness
 
 
 	static vk::VertexInputBindingDescription getBindingDescription() {
@@ -21,8 +22,8 @@ struct Vertex {
 		return bindingDescription;
 	}
 
-	static std::array<vk::VertexInputAttributeDescription, 3> getAttributeDescriptions() {
-		std::array<vk::VertexInputAttributeDescription, 3> attributeDescriptions = {};
+	static std::array<vk::VertexInputAttributeDescription, 4> getAttributeDescriptions() {
+		std::array<vk::VertexInputAttributeDescription, 4> attributeDescriptions = {};
 		attributeDescriptions[0].binding = 0;
 		attributeDescriptions[0].location = 0;
 		attributeDescriptions[0].format = vk::Format::eR32G32B32Sfloat;
@@ -37,7 +38,11 @@ struct Vertex {
 		attributeDescriptions[2].location = 2;
 		attributeDescriptions[2].format = vk::Format::eR32G32B32Sfloat;
 		attributeDescriptions[2].offset = offsetof(Vertex, normal);
-
+		
+		attributeDescriptions[3].binding = 0;
+		attributeDescriptions[3].location = 3;
+		attributeDescriptions[3].format = vk::Format::eR32G32B32A32Sfloat;
+		attributeDescriptions[3].offset = offsetof(Vertex, tangent);
 
 
 		return attributeDescriptions;
@@ -47,8 +52,10 @@ struct Vertex {
 struct TexturedMesh {
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
-	VulkanImage* textureImage;
+	VulkanImage* textureImage = nullptr;
+	VulkanImage* normalMapImage = nullptr;
 	uint32_t textureId;
+	uint32_t normalMapId;
 };
 
 struct Model {
@@ -84,5 +91,7 @@ public:
 private:
 	void createVertexBuffer();
 	void createIndexBuffer();
+	//TODO Refactor
+	void generateTangents(Model& model);
 };
 

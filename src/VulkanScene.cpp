@@ -17,6 +17,7 @@ VulkanScene::~VulkanScene()
 	for (const auto& model : m_models) {
 		for (const auto& mesh : model.texturedMeshes) {
 			delete mesh.textureImage;
+			delete mesh.normalMapImage;
 		}
 	}
 }
@@ -70,16 +71,16 @@ void VulkanScene::addObjModel(const std::string& path, const glm::mat4& modelMat
 
 				vertex.pos = {
 					attrib.vertices[3 * size_t(idx.vertex_index) + 0],
-					-attrib.vertices[3 * size_t(idx.vertex_index) + 2],
 					attrib.vertices[3 * size_t(idx.vertex_index) + 1],
+					attrib.vertices[3 * size_t(idx.vertex_index) + 2],
 				};
 
 				// Check if `normal_index` is zero or positive. negative = no normal data
 				if (idx.normal_index >= 0) {
 					vertex.normal = {
 						attrib.normals[3 * size_t(idx.normal_index) + 0],
-						-attrib.normals[3 * size_t(idx.normal_index) + 2],
 						attrib.normals[3 * size_t(idx.normal_index) + 1],
+						attrib.normals[3 * size_t(idx.normal_index) + 2],
 					};
 				}
 				// Check if `texcoord_index` is zero or positive. negative = no texcoord data
@@ -87,7 +88,7 @@ void VulkanScene::addObjModel(const std::string& path, const glm::mat4& modelMat
 					vertex.texCoord =
 					{
 						attrib.texcoords[2 * size_t(idx.texcoord_index) + 0],
-						1.0f - attrib.texcoords[2 * size_t(idx.texcoord_index) + 1],
+						1- attrib.texcoords[2 * size_t(idx.texcoord_index) + 1],
 					};
 
 				}
@@ -97,7 +98,6 @@ void VulkanScene::addObjModel(const std::string& path, const glm::mat4& modelMat
 			}
 			index_offset += fv;
 			
-			//Todo create texture image from it
 		}
 	}
 	//Creating Textures
@@ -119,6 +119,29 @@ void VulkanScene::addObjModel(const std::string& path, const glm::mat4& modelMat
 		}
 	}
 
+	//Creating NormalMaps
+	VulkanImageParams normalImageParams
+	{
+		.numSamples = vk::SampleCountFlagBits::e1,
+		.format = vk::Format::eR8G8B8A8Unorm,
+		.tiling = vk::ImageTiling::eOptimal,
+		.usage = vk::ImageUsageFlagBits::eSampled,
+	};
+
+	VulkanImageViewParams normalImageViewParams{
+		.aspectFlags = vk::ImageAspectFlagBits::eColor,
+	};
+	for (int i = 0; i < model.texturedMeshes.size(); i++) {
+		if (materials[i].diffuse_texname != "")
+		{
+			if (materials[i].displacement_texname != "")
+			{
+				model.texturedMeshes[i].normalMapImage = new VulkanImage(m_context, normalImageParams, normalImageViewParams, path + "/" + materials[i].displacement_texname);
+			}
+			
+		}
+	}
+	generateTangents(model);
 	m_models.push_back(model);
 
 }
@@ -182,6 +205,8 @@ void VulkanScene::createIndexBuffer()
 	m_allocator.destroyBuffer(stagingBuffer, stagingAllocation);
 }
 
+
+
 void VulkanScene::createVertexBuffer() 
 {
 	size_t verticesCount = 0;
@@ -215,4 +240,35 @@ void VulkanScene::createVertexBuffer()
 	m_context->copyBuffer(stagingBuffer, m_vertexBuffer, bufferSize);
 
 	m_allocator.destroyBuffer(stagingBuffer, stagingAllocation);
+}
+
+//Generates tangent data in the model vertices
+void VulkanScene::generateTangents(Model& model)
+{
+	for (auto& texturedMesh : model.texturedMeshes)
+	{
+		for (uint32_t i = 0; i < texturedMesh.indices.size(); i += 3)
+		{
+			uint32_t i0 = texturedMesh.indices[i + 0];
+			uint32_t i1 = texturedMesh.indices[i + 1];
+			uint32_t i2 = texturedMesh.indices[i + 2];
+
+			glm::vec3 edge1 = texturedMesh.vertices[i1].pos - texturedMesh.vertices[i0].pos;
+			glm::vec3 edge2 = texturedMesh.vertices[i2].pos - texturedMesh.vertices[i0].pos;
+
+			glm::vec2 deltaUV1 = texturedMesh.vertices[i1].texCoord - texturedMesh.vertices[i0].texCoord;
+			glm::vec2 deltaUV2 = texturedMesh.vertices[i2].texCoord - texturedMesh.vertices[i0].texCoord;
+
+			float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+
+			glm::vec3 tangent3 = (edge1 * deltaUV2.y - edge2 * deltaUV1.y) * r;
+			tangent3 = glm::normalize(tangent3);
+			float handedness = ((deltaUV1.y * deltaUV2.x - deltaUV2.y * deltaUV1.x) < 0.0f) ? -1.0f : 1.0f;
+
+			glm::vec4 tangent4 = glm::vec4(tangent3, handedness);
+			texturedMesh.vertices[i0].tangent = tangent4;
+			texturedMesh.vertices[i1].tangent = tangent4;
+			texturedMesh.vertices[i2].tangent = tangent4;
+		}
+	}
 }
