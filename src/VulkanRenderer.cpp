@@ -50,6 +50,7 @@ VulkanRenderer::~VulkanRenderer()
     delete m_depthAttachment;
     delete m_shadowDepthAttachment;
     delete m_defaultTexture;
+    delete m_defaultNormalMap;
 
     m_device.destroySampler(m_textureSampler);
     m_device.destroyDescriptorPool(m_mainDescriptorPool);
@@ -701,9 +702,35 @@ std::vector<vk::DescriptorSet> VulkanRenderer::createDescriptorSets(VulkanScene*
                 };
                 //Default texture if no texture
                 textureImageInfo.push_back(imageInfo);
-                texturedMesh.textureId = textureId; 
+                texturedMesh.textureId = textureId;
                 textureId++;
             }
+            if (texturedMesh.normalMapImage != nullptr)
+            {
+                vk::DescriptorImageInfo imageInfo{
+                .sampler = m_textureSampler,
+                .imageView = texturedMesh.normalMapImage->m_imageView,
+                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                };
+                textureImageInfo.push_back(imageInfo);
+                texturedMesh.normalMapId = textureId; //Attributes the texture id to the mesh
+                textureId++;
+
+            }
+            else
+            {
+                //No texture applies a default texture
+                vk::DescriptorImageInfo imageInfo{
+               .sampler = m_textureSampler,
+               .imageView = m_defaultNormalMap->m_imageView,
+               .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                };
+                //Default texture if no texture
+                textureImageInfo.push_back(imageInfo);
+                texturedMesh.normalMapId = textureId;
+                textureId++;
+            }
+
         }
     }
 
@@ -770,7 +797,7 @@ std::vector<vk::DescriptorSet> VulkanRenderer::createDescriptorSets(VulkanScene*
 
 //Creates Uniform buffers, samplers or other shader readable objects
 void VulkanRenderer::createDescriptorObjects() {
-    createDefaultTexture();
+    createDefaultTextures();
     createUniformBuffer();
     createTextureSampler();
 }
@@ -820,7 +847,7 @@ void VulkanRenderer::createTextureSampler() {
 }
 
 //Creates a default VulkanImage to be used a default texture
-void VulkanRenderer::createDefaultTexture() 
+void VulkanRenderer::createDefaultTextures() 
 {
     VulkanImageParams imageParams
     {
@@ -834,6 +861,19 @@ void VulkanRenderer::createDefaultTexture()
         .aspectFlags = vk::ImageAspectFlagBits::eColor,
     };
     m_defaultTexture = new VulkanImage(m_context, imageParams, imageViewParams, "assets/defaultTexture.png");
+
+    imageParams = VulkanImageParams
+    {
+        .numSamples = vk::SampleCountFlagBits::e1,
+        .format = vk::Format::eR8G8B8A8Unorm,
+        .tiling = vk::ImageTiling::eOptimal,
+        .usage = vk::ImageUsageFlagBits::eSampled,
+    };
+
+    imageViewParams = VulkanImageViewParams{
+        .aspectFlags = vk::ImageAspectFlagBits::eColor,
+    };
+    m_defaultNormalMap = new VulkanImage(m_context, imageParams, imageViewParams, "assets/defaultNormalMap.png");
 }
 #pragma endregion
 
@@ -1261,11 +1301,12 @@ void VulkanRenderer::updateUniformBuffers(uint32_t imageIndex) {
     float speed = 0.1f;
     //Model View Proj
     UniformBufferObject ubo{};
-    ubo.view = glm::lookAt(m_camera.cameraPos, m_camera.cameraPos - m_camera.getDirection(), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = glm::lookAt(m_camera.cameraPos, m_camera.cameraPos - m_camera.getDirection(), glm::vec3(0.0f, 1.0f, 0.0f));
     ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float)extent.height, 0.1f, 1000.0f); //45deg vertical field of view, aspect ratio, near and far view planes
     ubo.proj[1][1] *= -1; //Designed for openGL but the Y coordinate of the clip coordinates is inverted
-    ubo.lightView = glm::lookAt(glm::vec3(0.f, 4.f * sin(time), 18.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 0.f, 1.f));
-    ubo.lightProj = glm::perspective(glm::radians(45.0f), 1.f, 1.5f, 80.0f);
+  
+    ubo.lightView = glm::lookAt(glm::vec3(0.f, 17.f, 4.f * sin(time)), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+    ubo.lightProj = glm::perspective(glm::radians(45.0f), 1.f, 1.f, 40.0f);
     ubo.lightProj[1][1] *= -1;
     
 
@@ -1284,6 +1325,7 @@ void VulkanRenderer::updatePushConstants(vk::CommandBuffer commandBuffer,Model& 
     ModelPushConstant modelPushConstant{
         .model = model.matrix,
         .textureId = static_cast<glm::int32>(mesh.textureId),
+        .normalMapId = static_cast<glm::int32>(mesh.normalMapId),
         .time = time,
     };
     commandBuffer.pushConstants<ModelPushConstant>(m_pipelineLayout, vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment, 0, modelPushConstant);
@@ -1353,8 +1395,8 @@ void VulkanRenderer::manageInput() {
     m_currentPipelineId = m_currentPipelineId % static_cast<uint32_t>(m_pipelines.size());
 
 
-    static double lastMousePosX = 0;
-    static double lastMousePosY = 0;
+    static double lastMousePosX = 500;
+    static double lastMousePosY = 500;
     double posX, posY;
     glfwGetCursorPos(window, &posX, &posY);
 
@@ -1368,7 +1410,7 @@ void VulkanRenderer::manageInput() {
     deltaY *= sensitivity;
 
     m_camera.pitchYawRoll.y += deltaX;
-    m_camera.pitchYawRoll.x -= deltaY;
+    m_camera.pitchYawRoll.x += deltaY;
     
     if (m_camera.pitchYawRoll.x > 89.0f)
         m_camera.pitchYawRoll.x = 89.f;
