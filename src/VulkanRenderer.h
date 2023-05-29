@@ -15,6 +15,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
 
+#include "VulkanRenderPass.h"
+#include "MainRenderPass.h"
+#include "ShadowRenderPass.h"
+
+
 
 
 /* CONSTANTS */
@@ -27,8 +32,8 @@ const bool ENABLE_MSAA = false;
 
 /* ENUMS */
 enum RenderPassesId {
-	ShadowMappingPass,
-	MainRenderPass,
+	ShadowMappingPassId = 0,
+	MainRenderPassId,
 };
 
 
@@ -79,7 +84,7 @@ struct PipelineInfo {
 	float lineWidth = 1.0f;
 	vk::Bool32 depthTestEnable = VK_TRUE;
 	vk::Bool32 depthWriteEnable = VK_TRUE;
-	RenderPassesId renderPassId = RenderPassesId::MainRenderPass;
+	RenderPassesId renderPassId = RenderPassesId::MainRenderPassId;
 	bool isMultisampled = true;
 };
 
@@ -104,6 +109,7 @@ struct CameraCoords {
 };
 
 class VulkanScene;
+class MainRenderPass;
 
 class VulkanRenderer
 {
@@ -112,10 +118,6 @@ private:
 
 	vk::Device m_device = VK_NULL_HANDLE;
 	vma::Allocator m_allocator;
-
-	//FRAMEBUFFER
-	VulkanImage *m_colorAttachment, *m_depthAttachment, *m_shadowDepthAttachment = nullptr;
-	std::vector<vk::Framebuffer> m_mainFramebuffers, m_shadowFramebuffers;
 
 	//COMMAND BUFFER
 	std::vector<vk::CommandBuffer> m_commandBuffers;
@@ -137,8 +139,7 @@ private:
 	VulkanPipeline m_shadowPipeline;
 
 	//RENDER PASS
-	vk::RenderPass m_mainRenderPass, m_shadowRenderPass = VK_NULL_HANDLE;
-	vk::Format m_depthFormat = vk::Format::eUndefined; //use findDepthFormat instead of reading it directly
+	std::vector<VulkanRenderPass*> m_renderPasses;
 
 	//RENDERING FLOW
 	uint32_t m_currentFrame = 0;
@@ -179,13 +180,7 @@ private:
 	void createShadowGraphicsPipeline(const char* vertShaderCodePath, const char* fragShaderCodePath);
 
 	//RENDER PASS
-	[[nodiscard]] vk::Format findDepthFormat();
 	void createRenderPasses();
-	void createMainRenderPass();
-	void createShadowRenderPass();
-	vk::RenderPass getRenderPass(RenderPassesId id);
-	vk::Extent2D getRenderPassExtent(RenderPassesId id);
-
 
 	//DESCRIPTORS
 	void createDescriptorSetLayout();

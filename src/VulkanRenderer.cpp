@@ -20,7 +20,6 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     createPipelineLayout();
     createMainGraphicsPipeline("shaders/vertexTexture.spv", "shaders/fragmentTexture.spv");
     createShadowGraphicsPipeline("shaders/vertexShadow.spv", "shaders/fragmentShadow.spv");
-    createShadowFramebufferAttachments(); //Created outside of createFramebuffers function because it is not dependent on window size.
     createFramebuffers();
    
     //Command execution related objects
@@ -31,7 +30,7 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     //IMGUI
     ImGui_ImplVulkan_InitInfo initInfo = m_context->getImGuiInitInfo();
     initInfo.MSAASamples = static_cast<VkSampleCountFlagBits>(ENABLE_MSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1);
-    ImGui_ImplVulkan_Init(&initInfo, m_mainRenderPass);
+    ImGui_ImplVulkan_Init(&initInfo, m_renderPasses[RenderPassesId::MainRenderPassId]->getRenderPass());
     m_device.waitIdle();
 
     //execute a gpu command to upload imgui font textures
@@ -46,9 +45,6 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
 
 VulkanRenderer::~VulkanRenderer()
 {
-    if(ENABLE_MSAA)delete m_colorAttachment;
-    delete m_depthAttachment;
-    delete m_shadowDepthAttachment;
     delete m_defaultTexture;
 
     m_device.destroySampler(m_textureSampler);
@@ -65,13 +61,6 @@ VulkanRenderer::~VulkanRenderer()
         m_device.destroyFence(m_inFlightFences[i]);
     }
 
-    for (auto framebuffer : m_mainFramebuffers) {
-        m_device.destroyFramebuffer(framebuffer);
-    }
-    for (auto framebuffer : m_shadowFramebuffers) {
-        m_device.destroyFramebuffer(framebuffer);
-    }
-
 
     m_device.freeCommandBuffers(m_context->getCommandPool(), m_commandBuffers);
     for (auto pipeline : m_pipelines) {
@@ -80,8 +69,11 @@ VulkanRenderer::~VulkanRenderer()
     m_device.destroyPipeline(m_shadowPipeline.pipeline);
 
     m_device.destroyPipelineLayout(m_pipelineLayout);
-    m_device.destroyRenderPass(m_mainRenderPass);
-    m_device.destroyRenderPass(m_shadowRenderPass);
+    
+    for (auto& renderPass : m_renderPasses)
+    {
+        delete renderPass;
+    }
 }
 #pragma endregion
 
@@ -116,7 +108,7 @@ void VulkanRenderer::createShadowGraphicsPipeline(const char* vertShaderCodePath
     .vertPath = vertShaderCodePath,
     .fragPath = fragShaderCodePath,
     .cullmode = vk::CullModeFlagBits::eNone,
-    .renderPassId = RenderPassesId::ShadowMappingPass,
+    .renderPassId = RenderPassesId::ShadowMappingPassId,
     .isMultisampled = false,
     };
 
@@ -183,7 +175,7 @@ VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
         .primitiveRestartEnable = VK_FALSE,
     };
 
-    vk::Extent2D extent = getRenderPassExtent(pipelineInfo.renderPassId);
+    vk::Extent2D extent = m_renderPasses[pipelineInfo.renderPassId]->getRenderPassExtent();
 
     vk::Viewport viewport = {
         .x = 0.0f,
@@ -271,7 +263,7 @@ VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
         .pDepthStencilState = &depthStencilState,
         .pColorBlendState = &colorBlending,
         .layout = m_pipelineLayout,
-        .renderPass = getRenderPass(pipelineInfo.renderPassId),
+        .renderPass = m_renderPasses[pipelineInfo.renderPassId]->getRenderPass(),
         .subpass = 0,
         .basePipelineHandle = nullptr,
     };
@@ -318,207 +310,6 @@ vk::ShaderModule VulkanRenderer::createShaderModule(std::vector<char>& shaderCod
 }
 
 #pragma endregion
-
-#pragma region RENDER_PASSES
-vk::RenderPass VulkanRenderer::getRenderPass(RenderPassesId id) {
-    switch (id){
-        case RenderPassesId::ShadowMappingPass:
-            return m_shadowRenderPass;
-            break;
-        case RenderPassesId::MainRenderPass:
-            return m_mainRenderPass;
-            break;
-        default:
-            std::runtime_error("Unsupported Render Pass Id");
-    }
-}
-
-vk::Extent2D VulkanRenderer::getRenderPassExtent(RenderPassesId id) {
-    switch (id) {
-    case RenderPassesId::ShadowMappingPass:
-        return vk::Extent2D{
-            .width = SHADOW_MAP_SIZE,
-            .height = SHADOW_MAP_SIZE,
-        };
-        break;
-    case RenderPassesId::MainRenderPass:
-        return m_context->getSwapchainExtent();
-        break;
-    default:
-        std::runtime_error("Unsupported Render Pass Id");
-    }
-}
-
-//returns the best depth format provided by the device used by the VulkanContext
-vk::Format VulkanRenderer::findDepthFormat() {
-    if (m_depthFormat == vk::Format::eUndefined) {
-        m_depthFormat = m_context->findSupportedFormat({ vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint }, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
-    }
-    return m_depthFormat;
-}
-
-//Creates the render pass for shadow mapping
-void VulkanRenderer::createShadowRenderPass() {
-    
-    vk::AttachmentDescription shadowDepthWriteDescription{
-        .format = findDepthFormat(),
-        .samples = vk::SampleCountFlagBits::e1,
-        .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eStore,
-        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-        .initialLayout = vk::ImageLayout::eUndefined,
-        .finalLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
-    };
-
-    vk::AttachmentReference shadowDepthWriteAttachmentRef = {
-        .attachment = 0,
-        .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal, //layout during render pass
-    };
-
-    vk::SubpassDependency inDependency{
-        .srcSubpass = VK_SUBPASS_EXTERNAL, //implicit first subpass
-        .dstSubpass = 0,
-        .srcStageMask = vk::PipelineStageFlagBits::eFragmentShader,// output stage so that the swapchain finishes to read the image before we can access it
-        .dstStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests,
-        .srcAccessMask = vk::AccessFlagBits::eShaderRead, //Waits for it to be written,
-        .dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite,
-        .dependencyFlags = vk::DependencyFlagBits::eByRegion,
-    };
-
-    vk::SubpassDependency outDependency{
-        .srcSubpass = 0, //implicit first subpass
-        .dstSubpass = VK_SUBPASS_EXTERNAL,
-        .srcStageMask = vk::PipelineStageFlagBits::eLateFragmentTests,
-        .dstStageMask = vk::PipelineStageFlagBits::eFragmentShader,
-        .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite, //Waits for it to be written,
-        .dstAccessMask = vk::AccessFlagBits::eShaderRead,
-        .dependencyFlags = vk::DependencyFlagBits::eByRegion
-    };
-
-    vk::SubpassDescription subpass{
-        .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-        .colorAttachmentCount = 0,
-        .pDepthStencilAttachment = &shadowDepthWriteAttachmentRef,
-    };
-
-    std::array<vk::SubpassDependency, 2> dependencies{ inDependency, outDependency };
-    vk::RenderPassCreateInfo renderPassInfo{
-        .attachmentCount = 1,
-        .pAttachments = &shadowDepthWriteDescription,
-        .subpassCount = 1,
-        .pSubpasses = &subpass,
-        .dependencyCount = static_cast<uint32_t>(dependencies.size()),
-        .pDependencies = dependencies.data(),
-    };
-
-    if (m_device.createRenderPass(&renderPassInfo, nullptr, &m_shadowRenderPass) != vk::Result::eSuccess) {
-        throw std::runtime_error("failed to create render pass");
-    }
-}
-
-//Creates the main render pass that renders the scene
-void VulkanRenderer::createMainRenderPass()
-{
-    //MSAA color target
-    vk::AttachmentDescription colorDescription{
-        .format = m_context->getSwapchainFormat(),
-        .samples = ENABLE_MSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
-        .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eDontCare, //Best practice with multisampled images is to make the best of lazy allocation with don't care
-        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-        .initialLayout = vk::ImageLayout::eUndefined,
-        .finalLayout = ENABLE_MSAA ? vk::ImageLayout::eColorAttachmentOptimal : vk::ImageLayout::ePresentSrcKHR,
-    };
-    vk::AttachmentReference colorAttachmentRef = {
-        .attachment = 0,
-        .layout = ENABLE_MSAA ? vk::ImageLayout::eColorAttachmentOptimal : vk::ImageLayout::ePresentSrcKHR,
-    };
-
-    //MSAA depth target
-    vk::AttachmentDescription depthDescription{
-        .format = findDepthFormat(),
-        .samples = ENABLE_MSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
-        .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eDontCare,
-        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-        .initialLayout = vk::ImageLayout::eUndefined,
-        .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-    };
-
-    vk::AttachmentDescription shadowMapReadDescription{
-        .format = findDepthFormat(),
-        .samples = vk::SampleCountFlagBits::e1,
-        .loadOp = vk::AttachmentLoadOp::eLoad,
-        .storeOp = vk::AttachmentStoreOp::eDontCare,
-        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-        .initialLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
-        .finalLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal, //layout after render pass
-    };
-
-    vk::AttachmentReference depthAttachmentRef = {
-        .attachment = 1,
-        .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-    };
-
-    //Color resolve target
-    vk::AttachmentDescription colorDescriptionResolve{
-        .format = m_context->getSwapchainFormat(),
-        .samples = vk::SampleCountFlagBits::e1,
-        .loadOp = vk::AttachmentLoadOp::eDontCare,
-        .storeOp = vk::AttachmentStoreOp::eStore,
-        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-        .initialLayout = vk::ImageLayout::eUndefined,
-        .finalLayout = vk::ImageLayout::ePresentSrcKHR
-    };
-
-    vk::AttachmentReference colorAttachmentResolveRef = {
-        .attachment = 3,
-        .layout = vk::ImageLayout::eColorAttachmentOptimal,
-    };
-
-
-    vk::AttachmentReference shadowMapReadRef = {
-        .attachment = 2,
-        .layout = vk::ImageLayout::eDepthStencilReadOnlyOptimal
-    };
-
-    vk::SubpassDescription subpass = vk::SubpassDescription{
-        .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-        .inputAttachmentCount = 1,
-        .pInputAttachments = &shadowMapReadRef,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &colorAttachmentRef,
-        .pResolveAttachments = ENABLE_MSAA ? &colorAttachmentResolveRef : nullptr,
-        .pDepthStencilAttachment = &depthAttachmentRef,
-    };
-
-    std::vector<vk::AttachmentDescription> attachments { colorDescription, depthDescription, shadowMapReadDescription };
-    if(ENABLE_MSAA)attachments.push_back(colorDescriptionResolve);
-
-    vk::RenderPassCreateInfo renderPassInfo{
-        .attachmentCount = static_cast<uint32_t>(attachments.size()),
-        .pAttachments = attachments.data(),
-        .subpassCount = 1,
-        .pSubpasses = &subpass,
-        .dependencyCount = 0,
-    };
-
-    if (m_device.createRenderPass(&renderPassInfo, nullptr, &m_mainRenderPass) != vk::Result::eSuccess) {
-        throw std::runtime_error("failed to create render pass");
-    }
-}
-
-void VulkanRenderer::createRenderPasses() {
-    createMainRenderPass();
-    createShadowRenderPass();
-}
-#pragma endregion
-
 
 #pragma region DESCRIPTORS
 //creates the main descriptor set layout
@@ -631,7 +422,7 @@ void VulkanRenderer::createDescriptorPools() {
 void VulkanRenderer::createShadowDescriptorSets() {
     vk::DescriptorImageInfo shadowTextureImageInfo{
         .sampler = m_textureSampler,
-        .imageView = m_shadowDepthAttachment->m_imageView,
+        .imageView = reinterpret_cast<ShadowRenderPass*>(m_renderPasses[RenderPassesId::ShadowMappingPassId])->getShadowAttachment(),
         .imageLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
     };
 
@@ -853,102 +644,8 @@ void VulkanRenderer::createPushConstantRanges()
 #pragma endregion
 
 #pragma region FRAMEBUFFERS
-void VulkanRenderer::createShadowFramebuffer() {
-    //createShadowFramebufferAttachments();
-    vk::Extent2D extent = getRenderPassExtent(RenderPassesId::ShadowMappingPass);
 
-    std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
-    uint32_t imageCount = swapchainImageViews.size();
-    m_shadowFramebuffers.resize(m_context->getSwapchainImagesCount());
 
-    for (size_t i = 0; i < imageCount; i++) {
-
-        vk::FramebufferCreateInfo framebufferInfo{
-           .renderPass = m_shadowRenderPass, //Renderpass that is compatible with the framebuffer
-           .attachmentCount = 1,
-           .pAttachments = &m_shadowDepthAttachment->m_imageView,
-           .width = extent.width,
-           .height = extent.height,
-           .layers = 1,
-        };
-
-        try {
-            m_shadowFramebuffers[i] = m_device.createFramebuffer(framebufferInfo, nullptr);
-        }
-        catch (vk::SystemError err) {
-            throw std::runtime_error("failed to create framebuffer !");
-        }
-    }
-}
-
-void VulkanRenderer::createShadowFramebufferAttachments() {
-
-    vk::Extent2D extent = getRenderPassExtent(RenderPassesId::ShadowMappingPass);
-    VulkanImageParams imageParams{
-       .width = extent.width,
-       .height = extent.height,
-       .mipLevels = 1,
-       .numSamples = vk::SampleCountFlagBits::e1,
-       .format = findDepthFormat(),
-       .tiling = vk::ImageTiling::eOptimal,
-       .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
-       .useDedicatedMemory = true,
-    };
-
-    VulkanImageViewParams imageViewParams{
-     .aspectFlags = vk::ImageAspectFlagBits::eDepth,
-    };
-
-    m_shadowDepthAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
-}
-
-//Creates the framebuffers for swapchain presentation
-void VulkanRenderer::createMainFramebuffer() {
-    createMainFramebufferAttachments();
-    std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
-    uint32_t imageCount = swapchainImageViews.size();
-    m_mainFramebuffers.resize(m_context->getSwapchainImagesCount());
-
-    std::vector<vk::ImageView> attachments;
-    for (size_t i = 0; i < imageCount; i++) {
-        if (ENABLE_MSAA)
-        {
-            attachments = { //Order corresponds to the attachment references
-            m_colorAttachment->m_imageView,
-            m_depthAttachment->m_imageView,
-            m_shadowDepthAttachment->m_imageView,
-            swapchainImageViews[i],
-            };
-        }
-        else {
-            
-            attachments = {
-                swapchainImageViews[i],
-                m_depthAttachment->m_imageView,
-                m_shadowDepthAttachment->m_imageView,
-            };
-        }
-
-        vk::Extent2D extent = getRenderPassExtent(RenderPassesId::MainRenderPass);
-
-        vk::FramebufferCreateInfo framebufferInfo{
-            .renderPass = m_mainRenderPass, //Renderpass that is compatible with the framebuffer
-            .attachmentCount = static_cast<uint32_t>(attachments.size()),
-            .pAttachments = attachments.data(),
-            .width = extent.width,
-            .height = extent.height,
-            .layers = 1,
-        };
-
-        try {
-            m_mainFramebuffers[i] = m_device.createFramebuffer(framebufferInfo, nullptr);
-        } catch(vk::SystemError err){
-            throw std::runtime_error("failed to create framebuffer !");
-        }
-
-    }
-
-}
 //Recreate objects that depend on the swapchain image size to handle window resizing
 void VulkanRenderer::recreateSwapchainSizedObjects() {
     cleanSwapchainSizedObjects();
@@ -969,65 +666,21 @@ void VulkanRenderer::recreateSwapchainSizedObjects() {
 void VulkanRenderer::cleanSwapchainSizedObjects() {
     vkDeviceWaitIdle(m_device);
 
-    if(ENABLE_MSAA)delete m_colorAttachment;
-    delete m_depthAttachment;
-
     for (const auto& pipeline : m_pipelines) {
         m_device.destroyPipeline(pipeline.pipeline);
     }
     m_device.destroyPipeline(m_shadowPipeline.pipeline);
     m_device.destroyPipelineLayout(m_pipelineLayout);
-    for (const auto& framebuffer : m_mainFramebuffers)
-    {
-        m_device.destroyFramebuffer(framebuffer);
-    }
-    for (const auto& framebuffer : m_shadowFramebuffers)
-    {
-        m_device.destroyFramebuffer(framebuffer);
-    }
-
-
-
     m_context->cleanupSwapchain();
-
 
 }
 
 void VulkanRenderer::createFramebuffers() {
-    createShadowFramebuffer();
-    createMainFramebuffer();
+    for (auto& renderPass : m_renderPasses) {
+        renderPass->createFramebuffer();
+    }
 }
 
-//Create the framebuffer attachments (Here color and depth targets)
-void VulkanRenderer::createMainFramebufferAttachments() 
-{
-    vk::Extent2D extent = m_context->getSwapchainExtent();
-
-    VulkanImageParams imageParams{
-        .width = extent.width,
-        .height = extent.height,
-        .mipLevels = 1,
-        .numSamples = ENABLE_MSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
-        .format = m_context->getSwapchainFormat(),
-        .tiling = vk::ImageTiling::eOptimal,
-        .usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
-        .useDedicatedMemory = true,
-    };
-
-    VulkanImageViewParams imageViewParams{
-        .aspectFlags = vk::ImageAspectFlagBits::eColor,
-    };
-
-    if(ENABLE_MSAA)m_colorAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
-
-    imageParams.format = findDepthFormat();
-    imageParams.usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eDepthStencilAttachment;
-    imageViewParams.aspectFlags = vk::ImageAspectFlagBits::eDepth;
-
-    m_depthAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
-
-
-}
 #pragma endregion
 
 #pragma region COMMAND_BUFFERS
@@ -1057,11 +710,11 @@ void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32
     commandBuffer.begin(beginInfo);
 
     vk::RenderPassBeginInfo renderPassInfo{
-        .renderPass = m_shadowRenderPass,
-        .framebuffer = m_shadowFramebuffers[swapchainImageIndex],
+        .renderPass = m_renderPasses[RenderPassesId::ShadowMappingPassId]->getRenderPass(), //TODO Abstract recordCommandBuffer
+        .framebuffer = m_renderPasses[RenderPassesId::ShadowMappingPassId]->getFramebuffer(swapchainImageIndex),
         .renderArea = {
             .offset = {0, 0},
-            .extent = getRenderPassExtent(RenderPassesId::ShadowMappingPass),
+            .extent = m_renderPasses[RenderPassesId::ShadowMappingPassId]->getRenderPassExtent(),
         },
         .clearValueCount = static_cast<uint32_t>(SHADOW_DEPTH_CLEAR_VALUES.size()),
         .pClearValues = SHADOW_DEPTH_CLEAR_VALUES.data(),
@@ -1093,11 +746,11 @@ void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32
     commandBuffer.endRenderPass();
 
     renderPassInfo = vk::RenderPassBeginInfo{
-       .renderPass = m_mainRenderPass,
-       .framebuffer = m_mainFramebuffers[swapchainImageIndex],
+       .renderPass = m_renderPasses[RenderPassesId::MainRenderPassId]->getRenderPass(),
+       .framebuffer = m_renderPasses[RenderPassesId::MainRenderPassId]->getFramebuffer(swapchainImageIndex),
        .renderArea = {
            .offset = {0, 0},
-           .extent = getRenderPassExtent(RenderPassesId::MainRenderPass),
+           .extent = m_renderPasses[RenderPassesId::MainRenderPassId]->getRenderPassExtent(),
        },
        .clearValueCount = static_cast<uint32_t>(MAIN_CLEAR_VALUES.size()),
        .pClearValues = MAIN_CLEAR_VALUES.data(),
@@ -1256,7 +909,7 @@ void VulkanRenderer::updateUniformBuffers(uint32_t imageIndex) {
 
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - startTime).count();
-    vk::Extent2D extent = getRenderPassExtent(RenderPassesId::MainRenderPass);
+    vk::Extent2D extent = m_renderPasses[RenderPassesId::MainRenderPassId]->getRenderPassExtent();
 
     float speed = 0.1f;
     //Model View Proj
@@ -1298,6 +951,21 @@ void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
     m_scenes.push_back(vulkanScene);
 }
 #pragma endregion
+
+#pragma region RENDER_PASSES
+void VulkanRenderer::createRenderPasses() {
+    //Render pass 1: Shadow Render Pass
+    ShadowRenderPass* shadowRenderPass = new ShadowRenderPass(m_context); 
+    shadowRenderPass->createRenderPass();
+    m_renderPasses.push_back(shadowRenderPass);
+
+    //Render pass 2: Main Render Pass
+    MainRenderPass* mainRenderPass = new MainRenderPass(m_context, shadowRenderPass);
+    mainRenderPass->createRenderPass();
+    m_renderPasses.push_back(mainRenderPass);
+
+}
+#pragma endregion RENDER_PASSES
 
 #pragma region INPUT
 //Function that manages keyboard and mouse inputs and the consequences

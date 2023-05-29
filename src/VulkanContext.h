@@ -42,7 +42,6 @@ const std::vector<const char*> requiredExtensions = {
 /* CONSTANTS */
 const int DEFAULT_WIDTH = 1920;
 const int DEFAULT_HEIGHT = 1080;
-const int SHADOW_MAP_SIZE = 4096;
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 

@@ -1,4 +1,4 @@
-file(GLOB srcFiles
+file(GLOB_RECURSE srcFiles
      "main.cpp"
      "*.cpp"
      "*.h"
