@@ -25,9 +25,9 @@
 /* CONSTANTS */
 const uint32_t DESCRIPTOR_SET_LAYOUT_BINDINGS = 3;
 const uint32_t PUSH_CONSTANTS_COUNT = 1;
-const uint32_t MAX_TEXTURE_COUNT = 2048;
+const uint32_t MAX_TEXTURE_COUNT = 4096;
 
-const bool ENABLE_MSAA = false;
+const bool ENABLE_MSAA = true;
 
 
 /* ENUMS */
@@ -71,6 +71,7 @@ struct UniformBufferObject {
 struct ModelPushConstant {
 	glm::mat4 model;
 	glm::int32 textureId;
+	glm::int32 normalMapId;
 	glm::float32 time;
 	glm::vec2 data;
 };
@@ -95,13 +96,13 @@ struct VulkanPipeline {
 
 struct CameraCoords {
 	glm::vec3 pitchYawRoll = glm::vec3(0.f, 0.f, 0.f);
-	glm::vec3 cameraPos = glm::vec3(2.5f, 0.0, 1.0f);
+	glm::vec3 cameraPos = glm::vec3(2.0, 1.0f, 0.0f);
 
 	glm::vec3 getDirection() {
 		glm::vec3 direction;
 		direction.x = cos(glm::radians(pitchYawRoll.x)) * cos(glm::radians(pitchYawRoll.y));
-		direction.z = sin(glm::radians(pitchYawRoll.x));
-		direction.y = -cos(glm::radians(pitchYawRoll.x)) * sin(glm::radians(pitchYawRoll.y));
+		direction.y = -sin(glm::radians(pitchYawRoll.x));
+		direction.z = cos(glm::radians(pitchYawRoll.x)) * sin(glm::radians(pitchYawRoll.y));
 		direction = glm::normalize(direction);
 		return direction;
 	}
@@ -154,7 +155,7 @@ private:
 	std::vector<vma::Allocation> m_uniformBuffersAllocations;
 	vk::Sampler m_textureSampler = VK_NULL_HANDLE;
 	uint32_t m_mipLevels = 1;
-	VulkanImage* m_defaultTexture = nullptr;
+	VulkanImage* m_defaultTexture, *m_defaultNormalMap = nullptr;
 
 	std::vector<vk::DescriptorSet> m_shadowDescriptorSets;
 	/*-------------------------------------------*/
@@ -187,7 +188,7 @@ private:
 	void createDescriptorPools();
 	[[nodiscard]] std::vector<vk::DescriptorSet> createDescriptorSets(VulkanScene* scene);
 	void createDescriptorObjects();
-	void createDefaultTexture();
+	void createDefaultTextures();
 	void createShadowDescriptorSets();
 
 	//PUSH CONSTANTS
