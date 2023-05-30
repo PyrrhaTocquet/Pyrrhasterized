@@ -1022,26 +1022,3 @@ void VulkanRenderer::manageInput() {
 
 }
 #pragma endregion
-
-#pragma region IMGUI
-void VulkanRenderer::renderImGui(vk::CommandBuffer commandBuffer) {
-
-    ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-
-    ImGui::NewFrame();
-
-
-    //imgui commands
-    double framerate = ImGui::GetIO().Framerate;
-    bool openRendererPerf = true;
-    ImGui::Begin("Renderer Performance", &openRendererPerf);
-    ImGui::SetWindowSize(ImVec2(200.f, 50.f));
-    ImGui::SetWindowPos(ImVec2(10.f, 10.f));
-    ImGui::Text("Framerate: %f", framerate);
-    ImGui::End();
-
-    ImGui::Render();
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
-}
-#pragma endregion IMGUI
