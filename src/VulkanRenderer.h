@@ -195,11 +195,8 @@ private:
 	void createPushConstantRanges();
 
 	//FRAMEBUFFERS
-	void createMainFramebuffer();
-	void createMainFramebufferAttachments();
 	void createFramebuffers();
-	void createShadowFramebuffer();
-	void createShadowFramebufferAttachments();
+
 
 	void cleanSwapchainSizedObjects();
 

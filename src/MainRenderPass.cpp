@@ -3,7 +3,12 @@
 //Always create this render pass after creating the shadow render pass
 MainRenderPass::MainRenderPass(VulkanContext* context, ShadowRenderPass* shadowRenderPass) : VulkanRenderPass(context)
 {
-    m_shadowDepthImageView = shadowRenderPass->getShadowAttachment();
+    m_shadowRenderPass = shadowRenderPass;
+}
+
+MainRenderPass::~MainRenderPass()
+{
+    cleanAttachments();
 }
 
 void MainRenderPass::createRenderPass()
@@ -103,9 +108,6 @@ void MainRenderPass::createRenderPass()
     }
 }
 
-MainRenderPass::~MainRenderPass()
-{
-}
 
 void MainRenderPass::createAttachments() {
     vk::Extent2D extent = m_context->getSwapchainExtent();
@@ -136,8 +138,17 @@ void MainRenderPass::createAttachments() {
 
 void MainRenderPass::cleanAttachments()
 {
-    delete m_colorAttachment;
+    if (ENABLE_MSAA)delete m_colorAttachment;
     delete m_depthAttachment;
+}
+
+void MainRenderPass::recreateRenderPass()
+{
+    cleanAttachments();
+    cleanFramebuffer();
+    createAttachments();
+    createFramebuffer();
+
 }
 
 vk::Extent2D MainRenderPass::getRenderPassExtent()
@@ -146,7 +157,6 @@ vk::Extent2D MainRenderPass::getRenderPassExtent()
 }
 
 void MainRenderPass::createFramebuffer() {
-    createAttachments();
     std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
     std::vector<vk::ImageView> attachments;
     for (size_t i = 0; i < m_framebuffers.size(); i++) {
@@ -155,7 +165,7 @@ void MainRenderPass::createFramebuffer() {
             attachments = { //Order corresponds to the attachment references
             m_colorAttachment->m_imageView,
             m_depthAttachment->m_imageView,
-            m_shadowDepthImageView,
+            m_shadowRenderPass->getShadowAttachment(),
             swapchainImageViews[i],
             };
         }
@@ -164,7 +174,7 @@ void MainRenderPass::createFramebuffer() {
             attachments = {
                 swapchainImageViews[i],
                 m_depthAttachment->m_imageView,
-                m_shadowDepthImageView,
+                m_shadowRenderPass->getShadowAttachment(),
             };
         }
 
@@ -187,11 +197,6 @@ void MainRenderPass::createFramebuffer() {
         }
 
     }
-
-}
-
-void MainRenderPass::recreateRenderPass()
-{
 
 }
 

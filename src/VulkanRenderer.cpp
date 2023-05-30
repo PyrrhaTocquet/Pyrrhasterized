@@ -690,6 +690,10 @@ void VulkanRenderer::createPushConstantRanges()
 void VulkanRenderer::recreateSwapchainSizedObjects() {
     cleanSwapchainSizedObjects();
     m_context->recreateSwapchain();
+    for (const auto& renderPass : m_renderPasses)
+    {
+        renderPass->recreateRenderPass();
+    }
 
     createPipelineLayout();
     for (int i = 0; i < m_pipelines.size(); i++)
@@ -697,8 +701,6 @@ void VulkanRenderer::recreateSwapchainSizedObjects() {
         m_pipelines[i] = createPipeline(m_pipelines[i].pipelineInfo);
     }
     m_shadowPipeline = createPipeline(m_shadowPipeline.pipelineInfo);
-
-    createFramebuffers();
     
 }
 
@@ -711,12 +713,14 @@ void VulkanRenderer::cleanSwapchainSizedObjects() {
     }
     m_device.destroyPipeline(m_shadowPipeline.pipeline);
     m_device.destroyPipelineLayout(m_pipelineLayout);
+    
     m_context->cleanupSwapchain();
 
 }
 
 void VulkanRenderer::createFramebuffers() {
     for (auto& renderPass : m_renderPasses) {
+        renderPass->createAttachments();
         renderPass->createFramebuffer();
     }
 }

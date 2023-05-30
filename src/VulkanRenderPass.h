@@ -18,15 +18,16 @@ public :
 	vk::Format findDepthFormat() ;
 	VulkanRenderPass(VulkanContext* context);
 	virtual ~VulkanRenderPass();
-	virtual void createRenderPass() {};
-	virtual void createFramebuffer() {};
-	virtual void createAttachments() {};
-	virtual void cleanAttachments() {};
-	virtual void recreateRenderPass() {};
+	virtual void createRenderPass() = 0;
+	virtual void createFramebuffer() = 0;
+	virtual void createAttachments() = 0;
+	virtual void cleanAttachments() = 0;
+	virtual void recreateRenderPass() = 0;
 	virtual vk::Extent2D getRenderPassExtent() = 0;
-	virtual void drawRenderPass() {};
+	virtual void drawRenderPass() = 0;
 	vk::RenderPass getRenderPass();
 	vk::Framebuffer getFramebuffer(uint32_t index);
+	void cleanFramebuffer();
 
 private:
 };

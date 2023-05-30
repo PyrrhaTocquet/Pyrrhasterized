@@ -15,7 +15,6 @@ VulkanRenderPass::VulkanRenderPass(VulkanContext* context)
 
 VulkanRenderPass::~VulkanRenderPass()
 {
-	cleanAttachments();
 	for (auto& framebuffer : m_framebuffers)
 	{
 		m_context->getDevice().destroyFramebuffer(framebuffer);
@@ -31,4 +30,11 @@ vk::RenderPass VulkanRenderPass::getRenderPass()
 vk::Framebuffer VulkanRenderPass::getFramebuffer(uint32_t index)
 {
 	return m_framebuffers[index];
+}
+
+void VulkanRenderPass::cleanFramebuffer()
+{
+	for (auto& framebuffer : m_framebuffers) {
+		m_context->getDevice().destroyFramebuffer(framebuffer);
+	}
 }

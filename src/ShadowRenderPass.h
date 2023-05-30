@@ -15,10 +15,13 @@ private:
 	VulkanImage* m_shadowDepthAttachment = nullptr;
 public:
 	ShadowRenderPass(VulkanContext* context);
+	~ShadowRenderPass() override;
 	void createRenderPass() override;
 	void createFramebuffer() override;
 	void createAttachments() override;
 	void cleanAttachments() override;
+	void recreateRenderPass() override;
+	void drawRenderPass() override {};
 	vk::Extent2D getRenderPassExtent() override;
 	[[nodiscard]] vk::ImageView getShadowAttachment();
 

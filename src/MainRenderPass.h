@@ -16,15 +16,16 @@ class MainRenderPass : public VulkanRenderPass {
 	VulkanImage* m_depthAttachment = nullptr;
 
 	//acquired at construction
-	vk::ImageView m_shadowDepthImageView = VK_NULL_HANDLE;
+	ShadowRenderPass* m_shadowRenderPass = nullptr;
 public:
 	MainRenderPass(VulkanContext* context, ShadowRenderPass* shadowRenderPass);
+	~MainRenderPass();
 	void createRenderPass() override;
-	~MainRenderPass() override;
 	void createFramebuffer() override;
-	void recreateRenderPass() override;
 	void createAttachments() override;
 	void cleanAttachments() override;
+	void recreateRenderPass() override;
 	vk::Extent2D getRenderPassExtent() override;
+	void drawRenderPass() override {};
 
 };

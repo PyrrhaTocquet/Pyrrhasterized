@@ -6,9 +6,13 @@ ShadowRenderPass::ShadowRenderPass(VulkanContext* context) : VulkanRenderPass(co
 
 }
 
+ShadowRenderPass::~ShadowRenderPass()
+{
+    cleanAttachments();
+}
+
 void ShadowRenderPass::createRenderPass()
 {
-    createAttachments();
     vk::AttachmentDescription shadowDepthWriteDescription{
      .format = findDepthFormat(),
      .samples = vk::SampleCountFlagBits::e1,
@@ -90,6 +94,13 @@ void ShadowRenderPass::createAttachments() {
 void ShadowRenderPass::cleanAttachments()
 {
     delete m_shadowDepthAttachment;
+}
+
+void ShadowRenderPass::recreateRenderPass()
+{
+    //No need to recreate attachments, the shadow map is fixed sized
+    cleanFramebuffer();
+    createFramebuffer();
 }
 
 vk::Extent2D ShadowRenderPass::getRenderPassExtent()
