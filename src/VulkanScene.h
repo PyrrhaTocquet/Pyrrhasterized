@@ -4,7 +4,8 @@
 #include "vk_mem_alloc.hpp"
 #include "VulkanContext.h"
 #include "VulkanImage.h"
-
+#include "Defs.h"
+#include "Drawable.h"
 
 //TODO Better Vertex Data managment
 struct Vertex {
@@ -63,7 +64,7 @@ struct Model {
 	glm::mat4 matrix;
 };
 
-class VulkanScene
+class VulkanScene : Drawable
 {
 public :
 	vk::Buffer m_vertexBuffer, m_indexBuffer = VK_NULL_HANDLE;
@@ -88,6 +89,8 @@ public:
 	void createBuffers();
 	void setDescriptorSets(std::vector<vk::DescriptorSet> descriptorSet);
 	const uint32_t getIndexBufferSize();
+
+	void draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout ) override;
 private:
 	void createVertexBuffer();
 	void createIndexBuffer();

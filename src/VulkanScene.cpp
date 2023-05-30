@@ -169,6 +169,38 @@ const uint32_t VulkanScene::getIndexBufferSize()
 	return indicesCount;
 }
 
+void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout)
+{
+	static auto startTime = std::chrono::high_resolution_clock::now(); //Todo, engine solution for time
+
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float time = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - startTime).count();
+
+	VkDeviceSize offset = 0;
+	commandBuffer.bindVertexBuffers(0, 1, &m_vertexBuffer, &offset);
+	commandBuffer.bindIndexBuffer(m_indexBuffer, 0, vk::IndexType::eUint32);
+
+	uint32_t indexOffset = 0;
+	//Draws each model in a scene
+	for (auto& model : m_models) {
+		//Draws each mesh with a unique texture
+		for (auto& mesh : model.texturedMeshes)
+		{
+			
+			ModelPushConstant modelPushConstant{
+				.model = model.matrix,
+				.textureId = static_cast<glm::int32>(mesh.textureId),
+				.normalMapId = static_cast<glm::int32>(mesh.normalMapId),
+				.time = time,
+			};
+
+			commandBuffer.pushConstants<ModelPushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, modelPushConstant);
+			commandBuffer.drawIndexed(mesh.indices.size(), 1, indexOffset, 0, 0);
+			indexOffset += mesh.indices.size();
+		}
+	}
+}
+
 void VulkanScene::createIndexBuffer() 
 {
 	uint32_t indicesCount = getIndexBufferSize();

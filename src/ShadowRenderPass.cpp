@@ -1,6 +1,5 @@
 #include "ShadowRenderPass.h"
 
-
 ShadowRenderPass::ShadowRenderPass(VulkanContext* context) : VulkanRenderPass(context)
 {
 
@@ -101,6 +100,32 @@ void ShadowRenderPass::recreateRenderPass()
     //No need to recreate attachments, the shadow map is fixed sized
     cleanFramebuffer();
     createFramebuffer();
+}
+
+void ShadowRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, vk::DescriptorSet descriptorSet, vk::Pipeline pipeline, std::vector<VulkanScene*> scenes, vk::PipelineLayout pipelineLayout)
+{
+    vk::RenderPassBeginInfo renderPassInfo{
+       .renderPass = m_renderPass, //TODO Abstract recordCommandBuffer
+       .framebuffer = m_framebuffers[swapchainImageIndex],
+       .renderArea = {
+           .offset = {0, 0},
+           .extent = getRenderPassExtent(),
+       },
+       .clearValueCount = static_cast<uint32_t>(SHADOW_DEPTH_CLEAR_VALUES.size()),
+       .pClearValues = SHADOW_DEPTH_CLEAR_VALUES.data(),
+    };
+
+    commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+    VkDeviceSize offset = 0;
+    //Draws each scene
+    for (auto& scene : scenes)
+    {
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, scene->m_descriptorSets[m_currentFrame], nullptr);
+        scene->draw(commandBuffer, m_currentFrame, pipelineLayout);
+    }
+
+    commandBuffer.endRenderPass();
 }
 
 vk::Extent2D ShadowRenderPass::getRenderPassExtent()

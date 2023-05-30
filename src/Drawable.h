@@ -9,6 +9,5 @@
 class Drawable {
 public :
 	Drawable();
-	virtual ~Drawable();
-	virtual void draw();
+	virtual void draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout) = 0;
 };

@@ -156,6 +156,27 @@ vk::Extent2D MainRenderPass::getRenderPassExtent()
     return m_context->getSwapchainExtent();
 }
 
+void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
+{
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+
+    ImGui::NewFrame();
+
+
+    //imgui commands
+    double framerate = ImGui::GetIO().Framerate;
+    bool openRendererPerf = true;
+    ImGui::Begin("Renderer Performance", &openRendererPerf);
+    ImGui::SetWindowSize(ImVec2(200.f, 50.f));
+    ImGui::SetWindowPos(ImVec2(10.f, 10.f));
+    ImGui::Text("Framerate: %f", framerate);
+    ImGui::End();
+
+    ImGui::Render();
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+}
+
 void MainRenderPass::createFramebuffer() {
     std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
     std::vector<vk::ImageView> attachments;
@@ -198,6 +219,32 @@ void MainRenderPass::createFramebuffer() {
 
     }
 
+}
+
+void MainRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, vk::DescriptorSet descriptorSet, vk::Pipeline pipeline, std::vector<VulkanScene*> scenes, vk::PipelineLayout pipelineLayout)
+{
+    vk::RenderPassBeginInfo renderPassInfo{
+       .renderPass = m_renderPass,
+       .framebuffer = m_framebuffers[swapchainImageIndex],
+       .renderArea = {
+           .offset = {0, 0},
+           .extent = getRenderPassExtent(),
+       },
+       .clearValueCount = static_cast<uint32_t>(MAIN_CLEAR_VALUES.size()),
+       .pClearValues = MAIN_CLEAR_VALUES.data(),
+    };
+    commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline); //Only one main draw pipeline per frame in this renderer
+    //Draws each scene
+    for (auto& scene : scenes)
+    {
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, { scene->m_descriptorSets[m_currentFrame], descriptorSet}, nullptr);
+        scene->draw(commandBuffer, m_currentFrame, pipelineLayout);
+    }
+    
+    renderImGui(commandBuffer);
+    commandBuffer.endRenderPass();
 }
 
 

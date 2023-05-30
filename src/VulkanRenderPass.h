@@ -5,6 +5,10 @@
 #include "vk_mem_alloc.hpp"
 #include <GLFW/glfw3.h>
 #include "VulkanContext.h"
+#include "Defs.h"
+#include "VulkanScene.h"
+
+class VulkanScene;
 
 //Abstract class to implement render passes
 class VulkanRenderPass {
@@ -24,7 +28,7 @@ public :
 	virtual void cleanAttachments() = 0;
 	virtual void recreateRenderPass() = 0;
 	virtual vk::Extent2D getRenderPassExtent() = 0;
-	virtual void drawRenderPass() = 0;
+	virtual void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, vk::DescriptorSet descriptorSet, vk::Pipeline pipeline, std::vector<VulkanScene*> scenes, vk::PipelineLayout pipelineLayout) = 0;
 	vk::RenderPass getRenderPass();
 	vk::Framebuffer getFramebuffer(uint32_t index);
 	void cleanFramebuffer();

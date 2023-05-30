@@ -1,8 +1,6 @@
 #pragma once
 
-#define VULKAN_HPP_NO_CONSTRUCTORS
-#include <vulkan/vulkan.hpp>
-#include "vk_mem_alloc.hpp"
+#include "Defs.h"
 #include <GLFW/glfw3.h>
 #include "VulkanTools.h"
 #include "glm/glm.hpp"
@@ -27,90 +25,13 @@ const uint32_t DESCRIPTOR_SET_LAYOUT_BINDINGS = 3;
 const uint32_t PUSH_CONSTANTS_COUNT = 1;
 const uint32_t MAX_TEXTURE_COUNT = 4096;
 
-const bool ENABLE_MSAA = true;
-
-
-/* ENUMS */
-enum RenderPassesId {
-	ShadowMappingPassId = 0,
-	MainRenderPassId,
-};
-
-
-//TODO Organise better
-constexpr vk::ClearColorValue CLEAR_COLOR = vk::ClearColorValue(std::array<float, 4>{.8f, .8f, .8f, 1.0f});
-constexpr vk::ClearDepthStencilValue CLEAR_DEPTH = vk::ClearDepthStencilValue({ 1.0f, 0 });
-
-constexpr std::array<vk::ClearValue, 2> setMainClearColors() {
-	std::array<vk::ClearValue, 2> clearValues{};
-	clearValues[1].setDepthStencil(CLEAR_DEPTH);
-	clearValues[0].setColor(CLEAR_COLOR);
-	return clearValues;
-}
-
-constexpr std::array<vk::ClearValue, 1> setShadowClearColors() {
-	std::array<vk::ClearValue, 1> clearValues{};
-	clearValues[0].setDepthStencil(CLEAR_DEPTH);
-	return clearValues;
-}
-
-constexpr std::array<vk::ClearValue, 2> MAIN_CLEAR_VALUES = setMainClearColors();
-constexpr std::array<vk::ClearValue, 1> SHADOW_DEPTH_CLEAR_VALUES = setShadowClearColors();
-
-
 struct TexturedMesh;
 struct Model;
 
-struct UniformBufferObject {
-	glm::mat4 view;
-	glm::mat4 proj;
-	glm::mat4 lightView;
-	glm::mat4 lightProj;
-};
-
-struct ModelPushConstant {
-	glm::mat4 model;
-	glm::int32 textureId;
-	glm::int32 normalMapId;
-	glm::float32 time;
-	glm::vec2 data;
-};
-
-struct PipelineInfo {
-	const char* vertPath;
-	const char* fragPath;
-	vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
-	vk::CullModeFlags cullmode = vk::CullModeFlagBits::eBack;
-	vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise;
-	float lineWidth = 1.0f;
-	vk::Bool32 depthTestEnable = VK_TRUE;
-	vk::Bool32 depthWriteEnable = VK_TRUE;
-	RenderPassesId renderPassId = RenderPassesId::MainRenderPassId;
-	bool isMultisampled = true;
-};
-
-struct VulkanPipeline {
-	PipelineInfo pipelineInfo;
-	vk::Pipeline pipeline;
-};
-
-struct CameraCoords {
-	glm::vec3 pitchYawRoll = glm::vec3(0.f, 0.f, 0.f);
-	glm::vec3 cameraPos = glm::vec3(2.0, 1.0f, 0.0f);
-
-	glm::vec3 getDirection() {
-		glm::vec3 direction;
-		direction.x = cos(glm::radians(pitchYawRoll.x)) * cos(glm::radians(pitchYawRoll.y));
-		direction.y = -sin(glm::radians(pitchYawRoll.x));
-		direction.z = cos(glm::radians(pitchYawRoll.x)) * sin(glm::radians(pitchYawRoll.y));
-		direction = glm::normalize(direction);
-		return direction;
-	}
-
-};
-
 class VulkanScene;
+class VulkanRenderPass;
 class MainRenderPass;
+class ShadowRenderPass;
 
 class VulkanRenderer
 {
@@ -154,7 +75,7 @@ private:
 	std::vector<vk::Buffer> m_uniformBuffers;
 	std::vector<vma::Allocation> m_uniformBuffersAllocations;
 	vk::Sampler m_textureSampler = VK_NULL_HANDLE;
-	uint32_t m_mipLevels = 1;
+	uint32_t m_mipLevels = 10;
 	VulkanImage* m_defaultTexture, *m_defaultNormalMap = nullptr;
 
 	std::vector<vk::DescriptorSet> m_shadowDescriptorSets;
@@ -219,6 +140,5 @@ private:
 	//INPUTS
 	void manageInput();
 
-	void renderImGui(vk::CommandBuffer commandBuffer);
 };
 

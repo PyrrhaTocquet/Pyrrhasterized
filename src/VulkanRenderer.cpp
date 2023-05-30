@@ -622,7 +622,7 @@ void VulkanRenderer::createTextureSampler() {
         .compareEnable = VK_FALSE, //If enabled, texels will be compared to a value and the result of that compararison is used in filtering operations
         .compareOp = vk::CompareOp::eAlways,
         .minLod = 0.0f,
-        .maxLod = static_cast<float>(m_mipLevels),
+        .maxLod = VK_LOD_CLAMP_NONE,
         .borderColor = vk::BorderColor::eIntOpaqueBlack, //only useful when clamping
         .unnormalizedCoordinates = VK_FALSE, //Normalized coordinates allow to change texture resolution for the same UVs
     };
@@ -750,81 +750,11 @@ void VulkanRenderer::createCommandBuffers() {
 //Records the main command buffer for frame generation
 void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex) 
 {
+
     vk::CommandBufferBeginInfo beginInfo{};
     commandBuffer.begin(beginInfo);
-
-    vk::RenderPassBeginInfo renderPassInfo{
-        .renderPass = m_renderPasses[RenderPassesId::ShadowMappingPassId]->getRenderPass(), //TODO Abstract recordCommandBuffer
-        .framebuffer = m_renderPasses[RenderPassesId::ShadowMappingPassId]->getFramebuffer(swapchainImageIndex),
-        .renderArea = {
-            .offset = {0, 0},
-            .extent = m_renderPasses[RenderPassesId::ShadowMappingPassId]->getRenderPassExtent(),
-        },
-        .clearValueCount = static_cast<uint32_t>(SHADOW_DEPTH_CLEAR_VALUES.size()),
-        .pClearValues = SHADOW_DEPTH_CLEAR_VALUES.data(),
-    };
-    
-    commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_shadowPipeline.pipeline);
-    VkDeviceSize offset = 0;
-    //Draws each scene
-    for (auto& scene : m_scenes) 
-    {
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, scene->m_descriptorSets[m_currentFrame], nullptr);
-        commandBuffer.bindVertexBuffers(0, 1, &scene->m_vertexBuffer, &offset);
-        commandBuffer.bindIndexBuffer(scene->m_indexBuffer, 0, vk::IndexType::eUint32);
-
-        uint32_t indexOffset = 0;
-        //Draws each model in a scene
-        for (auto& model : scene->m_models) {
-            //Draws each mesh with a unique texture
-            for (auto& mesh : model.texturedMeshes)
-            {               
-                updatePushConstants(commandBuffer, model, mesh);
-                commandBuffer.drawIndexed(mesh.indices.size(), 1, indexOffset, 0, 0);
-                indexOffset += mesh.indices.size();
-            }
-        }
-    }
-   
-    commandBuffer.endRenderPass();
-
-    renderPassInfo = vk::RenderPassBeginInfo{
-       .renderPass = m_renderPasses[RenderPassesId::MainRenderPassId]->getRenderPass(),
-       .framebuffer = m_renderPasses[RenderPassesId::MainRenderPassId]->getFramebuffer(swapchainImageIndex),
-       .renderArea = {
-           .offset = {0, 0},
-           .extent = m_renderPasses[RenderPassesId::MainRenderPassId]->getRenderPassExtent(),
-       },
-       .clearValueCount = static_cast<uint32_t>(MAIN_CLEAR_VALUES.size()),
-       .pClearValues = MAIN_CLEAR_VALUES.data(),
-    };
-    commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines[m_currentPipelineId].pipeline); //Only one main draw pipeline per frame in this renderer
-    offset = 0;
-    //Draws each scene
-    for (auto& scene : m_scenes)
-    {
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scene->m_descriptorSets[m_currentFrame], m_shadowDescriptorSets[m_currentFrame]}, nullptr);
-        commandBuffer.bindVertexBuffers(0, 1, &scene->m_vertexBuffer, &offset);
-        commandBuffer.bindIndexBuffer(scene->m_indexBuffer, 0, vk::IndexType::eUint32);
-
-        uint32_t indexOffset = 0;
-        //Draws each model in a scene
-        for (auto& model : scene->m_models) {
-            //Draws each mesh with a unique texture
-            for (auto& mesh : model.texturedMeshes)
-            {
-                updatePushConstants(commandBuffer, model, mesh);
-                commandBuffer.drawIndexed(mesh.indices.size(), 1, indexOffset, 0, 0);
-                indexOffset += mesh.indices.size();
-            }
-        }
-    }
-    
-    renderImGui(commandBuffer);
-    commandBuffer.endRenderPass();
+    m_renderPasses[0]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_shadowDescriptorSets[m_currentFrame], m_shadowPipeline.pipeline, m_scenes, m_pipelineLayout);
+    m_renderPasses[1]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_shadowDescriptorSets[m_currentFrame], m_pipelines[m_currentPipelineId].pipeline, m_scenes, m_pipelineLayout);
     commandBuffer.end();
 }
 #pragma endregion
