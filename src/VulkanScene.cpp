@@ -1,12 +1,16 @@
 #include "VulkanScene.h"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
+#define TINYGLTF_NO_STB_IMAGE_WRITE
+#define TINYGLTF_IMPLEMENTATION
+#include "tiny_gltf.h"
+
+
 #include <unordered_map>
 
 VulkanScene::VulkanScene(VulkanContext* context) {
 	m_allocator = context->getAllocator();
 	m_context = context;
-
 }
 
 VulkanScene::~VulkanScene()
@@ -20,6 +24,7 @@ VulkanScene::~VulkanScene()
 			delete mesh.normalMapImage;
 		}
 	}
+
 }
 
 void VulkanScene::addChildren(VulkanScene* childrenScene) {
@@ -139,6 +144,141 @@ void VulkanScene::addObjModel(const std::string& path, const glm::mat4& modelMat
 				model.texturedMeshes[i].normalMapImage = new VulkanImage(m_context, normalImageParams, normalImageViewParams, path + "/" + materials[i].displacement_texname);
 			}
 			
+		}
+	}
+	generateTangents(model);
+	m_models.push_back(model);
+
+}
+
+
+void VulkanScene::addGltfModel(const std::filesystem::path& path, const glm::mat4& modelMatrix)
+{
+	Model model;
+	model.matrix = modelMatrix;
+	tinygltf::Model gltfModel;
+	tinygltf::TinyGLTF loader;
+	std::string err;
+	std::string warn;
+
+	bool ret = false;
+	std::filesystem::path ext = path.extension();
+	if (path.extension() == ".gltf")
+	{
+		ret = loader.LoadASCIIFromFile(&gltfModel, &err, &warn, path.string());
+	}
+	else if (path.extension() == ".glb")
+	{
+		ret = loader.LoadBinaryFromFile(&gltfModel, &err, &warn, path.string());
+	}
+	else {
+		std::runtime_error("Model format not supported");
+	}
+	
+	/*
+	if (!warn.empty()) {
+
+	}*/
+	if (!err.empty()) {
+		throw std::runtime_error(err);
+	}
+
+	if (!ret) {
+		throw std::runtime_error("Failed to parse glTf\n");
+	}
+	model.texturedMeshes.resize(gltfModel.materials.size());
+	for (const auto& mesh : gltfModel.meshes) {
+		for (const auto& attribute : mesh.primitives) {
+			int positionBufferIndex = attribute.attributes.at("POSITION");
+			int texCoordBufferIndex = attribute.attributes.at("TEXCOORD_0");
+			int normalBufferIndex = attribute.attributes.at("NORMAL");
+			int indicesBufferIndex = attribute.indices;
+
+			//Vertices
+			for (int i = 0; i < gltfModel.accessors[indicesBufferIndex].count; i++) {
+				int positionBufferOffset = gltfModel.accessors[positionBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteOffset;
+				int texCoordBufferOffset = gltfModel.accessors[texCoordBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteOffset;
+				int indicesBufferOffset = gltfModel.accessors[indicesBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[indicesBufferIndex].bufferView].byteOffset;
+				int normalBufferOffset = gltfModel.accessors[normalBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteOffset;
+
+				int positionBufferStride = gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteStride;
+				int texCoordBufferStride = gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteStride;
+				int normalBufferStride = gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteStride;
+
+				if (positionBufferStride == 0)positionBufferStride = 4 * 3;
+				if (texCoordBufferStride == 0)texCoordBufferStride = 4 * 2;
+				if (normalBufferStride == 0)normalBufferStride = 4 * 3;
+
+				uint16_t index = *(uint16_t*)(&gltfModel.buffers[0].data[indicesBufferOffset + 2 * i]); //TODO better index type handling
+
+				Vertex vertex{};
+				if (positionBufferStride * index + 2 * 4 > gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteLength)
+				{
+					std::cout << "position exceeded !" << std::endl;
+				}
+				vertex.pos = glm::vec3(*(float*)(&gltfModel.buffers[0].data[positionBufferOffset + positionBufferStride * index + 0 * 4]),
+					*(float*)(&gltfModel.buffers[0].data[positionBufferOffset + positionBufferStride * index + 1 * 4]),
+					*(float*)(&gltfModel.buffers[0].data[positionBufferOffset + positionBufferStride * index + 2 * 4]));
+
+				vertex.texCoord = {
+					*(float*)(&gltfModel.buffers[0].data[texCoordBufferOffset + texCoordBufferStride * index + 0 * 4]),
+					*(float*)(&gltfModel.buffers[0].data[texCoordBufferOffset + texCoordBufferStride * index + 1 * 4])
+				};
+
+				vertex.normal = {
+					*(float*)(&gltfModel.buffers[0].data[normalBufferOffset + normalBufferStride * index + 0 * 4]),
+					*(float*)(&gltfModel.buffers[0].data[normalBufferOffset + normalBufferStride * index + 1 * 4]),
+					*(float*)(&gltfModel.buffers[0].data[normalBufferOffset + normalBufferStride * index + 2 * 4])
+				};
+
+				int materialIndex = attribute.material;
+				model.texturedMeshes[materialIndex].vertices.push_back(vertex);
+				model.texturedMeshes[materialIndex].indices.push_back(model.texturedMeshes[materialIndex].indices.size());
+			}
+
+		}
+	}
+
+	//Creating Textures
+	std::filesystem::path parentPath = path.parent_path();
+	VulkanImageParams imageParams
+	{
+		.numSamples = vk::SampleCountFlagBits::e1,
+		.format = vk::Format::eR8G8B8A8Srgb,
+		.tiling = vk::ImageTiling::eOptimal,
+		.usage = vk::ImageUsageFlagBits::eSampled,
+	};
+
+	VulkanImageViewParams imageViewParams{
+		.aspectFlags = vk::ImageAspectFlagBits::eColor,
+	};
+	for (int i = 0; i < model.texturedMeshes.size(); i++) {
+		int textureId = gltfModel.materials[i].pbrMetallicRoughness.baseColorTexture.index;
+		if (textureId != -1)
+		{
+			std::string texturePath = gltfModel.images[gltfModel.textures[textureId].source].uri;
+			model.texturedMeshes[i].textureImage = new VulkanImage(m_context, imageParams, imageViewParams, parentPath.string() + "/" + texturePath);
+		}
+	}
+
+	//Creating NormalMaps
+	VulkanImageParams normalImageParams
+	{
+		.numSamples = vk::SampleCountFlagBits::e1,
+		.format = vk::Format::eR8G8B8A8Unorm,
+		.tiling = vk::ImageTiling::eOptimal,
+		.usage = vk::ImageUsageFlagBits::eSampled,
+	};
+
+	VulkanImageViewParams normalImageViewParams{
+		.aspectFlags = vk::ImageAspectFlagBits::eColor,
+	};
+	for (int i = 0; i < model.texturedMeshes.size(); i++) {
+		int textureId = gltfModel.materials[i].normalTexture.index;
+		if (textureId != -1)
+		{
+			std::string texturePath = gltfModel.images[gltfModel.textures[textureId].source].uri;
+			model.texturedMeshes[i].normalMapImage = new VulkanImage(m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + texturePath);
 		}
 	}
 	generateTangents(model);

@@ -56,7 +56,13 @@ int main() {
     pikachuTransform = glm::rotate(pikachuTransform, glm::radians(90.f), glm::vec3(0.0f, 1.f, 0.f));
     peachTransform = glm::rotate(peachTransform, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
     
-    scene.addObjModel("assets/Sponza/", sponzaTransform);
+    translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.f, 0.0, 2.f));
+    scale = glm::scale(glm::mat4(1.0f), glm::vec3(1.f, 1.f, 1.f));
+    glm::mat4 chestTransform = translation * scale;
+    chestTransform = glm::rotate(chestTransform, glm::radians(-115.f), glm::vec3(0.f, 1.f, 0.f));
+
+    scene.addGltfModel("assets/TreasureChest/model.gltf", chestTransform);
+    scene.addGltfModel("assets/SponzaGltf/model.glb", sponzaTransform);
     scene.addObjModel("assets/Ganon/", ganonTransform);
     scene.addObjModel("assets/PikachuObj/", pikachuTransform);
     scene.addObjModel("assets/peach/", peachTransform);

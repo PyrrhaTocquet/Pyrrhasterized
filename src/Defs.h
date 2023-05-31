@@ -5,7 +5,7 @@
 #include "glm/glm.hpp"
 
 /* RENDERING CONSTS*/
-const bool ENABLE_MSAA = false;
+const bool ENABLE_MSAA = true;
 
 /* ENUMS */
 enum RenderPassesId {

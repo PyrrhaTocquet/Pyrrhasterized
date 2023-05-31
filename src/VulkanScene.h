@@ -6,6 +6,7 @@
 #include "VulkanImage.h"
 #include "Defs.h"
 #include "Drawable.h"
+#include <filesystem>
 
 //TODO Better Vertex Data managment
 struct Vertex {
@@ -86,6 +87,7 @@ public:
 	~VulkanScene();
 	void addChildren(VulkanScene* childrenScene);
 	void addObjModel(const std::string& path, const glm::mat4& modelMatrix);
+	void addGltfModel(const std::filesystem::path & path, const glm::mat4& modelMatrix);
 	void createBuffers();
 	void setDescriptorSets(std::vector<vk::DescriptorSet> descriptorSet);
 	const uint32_t getIndexBufferSize();
