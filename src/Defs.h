@@ -56,16 +56,20 @@ struct Transform {
 	glm::vec3 rotate = glm::vec3(0.f, 0.f, 0.f);
 	glm::vec3 scale = glm::vec3(1.f, 1.f, 1.f);
 
+	glm::mat4 transformMatrix = glm::mat4();
+	bool hasChanged = true;
+
 	glm::mat4 computeMatrix() {
-		glm::mat4 transformMatrix;
-
-		glm::mat4 translateMatrix = glm::translate(glm::mat4(1.f), translate);
-		glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.f), glm::radians(rotate.x), glm::vec3(1.f, 0.f, 0.f));
-		rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotate.y), glm::vec3(0.f, 1.f, 0.f));
-		rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotate.z), glm::vec3(0.f, 0.f, 1.f));
-		glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.f), scale);
-
-		transformMatrix = translateMatrix * rotationMatrix * scaleMatrix;
+		if (hasChanged)
+		{
+			glm::mat4 translateMatrix = glm::translate(glm::mat4(1.f), translate);
+			glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.f), glm::radians(rotate.x), glm::vec3(1.f, 0.f, 0.f));
+			rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotate.y), glm::vec3(0.f, 1.f, 0.f));
+			rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotate.z), glm::vec3(0.f, 0.f, 1.f));
+			glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.f), scale);
+			transformMatrix = translateMatrix * rotationMatrix * scaleMatrix;
+			hasChanged = false;
+		}
 		return transformMatrix;
 	};
 };
