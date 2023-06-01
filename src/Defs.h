@@ -3,6 +3,8 @@
 #include <vulkan/vulkan.hpp>
 #include "vk_mem_alloc.hpp"
 #include "glm/glm.hpp"
+#include <glm/gtc/matrix_transform.hpp>
+#include <iostream>
 
 /* RENDERING CONSTS*/
 const bool ENABLE_MSAA = true;
@@ -60,6 +62,68 @@ struct CameraCoords {
 		return direction;
 	}
 
+};
+
+
+struct Transform {
+	glm::vec3 translate = glm::vec3(0.f, 0.f, 0.f);
+	glm::vec3 rotate = glm::vec3(0.f, 0.f, 0.f);
+	glm::vec3 scale = glm::vec3(1.f, 1.f, 1.f);
+
+	glm::mat4 computeMatrix() {
+		glm::mat4 transformMatrix;
+
+		glm::mat4 translateMatrix = glm::translate(glm::mat4(1.f), translate);
+		glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.f), glm::radians(rotate.x), glm::vec3(1.f, 0.f, 0.f));
+		rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotate.y), glm::vec3(0.f, 1.f, 0.f));
+		rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotate.z), glm::vec3(0.f, 0.f, 1.f));
+		glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.f), scale);
+
+		transformMatrix = translateMatrix * rotationMatrix * scaleMatrix;
+		return transformMatrix;
+	};
+};
+
+struct Vertex {
+	glm::vec3 pos;
+	glm::vec2 texCoord;
+	glm::vec3 normal;
+	glm::vec4 tangent; //w: handles handedness
+
+
+	static vk::VertexInputBindingDescription getBindingDescription() {
+		vk::VertexInputBindingDescription bindingDescription;
+		bindingDescription.binding = 0,
+			bindingDescription.stride = sizeof(Vertex);
+		bindingDescription.inputRate = vk::VertexInputRate::eVertex;
+		return bindingDescription;
+	}
+
+	static std::array<vk::VertexInputAttributeDescription, 4> getAttributeDescriptions() {
+		std::array<vk::VertexInputAttributeDescription, 4> attributeDescriptions = {};
+		attributeDescriptions[0].binding = 0;
+		attributeDescriptions[0].location = 0;
+		attributeDescriptions[0].format = vk::Format::eR32G32B32Sfloat;
+		attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+		attributeDescriptions[1].binding = 0;
+		attributeDescriptions[1].location = 1;
+		attributeDescriptions[1].format = vk::Format::eR32G32Sfloat;
+		attributeDescriptions[1].offset = offsetof(Vertex, texCoord);
+
+		attributeDescriptions[2].binding = 0;
+		attributeDescriptions[2].location = 2;
+		attributeDescriptions[2].format = vk::Format::eR32G32B32Sfloat;
+		attributeDescriptions[2].offset = offsetof(Vertex, normal);
+
+		attributeDescriptions[3].binding = 0;
+		attributeDescriptions[3].location = 3;
+		attributeDescriptions[3].format = vk::Format::eR32G32B32A32Sfloat;
+		attributeDescriptions[3].offset = offsetof(Vertex, tangent);
+
+
+		return attributeDescriptions;
+	}
 };
 
 /* CLEAR COLORS */

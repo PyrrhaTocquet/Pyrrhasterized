@@ -135,7 +135,6 @@ private:
 	//EXECUTION FLOW
 	bool present(vk::Semaphore* signalSemaphores, uint32_t imageIndex);
 	void updateUniformBuffers(uint32_t imageIndex);
-	void updatePushConstants(vk::CommandBuffer commandBuffer, Model& model, TexturedMesh& mesh);
 
 	//INPUTS
 	void manageInput();

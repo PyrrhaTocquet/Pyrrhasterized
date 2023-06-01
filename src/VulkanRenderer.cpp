@@ -471,7 +471,7 @@ std::vector<vk::DescriptorSet> VulkanRenderer::createDescriptorSets(VulkanScene*
     std::vector<vk::DescriptorImageInfo> textureImageInfo;
     uint32_t textureId = 0;
     for (auto& model : scene->m_models) {
-        for (auto& texturedMesh : model.texturedMeshes) {
+        for (auto& texturedMesh : model->getMeshes()) {
             if (texturedMesh.textureImage != nullptr)
             {
                 vk::DescriptorImageInfo imageInfo{
@@ -903,20 +903,6 @@ void VulkanRenderer::updateUniformBuffers(uint32_t imageIndex) {
     m_allocator.unmapMemory(m_uniformBuffersAllocations[imageIndex]);
 }
 
-//Updates the push constant that manage the model matrix, the texture id and the time value in the shader. This can be done during command buffer recording
-void VulkanRenderer::updatePushConstants(vk::CommandBuffer commandBuffer,Model& model, TexturedMesh& mesh) {
-    static auto startTime = std::chrono::high_resolution_clock::now();
-
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - startTime).count();
-    ModelPushConstant modelPushConstant{
-        .model = model.matrix,
-        .textureId = static_cast<glm::int32>(mesh.textureId),
-        .normalMapId = static_cast<glm::int32>(mesh.normalMapId),
-        .time = time,
-    };
-    commandBuffer.pushConstants<ModelPushConstant>(m_pipelineLayout, vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment, 0, modelPushConstant);
-}
 #pragma endregion
 
 #pragma region SCENES
