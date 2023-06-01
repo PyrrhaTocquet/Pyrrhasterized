@@ -27,9 +27,8 @@ int main() {
     
     /* Ganon */
     Transform ganonTransform;
-    ganonTransform.translate = glm::vec3(-0.f, -0.5f, -.5f);
+    ganonTransform.translate = glm::vec3(-0.f, 0.f, -.5f);
     ganonTransform.rotate = glm::vec3(0.f, 90.f, 0.f);
-    ganonTransform.scale = glm::vec3(.015, .015, .015);
 
     /* Pikachu */
     Transform pikachuTransform;
@@ -55,7 +54,7 @@ int main() {
 
     scene.addModel("assets/TreasureChest/model.gltf", chestTransform);
     scene.addModel("assets/SponzaGltf/model.glb", sponzaTransform);
-    scene.addModel("assets/Ganon/model.obj", ganonTransform);
+    scene.addModel("assets/Ganon/ganon.gltf", ganonTransform);
     scene.addModel("assets/PikachuObj/model.obj", pikachuTransform);
     Peach* peachEntity = new Peach(&context);
     scene.addEntity(peachEntity);
