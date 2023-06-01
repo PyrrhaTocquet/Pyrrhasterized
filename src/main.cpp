@@ -17,6 +17,7 @@
 #include "VulkanContext.h"
 #include "VulkanRenderer.h"
 #include "VulkanScene.h"
+#include "Peach.h"
 
 int main() {
 
@@ -35,10 +36,7 @@ int main() {
     pikachuTransform.rotate = glm::vec3(0.f, 90.f, 0.f);
 
     /* Mario */
-    Transform peachTransform;
-    peachTransform.translate = glm::vec3(-0.5f, 0.f, 0.5f);
-    peachTransform.rotate = glm::vec3(0.f, 90.f, 0);
-    peachTransform.scale = glm::vec3(0.005f, 0.005f, 0.005f);
+    
 
     /* Sponza */
     Transform sponzaTransform;
@@ -59,7 +57,9 @@ int main() {
     scene.addModel("assets/SponzaGltf/model.glb", sponzaTransform);
     scene.addModel("assets/Ganon/model.obj", ganonTransform);
     scene.addModel("assets/PikachuObj/model.obj", pikachuTransform);
-    scene.addModel("assets/peach/model.obj", peachTransform);
+    Peach* peachEntity = new Peach(&context);
+    scene.addEntity(peachEntity);
+    renderer.registerEntity(peachEntity);
     scene.addModel("assets/Link/model.obj", linkTransform);
 
     renderer.addScene(&scene);

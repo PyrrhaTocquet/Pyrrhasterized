@@ -16,6 +16,7 @@
 #include "VulkanRenderPass.h"
 #include "MainRenderPass.h"
 #include "ShadowRenderPass.h"
+#include "Camera.h"
 
 
 
@@ -26,7 +27,6 @@ const uint32_t PUSH_CONSTANTS_COUNT = 1;
 const uint32_t MAX_TEXTURE_COUNT = 4096;
 
 struct TexturedMesh;
-struct Model;
 
 class VulkanScene;
 class VulkanRenderPass;
@@ -82,7 +82,9 @@ private:
 	/*-------------------------------------------*/
 
 	std::vector<VulkanScene*> m_scenes;
-	CameraCoords m_camera;
+	std::vector<Entity*> m_entities;
+
+	Camera* m_camera;
 public:
 	VulkanRenderer(VulkanContext* context);
 	void mainloop();
@@ -94,6 +96,7 @@ public:
 	[[nodiscard]] VulkanPipeline createPipeline(PipelineInfo pipelineInfo);
 	void addPipeline(VulkanPipeline pipeline);
 
+	void registerEntity(Entity* entity);
 private:
 	//PIPELINE
 	void createMainGraphicsPipeline(const char* vertShaderCodePath, const char* fragShaderCodePath);
@@ -138,6 +141,10 @@ private:
 
 	//INPUTS
 	void manageInput();
+
+	//ENTITIES
+	void updateEntities();
+
 
 };
 

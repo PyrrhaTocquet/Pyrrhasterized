@@ -31,8 +31,15 @@ void VulkanScene::addModel(const std::filesystem::path& path, const Transform& t
 	m_models.push_back(model);
 }
 
+void VulkanScene::addModel(Model* model)
+{
+	m_models.push_back(model);
+}
 
 
+void VulkanScene::addEntity(Entity* entity) {
+	addModel(entity->getModelPtr());
+}
 
 void VulkanScene::createBuffers()
 {

@@ -41,10 +41,16 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     //clear font textures from cpu data
     ImGui_ImplVulkan_DestroyFontUploadObjects();
 
+    //CAMERA
+    m_camera = new Camera(m_context);
+    registerEntity(m_camera);
+
 }
 
 VulkanRenderer::~VulkanRenderer()
 {
+    delete m_camera;
+
     delete m_defaultTexture;
     delete m_defaultNormalMap;
 
@@ -794,7 +800,7 @@ void VulkanRenderer::mainloop() {
     {
         m_context->manageWindow();
         manageInput();
-
+        updateEntities();
         drawFrame();
     }
     m_device.waitIdle();
@@ -862,7 +868,6 @@ bool VulkanRenderer::present(vk::Semaphore *signalSemaphores, uint32_t imageInde
         .pResults = nullptr,
     };
     
-
     vk::Result result = m_context->getPresentQueue().presentKHR(presentInfo);
     
     if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || m_context->isFramebufferResized())
@@ -888,7 +893,7 @@ void VulkanRenderer::updateUniformBuffers(uint32_t imageIndex) {
     float speed = 0.1f;
     //Model View Proj
     UniformBufferObject ubo{};
-    ubo.view = glm::lookAt(m_camera.cameraPos, m_camera.cameraPos - m_camera.getDirection(), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.view = m_camera->getViewMatrix();
     ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float)extent.height, 0.1f, 1000.0f); //45deg vertical field of view, aspect ratio, near and far view planes
     ubo.proj[1][1] *= -1; //Designed for openGL but the Y coordinate of the clip coordinates is inverted
   
@@ -930,27 +935,19 @@ void VulkanRenderer::createRenderPasses() {
 #pragma endregion RENDER_PASSES
 
 #pragma region INPUT
-//Function that manages keyboard and mouse inputs and the consequences
 void VulkanRenderer::manageInput() {
-    //Time since rendering start
-    static auto prevTime = std::chrono::high_resolution_clock::now();
-
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - prevTime).count();
-    prevTime = currentTime;
-
     static bool rightPressed = false;
     static bool leftPressed = false;
-    static bool zPressed = false;
 
     GLFWwindow* window = m_context->getWindowPtr();
     int key = glfwGetKey(window, GLFW_KEY_RIGHT);
-    if ( key == GLFW_PRESS && rightPressed == false) {
+    if (key == GLFW_PRESS && rightPressed == false) {
         m_currentPipelineId++;
         rightPressed = true;
-    }else if (rightPressed == true && key == GLFW_RELEASE)
+    }
+    else if (rightPressed == true && key == GLFW_RELEASE)
     {
-        rightPressed = false; 
+        rightPressed = false;
     }
 
     key = glfwGetKey(window, GLFW_KEY_LEFT);
@@ -962,49 +959,21 @@ void VulkanRenderer::manageInput() {
     {
         leftPressed = false;
     }
-
-    float cameraSpeed = 10 * deltaTime;
-    key = glfwGetKey(window, GLFW_KEY_W);
-    if (key == GLFW_PRESS && zPressed == false) {
-        m_camera.cameraPos -= cameraSpeed * m_camera.getDirection(); //TODO better
-        zPressed = true;
-    }
-    else if (zPressed == true && key == GLFW_RELEASE)
-    {
-        zPressed = false;
-    }
-    else if (zPressed == true)
-    {
-        m_camera.cameraPos -= cameraSpeed * m_camera.getDirection(); //TODO better
-    }
-
     if (m_currentPipelineId == -1) m_currentPipelineId = static_cast<uint32_t>(m_pipelines.size()) - 1;
-
     m_currentPipelineId = m_currentPipelineId % static_cast<uint32_t>(m_pipelines.size());
-
-
-    static double lastMousePosX = 500;
-    static double lastMousePosY = 500;
-    double posX, posY;
-    glfwGetCursorPos(window, &posX, &posY);
-
-    float deltaX = posX - lastMousePosX;
-    float deltaY = lastMousePosY - posY;
-    lastMousePosX = posX;
-    lastMousePosY = posY;
-
-    float sensitivity = 0.2f;
-    deltaX *= sensitivity;
-    deltaY *= sensitivity;
-
-    m_camera.pitchYawRoll.y += deltaX;
-    m_camera.pitchYawRoll.x += deltaY;
-    
-    if (m_camera.pitchYawRoll.x > 89.0f)
-        m_camera.pitchYawRoll.x = 89.f;
-    if (m_camera.pitchYawRoll.x < -89.0f)
-        m_camera.pitchYawRoll.x = -89.0f;
-      
-
 }
+
 #pragma endregion
+
+
+#pragma region ENTITIES
+void VulkanRenderer::updateEntities() {
+    for (auto& entity : m_entities) {
+        entity->update();
+    }
+}
+
+void VulkanRenderer::registerEntity(Entity* entity) {
+    m_entities.push_back(entity);
+}
+#pragma endregion ENTITIES

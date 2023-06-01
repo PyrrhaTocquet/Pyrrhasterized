@@ -51,6 +51,21 @@ std::vector<TexturedMesh>& Model::getMeshes()
 	return m_texturedMeshes;
 }
 
+void Model::translateBy(glm::vec3 translation)
+{
+	m_transform.translate += translation;
+}
+
+void Model::rotateBy(glm::vec3 rotation)
+{
+	m_transform.rotate += rotation;
+}
+
+void Model::scaleBy(glm::vec3 scale)
+{
+	m_transform.scale += scale;
+}
+
 void Model::loadGltf(const std::filesystem::path& path)
 {
 	tinygltf::Model gltfModel;

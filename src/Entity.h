@@ -4,11 +4,16 @@
 #include "Model.h"
 
 
-class Entity : public Drawable {
+class Entity {
 
-private:
-	Model m_model;
+protected:
+	Model* m_model = nullptr;
+	VulkanContext* m_context = nullptr;
 public:
-	Entity();
-	virtual void update();
+	//Model not initialized here ! Left to be initialized by the child classes
+	Entity(VulkanContext* context);
+	~Entity();
+	virtual void update() = 0;
+	Model* getModelPtr();
+
 };

@@ -1,3 +1,4 @@
+#pragma once
 #include "Defs.h"
 #include <filesystem>
 #include "VulkanImage.h"
@@ -29,5 +30,10 @@ public:
 	glm::mat4 getMatrix();
 	void drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, float time, uint32_t& indexOffset);
 	std::vector<TexturedMesh>& getMeshes();
+
+	void translateBy(glm::vec3 translation);
+	void rotateBy(glm::vec3 rotation);
+	void scaleBy(glm::vec3 scale);
+
 
 };

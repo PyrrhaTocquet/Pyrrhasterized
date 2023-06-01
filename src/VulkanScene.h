@@ -5,10 +5,9 @@
 #include "VulkanContext.h"
 #include "VulkanImage.h"
 #include "Defs.h"
-#include "Drawable.h"
+#include "Entity.h"
 #include <filesystem>
 #include "Model.h"
-
 
 class VulkanScene : Drawable
 {
@@ -31,6 +30,8 @@ public:
 	~VulkanScene();
 	void addChildren(VulkanScene* childrenScene);
 	void addModel(const std::filesystem::path& path, const Transform& transform);
+	void addModel(Model* model);
+	void addEntity(Entity* entity);
 	void createBuffers();
 	void setDescriptorSets(std::vector<vk::DescriptorSet> descriptorSet);
 	const uint32_t getIndexBufferSize();
