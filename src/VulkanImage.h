@@ -28,13 +28,13 @@ struct VulkanImageViewParams {
 class VulkanImage
 {
 public:
-	vk::Image m_image;
-	vk::ImageView m_imageView;
+	vk::Image m_image = VK_NULL_HANDLE;
+	vk::ImageView m_imageView = VK_NULL_HANDLE;
 private:
 	void constructVkImage(VulkanContext* context, VulkanImageParams imageParams);
 	void constructVkImageView(VulkanContext* context, VulkanImageParams imageParams, VulkanImageViewParams imageViewParams);
 	vk::Device m_device;
-
+	bool m_loadingFailed = false;
 
 private:
 	vma::Allocator m_allocator;
@@ -49,6 +49,6 @@ public:
 
 	void transitionImageLayout(VulkanContext* context, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels);
 	void generateMipmaps(VulkanContext* context, vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
-
+	bool hasLoadingFailed();
 };
 

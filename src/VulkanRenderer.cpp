@@ -478,7 +478,7 @@ std::vector<vk::DescriptorSet> VulkanRenderer::createDescriptorSets(VulkanScene*
     uint32_t textureId = 0;
     for (auto& model : scene->m_models) {
         for (auto& texturedMesh : model->getMeshes()) {
-            if (texturedMesh.textureImage != nullptr)
+            if (texturedMesh.textureImage != nullptr && !texturedMesh.textureImage->hasLoadingFailed())
             {
                 vk::DescriptorImageInfo imageInfo{
                 .sampler = m_textureSampler,
@@ -502,7 +502,7 @@ std::vector<vk::DescriptorSet> VulkanRenderer::createDescriptorSets(VulkanScene*
                 texturedMesh.textureId = textureId;
                 textureId++;
             }
-            if (texturedMesh.normalMapImage != nullptr)
+            if (texturedMesh.normalMapImage != nullptr && !texturedMesh.textureImage->hasLoadingFailed())
             {
                 vk::DescriptorImageInfo imageInfo{
                 .sampler = m_textureSampler,
