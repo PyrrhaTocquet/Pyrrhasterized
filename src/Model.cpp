@@ -54,16 +54,19 @@ std::vector<TexturedMesh>& Model::getMeshes()
 void Model::translateBy(glm::vec3 translation)
 {
 	m_transform.translate += translation;
+	m_transform.hasChanged = true;
 }
 
 void Model::rotateBy(glm::vec3 rotation)
 {
 	m_transform.rotate += rotation;
+	m_transform.hasChanged = true;
 }
 
 void Model::scaleBy(glm::vec3 scale)
 {
 	m_transform.scale += scale;
+	m_transform.hasChanged = true;
 }
 
 void Model::loadGltf(const std::filesystem::path& path)
@@ -170,7 +173,12 @@ void Model::loadGltf(const std::filesystem::path& path)
 		if (textureId != -1)
 		{
 			std::string texturePath = gltfModel.images[gltfModel.textures[textureId].source].uri;
-			m_texturedMeshes[i].textureImage = new VulkanImage(m_context, imageParams, imageViewParams, parentPath.string() + "/" + texturePath);
+			if (texturePath == "")texturePath = gltfModel.images[gltfModel.textures[textureId].source].name + ".png";
+			if (texturePath != "")
+			{
+				m_texturedMeshes[i].textureImage = new VulkanImage(m_context, imageParams, imageViewParams, parentPath.string() + "/" + texturePath);
+			}
+
 		}
 	}
 
@@ -191,7 +199,11 @@ void Model::loadGltf(const std::filesystem::path& path)
 		if (textureId != -1)
 		{
 			std::string texturePath = gltfModel.images[gltfModel.textures[textureId].source].uri;
-			m_texturedMeshes[i].normalMapImage = new VulkanImage(m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + texturePath);
+			if(texturePath == "")texturePath = gltfModel.images[gltfModel.textures[textureId].source].name + ".png";
+			if (texturePath != "")
+			{
+				m_texturedMeshes[i].normalMapImage = new VulkanImage(m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + texturePath);
+			}
 		}
 	}
 	generateTangents();
