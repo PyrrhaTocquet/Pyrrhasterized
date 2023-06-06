@@ -7,7 +7,7 @@ Camera::Camera(VulkanContext* context) : Entity(context)
 	cameraTransform.translate = m_cameraCoords.cameraPos;
 	cameraTransform.rotate = m_cameraCoords.pitchYawRoll;
 
-    m_model = new Model(context, "assets/camera/camera.gltf", cameraTransform);
+    m_model = new Model(context, "assets/Camera/camera.gltf", cameraTransform);
 }
 
 void Camera::update()

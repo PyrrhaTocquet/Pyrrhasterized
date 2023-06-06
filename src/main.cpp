@@ -53,7 +53,7 @@ int main() {
     chestTransform.translate = glm::vec3(0.f, 0.f, 2.f);
 
     scene.addModel("assets/TreasureChest/model.gltf", chestTransform);
-    scene.addModel("assets/SponzaGltf/model.glb", sponzaTransform);
+    scene.addModel("assets/SponzaGltf/sponza.glb", sponzaTransform);
     scene.addModel("assets/Ganon/ganon.gltf", ganonTransform);
     scene.addModel("assets/PikachuObj/model.obj", pikachuTransform);
     Peach* peachEntity = new Peach(&context);
