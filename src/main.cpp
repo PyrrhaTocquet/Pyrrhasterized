@@ -17,6 +17,7 @@
 #include "VulkanContext.h"
 #include "VulkanRenderer.h"
 #include "VulkanScene.h"
+#include "Peach.h"
 
 int main() {
 
@@ -25,42 +26,40 @@ int main() {
     VulkanScene scene(&context);
     
     /* Ganon */
-    glm::mat4 translation = glm::translate(glm::mat4(1.0f), glm::vec3(-.5f, -0.5f, -.5f));
-    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(.015, .015, .015));
-    glm::mat4 ganonTransform = translation * scale;
+    Transform ganonTransform;
+    ganonTransform.translate = glm::vec3(-0.f, 0.f, -.5f);
+    ganonTransform.rotate = glm::vec3(0.f, 90.f, 0.f);
 
     /* Pikachu */
-    translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.f, .0f, 0.f));
-    //translation = glm::rotate(translation, glm::radians(-90.f), glm::vec3(1.0f, 0.f, .0f));
-    glm::mat4 pikachuTransform = translation;
+    Transform pikachuTransform;
+    pikachuTransform.rotate = glm::vec3(0.f, 90.f, 0.f);
 
     /* Mario */
-    translation = glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.f, 0.5f));
-    scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f));
-    translation = glm::rotate(translation, glm::radians(-90.f), glm::vec3(1.0f, 0.f, .0f));
-    glm::mat4 peachTransform = translation * scale;
+    
 
     /* Sponza */
-    translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.f, -2.f, 0.0));
-    scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f));
-    glm::mat4 sponzaTransform = translation * scale;
+    Transform sponzaTransform;
+    sponzaTransform.translate = glm::vec3(0.f, -2.f, 0.0f);
+    sponzaTransform.scale = glm::vec3(0.005f, 0.005f, 0.005f);
 
     /* Link */
-    translation = glm::translate(glm::mat4(1.0f), glm::vec3(3.f, 0.0, -2.f));
-    scale = glm::scale(glm::mat4(1.0f), glm::vec3(.05f, .05f, .05f));
-    glm::mat4 linkTransform = translation * scale;
-    linkTransform = glm::rotate(linkTransform, glm::radians(-115.f), glm::vec3(0.f, 1.f, 0.f));
+    Transform linkTransform;
+    linkTransform.translate = glm::vec3(3.f, 0.f, -2.f);
+    linkTransform.scale = glm::vec3(0.05f, 0.05f, 0.05f);
+    linkTransform.rotate = glm::vec3(0.f, -115.f, 0.f);
 
+    /* Chest */
+    Transform chestTransform;
+    chestTransform.translate = glm::vec3(0.f, 0.f, 2.f);
 
-    ganonTransform = glm::rotate(ganonTransform, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
-    pikachuTransform = glm::rotate(pikachuTransform, glm::radians(90.f), glm::vec3(0.0f, 1.f, 0.f));
-    peachTransform = glm::rotate(peachTransform, glm::radians(90.f), glm::vec3(0.f, 1.f, 0.f));
-    
-    scene.addObjModel("assets/Sponza/", sponzaTransform);
-    scene.addObjModel("assets/Ganon/", ganonTransform);
-    scene.addObjModel("assets/PikachuObj/", pikachuTransform);
-    scene.addObjModel("assets/peach/", peachTransform);
-    scene.addObjModel("assets/Link/", linkTransform);
+    scene.addModel("assets/TreasureChest/model.gltf", chestTransform);
+    scene.addModel("assets/SponzaGltf/sponza.glb", sponzaTransform);
+    scene.addModel("assets/Ganon/ganon.gltf", ganonTransform);
+    scene.addModel("assets/PikachuObj/model.obj", pikachuTransform);
+    Peach* peachEntity = new Peach(&context);
+    scene.addEntity(peachEntity);
+    renderer.registerEntity(peachEntity);
+    scene.addModel("assets/Link/model.obj", linkTransform);
 
     renderer.addScene(&scene);
     

@@ -80,7 +80,9 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 	int texWidth, texHeight, texChannels;
 	stbi_uc* pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha); //Forces the image to be loaded with an alpha channel for consistency
 	if (!pixels) {
-		throw std::runtime_error("failed to load texture image!");
+		std::cerr << "Image file " << path << " was not loaded" << std::endl;
+		m_loadingFailed = true;
+		return;
 	}
 
 	//Highest number possible of miplevels
@@ -210,6 +212,11 @@ void VulkanImage::generateMipmaps(VulkanContext* context, vk::Image image, vk::F
 	commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, nullptr, nullptr, barrier);
 
 	context->endSingleTimeCommands(commandBuffer);
+}
+
+bool VulkanImage::hasLoadingFailed()
+{
+	return m_loadingFailed;
 }
 
 

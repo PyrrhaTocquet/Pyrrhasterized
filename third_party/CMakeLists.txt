@@ -14,6 +14,9 @@ target_include_directories(vma INTERFACE vulkan-headers vma)
 add_library(tinyobjloader INTERFACE)
 target_include_directories(tinyobjloader INTERFACE tinyobjloader)
 
+add_library(tinygltfloader INTERFACE)
+target_include_directories(tinygltfloader INTERFACE tinygltfloader)
+
 add_library(stbimage INTERFACE)
 target_include_directories(stbimage INTERFACE stbimage)
 

@@ -1,12 +1,10 @@
 #include "VulkanScene.h"
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
+
 #include <unordered_map>
 
 VulkanScene::VulkanScene(VulkanContext* context) {
 	m_allocator = context->getAllocator();
 	m_context = context;
-
 }
 
 VulkanScene::~VulkanScene()
@@ -15,11 +13,9 @@ VulkanScene::~VulkanScene()
 	m_allocator.destroyBuffer(m_vertexBuffer, m_vertexBufferAllocation);
 
 	for (const auto& model : m_models) {
-		for (const auto& mesh : model.texturedMeshes) {
-			delete mesh.textureImage;
-			delete mesh.normalMapImage;
-		}
+		delete model;
 	}
+
 }
 
 void VulkanScene::addChildren(VulkanScene* childrenScene) {
@@ -29,121 +25,20 @@ void VulkanScene::addChildren(VulkanScene* childrenScene) {
 	m_childrenScenes.push_back(childrenScene);
 }
 
-void VulkanScene::addObjModel(const std::string& path, const glm::mat4& modelMatrix) 
+void VulkanScene::addModel(const std::filesystem::path& path, const Transform& transform)
 {
-	Model model;
-	model.matrix = modelMatrix;
-	tinyobj::ObjReaderConfig reader_config;
-	reader_config.mtl_search_path = ""; // Path to material files
-
-	tinyobj::ObjReader reader;
-
-
-	if (!reader.ParseFromFile(path + "/model.obj", reader_config)) {
-		if (!reader.Error().empty()) {
-			std::cerr << "TinyObjReader: " << reader.Error();
-		}
-		exit(1);
-	}
-
-	if (!reader.Warning().empty()) {
-		std::cout << "TinyObjReader: " << reader.Warning();
-	}
-
-	auto& attrib = reader.GetAttrib();
-	auto& shapes = reader.GetShapes();
-	auto& materials = reader.GetMaterials();
-	
-	model.texturedMeshes.resize(materials.size());
-
-	// Loop over shapes
-	for (size_t s = 0; s < shapes.size(); s++) {
-		// Loop over faces(polygon)
-		size_t index_offset = 0;
-		for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
-			size_t fv = size_t(shapes[s].mesh.num_face_vertices[f]);
-
-			// Loop over vertices in the face.
-			for (size_t v = 0; v < fv; v++) {
-				Vertex vertex;
-				// access to vertex
-				tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
-
-				vertex.pos = {
-					attrib.vertices[3 * size_t(idx.vertex_index) + 0],
-					attrib.vertices[3 * size_t(idx.vertex_index) + 1],
-					attrib.vertices[3 * size_t(idx.vertex_index) + 2],
-				};
-
-				// Check if `normal_index` is zero or positive. negative = no normal data
-				if (idx.normal_index >= 0) {
-					vertex.normal = {
-						attrib.normals[3 * size_t(idx.normal_index) + 0],
-						attrib.normals[3 * size_t(idx.normal_index) + 1],
-						attrib.normals[3 * size_t(idx.normal_index) + 2],
-					};
-				}
-				// Check if `texcoord_index` is zero or positive. negative = no texcoord data
-				if (idx.texcoord_index >= 0) {
-					vertex.texCoord =
-					{
-						attrib.texcoords[2 * size_t(idx.texcoord_index) + 0],
-						1- attrib.texcoords[2 * size_t(idx.texcoord_index) + 1],
-					};
-
-				}
-				int materialIndex = shapes[s].mesh.material_ids[f];
-				model.texturedMeshes[materialIndex].vertices.push_back(vertex);
-				model.texturedMeshes[materialIndex].indices.push_back(model.texturedMeshes[materialIndex].indices.size());
-			}
-			index_offset += fv;
-			
-		}
-	}
-	//Creating Textures
-	VulkanImageParams imageParams
-	{
-		.numSamples = vk::SampleCountFlagBits::e1,
-		.format = vk::Format::eR8G8B8A8Srgb,
-		.tiling = vk::ImageTiling::eOptimal,
-		.usage = vk::ImageUsageFlagBits::eSampled,
-	};
-
-	VulkanImageViewParams imageViewParams{
-		.aspectFlags = vk::ImageAspectFlagBits::eColor,
-	};
-	for (int i = 0; i < model.texturedMeshes.size(); i++) {
-		if (materials[i].diffuse_texname != "")
-		{
-			model.texturedMeshes[i].textureImage = new VulkanImage(m_context, imageParams, imageViewParams, path + "/" + materials[i].diffuse_texname);
-		}
-	}
-
-	//Creating NormalMaps
-	VulkanImageParams normalImageParams
-	{
-		.numSamples = vk::SampleCountFlagBits::e1,
-		.format = vk::Format::eR8G8B8A8Unorm,
-		.tiling = vk::ImageTiling::eOptimal,
-		.usage = vk::ImageUsageFlagBits::eSampled,
-	};
-
-	VulkanImageViewParams normalImageViewParams{
-		.aspectFlags = vk::ImageAspectFlagBits::eColor,
-	};
-	for (int i = 0; i < model.texturedMeshes.size(); i++) {
-		if (materials[i].diffuse_texname != "")
-		{
-			if (materials[i].displacement_texname != "")
-			{
-				model.texturedMeshes[i].normalMapImage = new VulkanImage(m_context, normalImageParams, normalImageViewParams, path + "/" + materials[i].displacement_texname);
-			}
-			
-		}
-	}
-	generateTangents(model);
+	Model* model = new Model(m_context, path, transform);
 	m_models.push_back(model);
+}
 
+void VulkanScene::addModel(Model* model)
+{
+	m_models.push_back(model);
+}
+
+
+void VulkanScene::addEntity(Entity* entity) {
+	addModel(entity->getModelPtr());
 }
 
 void VulkanScene::createBuffers()
@@ -161,12 +56,30 @@ const uint32_t VulkanScene::getIndexBufferSize()
 {
 	uint32_t indicesCount = 0;
 	for (const auto& model : m_models) {
-		for (const auto& texturedMesh : model.texturedMeshes) {
+		for (const auto& texturedMesh : model->getMeshes()) {
 			indicesCount += texturedMesh.indices.size();
 		}
 
 	}
 	return indicesCount;
+}
+
+void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout)
+{
+	static auto startTime = std::chrono::high_resolution_clock::now(); //Todo, engine solution for time
+
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float time = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - startTime).count();
+
+	VkDeviceSize offset = 0;
+	commandBuffer.bindVertexBuffers(0, 1, &m_vertexBuffer, &offset);
+	commandBuffer.bindIndexBuffer(m_indexBuffer, 0, vk::IndexType::eUint32);
+
+	uint32_t indexOffset = 0;
+	//Draws each model in a scene
+	for (auto& model : m_models) {
+		model->drawModel(commandBuffer, pipelineLayout, time, indexOffset);
+	}
 }
 
 void VulkanScene::createIndexBuffer() 
@@ -184,9 +97,10 @@ void VulkanScene::createIndexBuffer()
 
 	int indexOffset = 0;
 	for (int modelIndex = 0; modelIndex < m_models.size(); modelIndex++) {
-		for (int texturedMeshIndex = 0; texturedMeshIndex < m_models[modelIndex].texturedMeshes.size(); texturedMeshIndex++) {
+		auto texturedMeshes = m_models[modelIndex]->getMeshes();
+		for (int texturedMeshIndex = 0; texturedMeshIndex < texturedMeshes.size(); texturedMeshIndex++) {
 			
-			auto& texturedMesh =  m_models[modelIndex].texturedMeshes[texturedMeshIndex];
+			auto& texturedMesh = texturedMeshes[texturedMeshIndex];
 			for (auto& index : texturedMesh.indices) {
 				index += indexOffset;
 			}
@@ -211,7 +125,7 @@ void VulkanScene::createVertexBuffer()
 {
 	size_t verticesCount = 0;
 	for (const auto& model : m_models) {
-		for (const auto& texturedMesh : model.texturedMeshes) {
+		for (const auto& texturedMesh : model->getMeshes()) {
 			verticesCount += texturedMesh.vertices.size();
 		}
 		
@@ -227,7 +141,7 @@ void VulkanScene::createVertexBuffer()
 	char* data = static_cast<char*>(m_allocator.mapMemory(stagingAllocation));
 
 	for (const auto& model : m_models) {
-		for (const auto& texturedMesh : model.texturedMeshes) {
+		for (const auto& texturedMesh : model->getMeshes()) {
 			memcpy(data, texturedMesh.vertices.data(), static_cast<size_t>(texturedMesh.vertices.size() * sizeof(Vertex)));
 			data += texturedMesh.vertices.size() * sizeof(Vertex);
 		}
@@ -242,33 +156,3 @@ void VulkanScene::createVertexBuffer()
 	m_allocator.destroyBuffer(stagingBuffer, stagingAllocation);
 }
 
-//Generates tangent data in the model vertices
-void VulkanScene::generateTangents(Model& model)
-{
-	for (auto& texturedMesh : model.texturedMeshes)
-	{
-		for (uint32_t i = 0; i < texturedMesh.indices.size(); i += 3)
-		{
-			uint32_t i0 = texturedMesh.indices[i + 0];
-			uint32_t i1 = texturedMesh.indices[i + 1];
-			uint32_t i2 = texturedMesh.indices[i + 2];
-
-			glm::vec3 edge1 = texturedMesh.vertices[i1].pos - texturedMesh.vertices[i0].pos;
-			glm::vec3 edge2 = texturedMesh.vertices[i2].pos - texturedMesh.vertices[i0].pos;
-
-			glm::vec2 deltaUV1 = texturedMesh.vertices[i1].texCoord - texturedMesh.vertices[i0].texCoord;
-			glm::vec2 deltaUV2 = texturedMesh.vertices[i2].texCoord - texturedMesh.vertices[i0].texCoord;
-
-			float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
-
-			glm::vec3 tangent3 = (edge1 * deltaUV2.y - edge2 * deltaUV1.y) * r;
-			tangent3 = glm::normalize(tangent3);
-			float handedness = ((deltaUV1.y * deltaUV2.x - deltaUV2.y * deltaUV1.x) < 0.0f) ? -1.0f : 1.0f;
-
-			glm::vec4 tangent4 = glm::vec4(tangent3, handedness);
-			texturedMesh.vertices[i0].tangent = tangent4;
-			texturedMesh.vertices[i1].tangent = tangent4;
-			texturedMesh.vertices[i2].tangent = tangent4;
-		}
-	}
-}

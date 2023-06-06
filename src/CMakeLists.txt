@@ -1,4 +1,4 @@
-file(GLOB srcFiles
+file(GLOB_RECURSE srcFiles
      "main.cpp"
      "*.cpp"
      "*.h"
@@ -8,9 +8,9 @@ file(GLOB srcFiles
 add_executable(${NAME} ${srcFiles})
 
 if(WIN32)
-target_link_libraries(${NAME} vulkanHeaders spirv-reflect glm glfw3 tinyobjloader stbimage imgui vma)
+target_link_libraries(${NAME} vulkanHeaders spirv-reflect glm glfw3 tinyobjloader tinygltfloader stbimage imgui vma)
 else()
-target_link_libraries(${NAME} vulkanHeaders spirv-reflect glm::glm glfw tinyobjloader stbimage imgui vma)
+target_link_libraries(${NAME} vulkanHeaders spirv-reflect glm::glm glfw tinyobjloader tinygltfloader stbimage imgui vma)
 endif()
 target_link_libraries(${NAME} Vulkan::Vulkan)
 
