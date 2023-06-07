@@ -102,7 +102,7 @@ void ShadowRenderPass::recreateRenderPass()
     createFramebuffer();
 }
 
-void ShadowRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, vk::DescriptorSet descriptorSet, vk::Pipeline pipeline, std::vector<VulkanScene*> scenes, vk::PipelineLayout pipelineLayout)
+/*void ShadowRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, vk::DescriptorSet descriptorSet, vk::Pipeline pipeline, std::vector<VulkanScene*> scenes, vk::PipelineLayout pipelineLayout)
 {
     vk::RenderPassBeginInfo renderPassInfo{
        .renderPass = m_renderPass,
@@ -126,7 +126,7 @@ void ShadowRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t 
     }
 
     commandBuffer.endRenderPass();
-}
+}*/
 
 vk::Extent2D ShadowRenderPass::getRenderPassExtent()
 {

@@ -15,11 +15,16 @@ VulkanRenderPass::VulkanRenderPass(VulkanContext* context)
 
 VulkanRenderPass::~VulkanRenderPass()
 {
+	m_context->getDevice().destroyDescriptorPool(m_mainDescriptorPool);
+	m_context->getDevice().destroyDescriptorSetLayout(m_mainDescriptorSetLayout);
 	for (auto& framebuffer : m_framebuffers)
 	{
 		m_context->getDevice().destroyFramebuffer(framebuffer);
 	}
 	m_context->getDevice().destroyRenderPass(m_renderPass);
+	delete m_mainPipeline;
+	m_context->getDevice().destroyPipelineLayout(m_pipelineLayout);
+
 }
 
 vk::RenderPass VulkanRenderPass::getRenderPass()

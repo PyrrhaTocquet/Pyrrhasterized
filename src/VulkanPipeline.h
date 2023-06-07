@@ -1,8 +1,9 @@
 #pragma once
 #include "Defs.h"
-#include "VulkanRenderPass.h"
 #include "VulkanContext.h"
 #include "spirv_reflect.h"
+#include "VulkanTools.h"
+
 
 struct PipelineInfo {
 	const char* vertPath;
@@ -21,16 +22,16 @@ class VulkanPipeline {
 private:
 	PipelineInfo m_pipelineInfo;
 	vk::PipelineLayout m_pipelineLayout;
-	VulkanRenderPass* m_renderPass;
+	vk::RenderPass m_renderPass;
 	vk::Pipeline m_pipeline;
 	VulkanContext* m_context;
 
 public:
 	
-	VulkanPipeline(VulkanContext* context, PipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, VulkanRenderPass* renderPass);
+	VulkanPipeline(VulkanContext* context, PipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, vk::Extent2D extent);
 	~VulkanPipeline();
 	vk::ShaderModule createShaderModule(std::vector<char>& shaderCode);
 	void cleanPipeline();
-	void recreatePipeline();
+	void recreatePipeline(vk::Extent2D extent);
 	vk::Pipeline getPipeline();
 };

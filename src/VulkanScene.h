@@ -13,8 +13,6 @@ class VulkanScene : Drawable
 {
 public :
 	vk::Buffer m_vertexBuffer, m_indexBuffer = VK_NULL_HANDLE;
-
-	std::vector<vk::DescriptorSet> m_descriptorSets;
 	std::vector<Model*> m_models; //TODO private after drawScene refactoring ??
 private:
 	std::vector<VulkanScene*> m_childrenScenes;
@@ -33,7 +31,6 @@ public:
 	void addModel(Model* model);
 	void addEntity(Entity* entity);
 	void createBuffers();
-	void setDescriptorSets(std::vector<vk::DescriptorSet> descriptorSet);
 	const uint32_t getIndexBufferSize();
 
 	void draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout ) override;

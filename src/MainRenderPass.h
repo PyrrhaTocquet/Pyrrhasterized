@@ -7,6 +7,7 @@
 #include "ShadowCascadeRenderPass.h"
 
 
+
 class ShadowRenderPass;
 
 class MainRenderPass : public VulkanRenderPass {
@@ -14,18 +15,43 @@ class MainRenderPass : public VulkanRenderPass {
 	VulkanImage* m_colorAttachment = nullptr;
 	VulkanImage* m_depthAttachment = nullptr;
 
+	VulkanImage* m_defaultTexture = nullptr;
+	VulkanImage* m_defaultNormalMap = nullptr;
+	std::vector<vk::Buffer> m_uniformBuffers;
+	std::vector<vma::Allocation> m_uniformBuffersAllocations;
+	vk::Sampler m_textureSampler = VK_NULL_HANDLE;
+
+	vk::DescriptorPool m_shadowDescriptorPool;
+	vk::DescriptorSetLayout m_shadowDescriptorSetLayout;
+	std::vector<vk::DescriptorSet> m_shadowDescriptorSet;
+
+
+	Camera* m_camera;
+
 	//acquired at construction
 	ShadowRenderPass* m_shadowRenderPass = nullptr;
 public:
-	MainRenderPass(VulkanContext* context, ShadowRenderPass* shadowRenderPass);
-	~MainRenderPass();
+	MainRenderPass(VulkanContext* context, Camera* camera, ShadowRenderPass* shadowRenderPass);
+	virtual ~MainRenderPass()override;
 	void createRenderPass() override;
 	void createFramebuffer() override;
 	void createAttachments() override;
 	void cleanAttachments() override;
 	void recreateRenderPass() override;
+	void createDescriptorPool()override;
+	void createDescriptorSetLayout()override;
+	void createDescriptorSet(VulkanScene* scene)override;
+	void createPipelineLayout()override;
+	void createDefaultPipeline()override;
+	void createPipelineRessources()override;
+	void createPushConstantsRanges()override;
+	void updatePipelineRessources(uint32_t currentFrame)override;
 	vk::Extent2D getRenderPassExtent() override;
 	void renderImGui(vk::CommandBuffer commandBuffer);
-	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, vk::DescriptorSet descriptorSet, vk::Pipeline pipeline, std::vector<VulkanScene*> scenes, vk::PipelineLayout pipelineLayout) override;
+	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) override;
 
+private:
+	void createDefaultTextures();
+	void createUniformBuffer();
+	void createTextureSampler();
 };

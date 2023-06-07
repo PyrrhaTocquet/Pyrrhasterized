@@ -1,14 +1,14 @@
 #include "VulkanPipeline.h"
 
 
-VulkanPipeline::VulkanPipeline(VulkanContext* context, PipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, VulkanRenderPass* renderPass)
+VulkanPipeline::VulkanPipeline(VulkanContext* context, PipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, vk::Extent2D extent)
 {
     m_pipelineInfo = pipelineInfo;
     m_pipelineLayout = pipelineLayout;
     m_renderPass = renderPass;
     m_context = context;
 
-    recreatePipeline();
+    recreatePipeline(extent);
 
 }
 
@@ -38,7 +38,7 @@ void VulkanPipeline::cleanPipeline()
     m_context->getDevice().destroyPipeline(m_pipeline);
 }
 
-void VulkanPipeline::recreatePipeline()
+void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
 {
     vk::Device device = m_context->getDevice();
     auto vertShaderCode = vkTools::readFile(m_pipelineInfo.vertPath);
@@ -81,7 +81,6 @@ void VulkanPipeline::recreatePipeline()
         .primitiveRestartEnable = VK_FALSE,
     };
 
-    vk::Extent2D extent = m_renderPass->getRenderPassExtent();
 
     vk::Viewport viewport = {
         .x = 0.0f,
@@ -169,7 +168,7 @@ void VulkanPipeline::recreatePipeline()
         .pDepthStencilState = &depthStencilState,
         .pColorBlendState = &colorBlending,
         .layout = m_pipelineLayout,
-        .renderPass = m_renderPass->getRenderPass(),
+        .renderPass = m_renderPass,
         .subpass = 0,
         .basePipelineHandle = nullptr,
     };

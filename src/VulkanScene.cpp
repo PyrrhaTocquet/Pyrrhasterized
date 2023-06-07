@@ -47,10 +47,6 @@ void VulkanScene::createBuffers()
 	createIndexBuffer();
 }
 
-void VulkanScene::setDescriptorSets(std::vector<vk::DescriptorSet> descriptorSet)
-{
-	m_descriptorSets = descriptorSet;
-}
 
 const uint32_t VulkanScene::getIndexBufferSize()
 {

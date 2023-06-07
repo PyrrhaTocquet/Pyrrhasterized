@@ -9,6 +9,7 @@
 /* RENDERING CONSTS*/
 const bool ENABLE_MSAA = false;
 const uint32_t SHADOW_CASCADE_COUNT = 4;
+const uint32_t MAX_TEXTURE_COUNT = 4096;
 
 /* ENUMS */
 enum RenderPassesId {

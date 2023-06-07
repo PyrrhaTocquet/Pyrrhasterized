@@ -21,8 +21,13 @@ public:
 	virtual void createFramebuffer() override;
 	virtual void createAttachments() override;
 	virtual void cleanAttachments() override;
+	virtual void createDescriptorPool()override {}; //TODO
+	virtual void createDescriptorSetLayout()override {};
+	virtual void createDescriptorSet(VulkanScene* scene)override {};
+	virtual void createPipelineLayout()override {};
+	virtual void createDefaultPipeline()override {};
 	void recreateRenderPass() override;
-	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, vk::DescriptorSet descriptorSet, vk::Pipeline pipeline, std::vector<VulkanScene*> scenes, vk::PipelineLayout pipelineLayout) override;
+	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) override {};
 	vk::Extent2D getRenderPassExtent() override;
 	[[nodiscard]] vk::ImageView getShadowAttachment();
 
