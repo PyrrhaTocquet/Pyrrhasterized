@@ -4,7 +4,7 @@
 #include <vulkan/vulkan.hpp>
 #include "vk_mem_alloc.hpp"
 #include <GLFW/glfw3.h>
-#include "ShadowRenderPass.h"
+#include "ShadowCascadeRenderPass.h"
 
 
 class ShadowRenderPass;

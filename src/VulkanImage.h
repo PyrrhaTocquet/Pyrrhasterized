@@ -18,11 +18,12 @@ struct VulkanImageParams {
 	vk::ImageTiling tiling;
 	vk::ImageUsageFlags usage;
 	bool useDedicatedMemory = false; //Set to true for large images that can be destroyed and recreated with different sizes (framebuffer attachments)
-	
+	uint32_t layers = 1;
 };
 
 struct VulkanImageViewParams {
 	vk::ImageAspectFlags aspectFlags;
+	vk::ImageViewType type = vk::ImageViewType::e2D;
 };
 
 class VulkanImage

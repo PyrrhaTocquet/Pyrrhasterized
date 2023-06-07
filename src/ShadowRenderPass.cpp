@@ -105,7 +105,7 @@ void ShadowRenderPass::recreateRenderPass()
 void ShadowRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, vk::DescriptorSet descriptorSet, vk::Pipeline pipeline, std::vector<VulkanScene*> scenes, vk::PipelineLayout pipelineLayout)
 {
     vk::RenderPassBeginInfo renderPassInfo{
-       .renderPass = m_renderPass, //TODO Abstract recordCommandBuffer
+       .renderPass = m_renderPass,
        .framebuffer = m_framebuffers[swapchainImageIndex],
        .renderArea = {
            .offset = {0, 0},

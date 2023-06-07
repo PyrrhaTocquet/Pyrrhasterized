@@ -8,6 +8,7 @@
 
 /* RENDERING CONSTS*/
 const bool ENABLE_MSAA = false;
+const uint32_t SHADOW_CASCADE_COUNT = 4;
 
 /* ENUMS */
 enum RenderPassesId {
@@ -21,6 +22,7 @@ struct UniformBufferObject {
 	glm::mat4 proj;
 	glm::mat4 lightView;
 	glm::mat4 lightProj;
+	float cascadeSplits[4] = { 0.f, 0.f, 0.f, 0.f };
 };
 
 struct ModelPushConstant {
@@ -30,25 +32,6 @@ struct ModelPushConstant {
 	glm::float32 time;
 	glm::vec2 data;
 };
-
-struct PipelineInfo {
-	const char* vertPath;
-	const char* fragPath;
-	vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
-	vk::CullModeFlags cullmode = vk::CullModeFlagBits::eBack;
-	vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise;
-	float lineWidth = 1.0f;
-	vk::Bool32 depthTestEnable = VK_TRUE;
-	vk::Bool32 depthWriteEnable = VK_TRUE;
-	RenderPassesId renderPassId = RenderPassesId::MainRenderPassId;
-	bool isMultisampled = true;
-};
-
-struct VulkanPipeline {
-	PipelineInfo pipelineInfo;
-	vk::Pipeline pipeline;
-};
-
 
 
 struct Transform {

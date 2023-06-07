@@ -21,6 +21,7 @@ protected:
 public :
 	vk::Format findDepthFormat() ;
 	VulkanRenderPass(VulkanContext* context);
+	VulkanRenderPass() {};
 	virtual ~VulkanRenderPass();
 	virtual void createRenderPass() = 0;
 	virtual void createFramebuffer() = 0;

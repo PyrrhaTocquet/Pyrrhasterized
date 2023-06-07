@@ -14,3 +14,7 @@ glslc fragmentShadow.frag -o fragmentShadow.spv
 glslc vertexShadow.vert -o vertexShadow.spv
 glslc fragmentDebugTangents.frag -o fragmentTangents.spv
 glslc vertexDebugTangents.vert -o vertexTangents.spv
+glslc vertexTextureCSM.vert -o vertexTextureCSM.spv
+glslc fragmentTextureCSM.frag -o fragmentTextureCSM.spv
+glslc vertexCSM.vert -o vertexCSM.spv
+glslc fragmentCSM.frag -o fragmentCSM.spv

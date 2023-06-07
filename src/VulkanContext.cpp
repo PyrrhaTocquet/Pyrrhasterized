@@ -683,6 +683,10 @@ vk::Format VulkanContext::findSupportedFormat(const std::vector<vk::Format>& can
 }
 vk::SampleCountFlagBits VulkanContext::getMaxUsableSampleCount() const
 {
+	if (!ENABLE_MSAA)
+	{
+		return vk::SampleCountFlagBits::e1;
+	}
 	vk::PhysicalDeviceProperties properties = m_physicalDevice.getProperties();
 
 	vk::SampleCountFlags counts = properties.limits.framebufferColorSampleCounts & properties.limits.framebufferDepthSampleCounts;

@@ -62,7 +62,7 @@ int main() {
     scene.addModel("assets/Link/model.obj", linkTransform);
 
     renderer.addScene(&scene);
-    
+    /* TODO Debug pipelines somewhere else
     PipelineInfo pipelineInfo;
 
     pipelineInfo.vertPath = "shaders/vertexTextureNoLight.spv";
@@ -93,7 +93,7 @@ int main() {
     pipelineInfo.polygonMode = vk::PolygonMode::eLine;
 
     renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-
+    */
 
     
 

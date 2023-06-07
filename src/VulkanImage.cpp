@@ -14,7 +14,7 @@ void VulkanImage::constructVkImage(VulkanContext* context, VulkanImageParams ima
 			.depth = 1,
 		},
 		.mipLevels = imageParams.mipLevels,
-		.arrayLayers = 1,	
+		.arrayLayers = imageParams.layers,	
 		.samples = imageParams.numSamples,
 		.tiling = imageParams.tiling,
 		.usage = imageParams.usage,
@@ -40,14 +40,14 @@ void VulkanImage::constructVkImageView(VulkanContext* context, VulkanImageParams
 {
 	vk::ImageViewCreateInfo imageViewInfo{
 		.image = m_image,
-		.viewType = vk::ImageViewType::e2D,
+		.viewType = imageViewParams.type,
 		.format = imageParams.format,
 		.subresourceRange {
 			.aspectMask = imageViewParams.aspectFlags,
 			.baseMipLevel = 0,
 			.levelCount = imageParams.mipLevels,
 			.baseArrayLayer = 0,
-			.layerCount = 1
+			.layerCount = imageParams.layers
 		},
 	};
 	

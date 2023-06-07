@@ -25,6 +25,7 @@ layout(location = 2) out vec3 fragPosWorld;
 layout(location = 3) out vec3 viewPosition;
 layout(location = 4) out vec4 lightViewPosition;
 layout(location = 5) out vec4 fragTangent;
+layout(location = 6) out float viewDepth;
 
 
 const mat4 biasMat = mat4( 
@@ -44,8 +45,6 @@ void main(){
 	fragPosWorld = positionWorld.xyz;
 	viewPosition = (ubo.view * positionWorld).xyz;
 	lightViewPosition = biasMat * ubo.lightProj * ubo.lightView * positionWorld;
-
-
 
 	gl_Position = ubo.proj * ubo.view * positionWorld;
 }

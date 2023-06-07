@@ -16,8 +16,9 @@
 #include "VulkanRenderPass.h"
 #include "MainRenderPass.h"
 #include "ShadowRenderPass.h"
+#include "ShadowCascadeRenderPass.h"
 #include "Camera.h"
-
+#include "VulkanPipeline.h"
 
 
 
@@ -55,13 +56,15 @@ private:
 	vk::SampleCountFlagBits m_msaaSampleCount = vk::SampleCountFlagBits::e1;
 	
 	//GRAPHICS PIPELINE
-	std::vector<VulkanPipeline> m_pipelines;
+	std::vector<VulkanPipeline*> m_pipelines;
 	uint32_t m_currentPipelineId = 0;
 	vk::PipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
-	VulkanPipeline m_shadowPipeline;
+	VulkanPipeline* m_shadowPipeline;
 
 	//RENDER PASS
 	std::vector<VulkanRenderPass*> m_renderPasses;
+	//TODO AAAAAAAAAAAAAAAAAAAAAAAAARGH
+	ShadowCascadeRenderPass* m_shadowPass;
 
 	//RENDERING FLOW
 	uint32_t m_currentFrame = 0;
@@ -93,8 +96,7 @@ public:
 	~VulkanRenderer();
 
 	void recreateSwapchainSizedObjects();
-	[[nodiscard]] VulkanPipeline createPipeline(PipelineInfo pipelineInfo);
-	void addPipeline(VulkanPipeline pipeline);
+	void addPipeline(VulkanPipeline* pipeline);
 
 	void registerEntity(Entity* entity);
 private:

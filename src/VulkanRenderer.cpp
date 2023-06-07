@@ -18,8 +18,8 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     //Rendering pipeline creation
     createRenderPasses();
     createPipelineLayout();
-    createMainGraphicsPipeline("shaders/vertexTexture.spv", "shaders/fragmentTexture.spv");
-    createShadowGraphicsPipeline("shaders/vertexShadow.spv", "shaders/fragmentShadow.spv");
+    createMainGraphicsPipeline("shaders/vertexTextureCSM.spv", "shaders/fragmentTextureCSM.spv");
+    createShadowGraphicsPipeline("shaders/vertexCSM.spv", "shaders/fragmentCSM.spv");
     createFramebuffers();
    
     //Command execution related objects
@@ -29,7 +29,7 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     
     //IMGUI
     ImGui_ImplVulkan_InitInfo initInfo = m_context->getImGuiInitInfo();
-    initInfo.MSAASamples = static_cast<VkSampleCountFlagBits>(ENABLE_MSAA ? m_msaaSampleCount : vk::SampleCountFlagBits::e1);
+    initInfo.MSAASamples = static_cast<VkSampleCountFlagBits>(m_msaaSampleCount);
     ImGui_ImplVulkan_Init(&initInfo, m_renderPasses[RenderPassesId::MainRenderPassId]->getRenderPass());
     m_device.waitIdle();
 
@@ -70,10 +70,10 @@ VulkanRenderer::~VulkanRenderer()
 
 
     m_device.freeCommandBuffers(m_context->getCommandPool(), m_commandBuffers);
-    for (auto pipeline : m_pipelines) {
-        m_device.destroyPipeline(pipeline.pipeline);
+    for (auto& pipeline : m_pipelines) {
+        delete pipeline;
     }
-    m_device.destroyPipeline(m_shadowPipeline.pipeline);
+    delete m_shadowPipeline;
 
     m_device.destroyPipelineLayout(m_pipelineLayout);
     
@@ -86,14 +86,16 @@ VulkanRenderer::~VulkanRenderer()
 
 #pragma region PIPELINE
 //adds a pipeline to the pipeline list
-void VulkanRenderer::addPipeline(VulkanPipeline pipeline) {
+void VulkanRenderer::addPipeline(VulkanPipeline* pipeline) {
     m_pipelines.push_back(pipeline);
 }
 
 //creates the main Pipeline Layout used for all pipelines
 void VulkanRenderer::createPipelineLayout() {
 
+    //TODO Terrible
     std::array<vk::DescriptorSetLayout, 2> layouts = { m_mainDescriptorSetLayout, m_shadowDescriptorSetLayout };
+
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo = {
        .setLayoutCount = layouts.size(),
        .pSetLayouts = layouts.data(),
@@ -119,7 +121,7 @@ void VulkanRenderer::createShadowGraphicsPipeline(const char* vertShaderCodePath
     .isMultisampled = false,
     };
 
-    m_shadowPipeline = createPipeline(pipelineInfo);
+    m_shadowPipeline = new VulkanPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPasses[RenderPassesId::ShadowMappingPassId]);
 
 }
 
@@ -131,172 +133,10 @@ void VulkanRenderer::createMainGraphicsPipeline(const char* vertShaderCodePath,c
         .fragPath = fragShaderCodePath,
     };
 
-    VulkanPipeline pipeline = createPipeline(pipelineInfo);
+    VulkanPipeline* pipeline = new VulkanPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPasses[RenderPassesId::MainRenderPassId]);
     m_pipelines.push_back(pipeline);
 
 }
-
-VulkanPipeline VulkanRenderer::createPipeline(PipelineInfo pipelineInfo) {
-    if (!ENABLE_MSAA)
-    {
-        pipelineInfo.isMultisampled = false;
-    }
-
-    auto vertShaderCode = vkTools::readFile(pipelineInfo.vertPath);
-    auto fragShaderCode = vkTools::readFile(pipelineInfo.fragPath);
-
-    spv_reflect::ShaderModule vertShaderModuleInfo(vertShaderCode.size(), vertShaderCode.data());
-    spv_reflect::ShaderModule fragShaderModuleInfo(fragShaderCode.size(), fragShaderCode.data());
-
-    auto vertShaderModule = createShaderModule(vertShaderCode);
-    auto fragShaderModule = createShaderModule(fragShaderCode);
-
-    vk::PipelineShaderStageCreateInfo shaderStages[] = {
-        {
-            .flags = vk::PipelineShaderStageCreateFlags(),
-            .stage = vk::ShaderStageFlagBits::eVertex,
-            .module = static_cast<VkShaderModule>(vertShaderModule),
-            .pName = vertShaderModuleInfo.GetEntryPointName()
-        },
-        {
-            .flags = vk::PipelineShaderStageCreateFlags(),
-            .stage = vk::ShaderStageFlagBits::eFragment,
-            .module = static_cast<VkShaderModule>(fragShaderModule),
-            .pName = fragShaderModuleInfo.GetEntryPointName()
-        }
-    };
-
-
-    auto bindingDescription = Vertex::getBindingDescription();
-    auto attributeDescriptions = Vertex::getAttributeDescriptions();
-
-    vk::PipelineVertexInputStateCreateInfo vertexInputInfo = {
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &bindingDescription,
-        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
-        .pVertexAttributeDescriptions = attributeDescriptions.data()
-    };
-
-    vk::PipelineInputAssemblyStateCreateInfo inputAssembly = {
-        .topology = vk::PrimitiveTopology::eTriangleList,
-        .primitiveRestartEnable = VK_FALSE,
-    };
-
-    vk::Extent2D extent = m_renderPasses[pipelineInfo.renderPassId]->getRenderPassExtent();
-
-    vk::Viewport viewport = {
-        .x = 0.0f,
-        .y = 0.0f,
-        .width = (float)extent.width,
-        .height = (float)extent.height,
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f,
-    };
-
-    vk::Rect2D scissor = {
-        .offset = { 0, 0 },
-        .extent = extent,
-    };
-
-    vk::PipelineViewportStateCreateInfo viewportState = {
-        .viewportCount = 1,
-        .pViewports = &viewport,
-        .scissorCount = 1,
-        .pScissors = &scissor,
-    };
-
-    vk::PipelineRasterizationStateCreateInfo rasterizer = {
-        .depthClampEnable = VK_FALSE,
-        .rasterizerDiscardEnable = VK_FALSE,
-        .polygonMode = pipelineInfo.polygonMode,
-        .cullMode = pipelineInfo.cullmode,
-        .frontFace = pipelineInfo.frontFace,
-        .depthBiasEnable = VK_FALSE,
-        .lineWidth = pipelineInfo.lineWidth,
-    };
-
-    vk::PipelineMultisampleStateCreateInfo multisampling = {
-        .rasterizationSamples = pipelineInfo.isMultisampled ? m_msaaSampleCount : vk::SampleCountFlagBits::e1,
-        .sampleShadingEnable = pipelineInfo.isMultisampled ? VK_TRUE : VK_FALSE,
-        .minSampleShading = 1.f,
-    };
-
-    vk::PipelineColorBlendAttachmentState colorBlendAttachment = {
-        .blendEnable = VK_TRUE,
-        .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
-        .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
-        .colorBlendOp = vk::BlendOp::eAdd,
-        .srcAlphaBlendFactor = vk::BlendFactor::eOne,
-        .dstAlphaBlendFactor = vk::BlendFactor::eZero,
-        .alphaBlendOp = vk::BlendOp::eAdd,
-        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-    };
-
-    vk::PipelineColorBlendStateCreateInfo colorBlending = {
-        .logicOpEnable = VK_FALSE,
-        .logicOp = vk::LogicOp::eCopy,
-        .attachmentCount = 1,
-        .pAttachments = &colorBlendAttachment,
-    };
-
-    colorBlending.blendConstants[0] = 0.0f;
-    colorBlending.blendConstants[1] = 0.0f;
-    colorBlending.blendConstants[2] = 0.0f;
-    colorBlending.blendConstants[3] = 0.0f;
-
-
-
-    vk::PipelineDepthStencilStateCreateInfo depthStencilState{
-        .depthTestEnable = pipelineInfo.depthTestEnable,
-        .depthWriteEnable = pipelineInfo.depthWriteEnable,
-        .depthCompareOp = vk::CompareOp::eLess,
-        .depthBoundsTestEnable = VK_FALSE,
-        .stencilTestEnable = VK_FALSE,
-        .front = {},
-        .back = {},
-        .minDepthBounds = 0.0f,
-        .maxDepthBounds = 1.0f,
-    };
-
-
-    vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {
-        .stageCount = 2,
-        .pStages = shaderStages,
-        .pVertexInputState = &vertexInputInfo,
-        .pInputAssemblyState = &inputAssembly,
-        .pViewportState = &viewportState,
-        .pRasterizationState = &rasterizer,
-        .pMultisampleState = &multisampling,
-        .pDepthStencilState = &depthStencilState,
-        .pColorBlendState = &colorBlending,
-        .layout = m_pipelineLayout,
-        .renderPass = m_renderPasses[pipelineInfo.renderPassId]->getRenderPass(),
-        .subpass = 0,
-        .basePipelineHandle = nullptr,
-    };
-
-    auto pipelineResult = m_device.createGraphicsPipeline(nullptr, graphicsPipelineCreateInfo);
-
-    if (pipelineResult.result != vk::Result::eSuccess)
-    {
-        throw std::runtime_error("could not create pipeline");
-    }
-    
-
-    m_device.destroyShaderModule(vertShaderModule);
-    m_device.destroyShaderModule(fragShaderModule);
-    
-    vk::Pipeline pipeline = pipelineResult.value;
-    m_context->setDebugObjectName((uint64_t)static_cast<VkPipeline>(pipeline), static_cast<VkDebugReportObjectTypeEXT>(pipeline.debugReportObjectType), "PARCE QUE C'EST NOTRE PIPELINE");
-
-
-    return VulkanPipeline {
-        .pipelineInfo = pipelineInfo,
-        .pipeline = pipeline
-    };
-}
-
-
 #pragma endregion
 
 #pragma region SHADER_MODULES
@@ -327,7 +167,7 @@ void VulkanRenderer::createDescriptorSetLayout()
         .binding = 0,
         .descriptorType = vk::DescriptorType::eUniformBuffer,
         .descriptorCount = 1,
-        .stageFlags = vk::ShaderStageFlagBits::eVertex,
+        .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
     };
 
     vk::DescriptorSetLayoutBinding samplerLayoutBinding{
@@ -427,6 +267,8 @@ void VulkanRenderer::createDescriptorPools() {
 }
 
 void VulkanRenderer::createShadowDescriptorSets() {
+
+
     vk::DescriptorImageInfo shadowTextureImageInfo{
         .sampler = m_textureSampler,
         .imageView = reinterpret_cast<ShadowRenderPass*>(m_renderPasses[RenderPassesId::ShadowMappingPassId])->getShadowAttachment(),
@@ -704,9 +546,9 @@ void VulkanRenderer::recreateSwapchainSizedObjects() {
     createPipelineLayout();
     for (int i = 0; i < m_pipelines.size(); i++)
     {
-        m_pipelines[i] = createPipeline(m_pipelines[i].pipelineInfo);
+        m_pipelines[i]->recreatePipeline();
     }
-    m_shadowPipeline = createPipeline(m_shadowPipeline.pipelineInfo);
+    m_shadowPipeline->recreatePipeline();
     
 }
 
@@ -715,9 +557,9 @@ void VulkanRenderer::cleanSwapchainSizedObjects() {
     vkDeviceWaitIdle(m_device);
 
     for (const auto& pipeline : m_pipelines) {
-        m_device.destroyPipeline(pipeline.pipeline);
+        pipeline->cleanPipeline();
     }
-    m_device.destroyPipeline(m_shadowPipeline.pipeline);
+    m_shadowPipeline->cleanPipeline();
     m_device.destroyPipelineLayout(m_pipelineLayout);
     
     m_context->cleanupSwapchain();
@@ -759,8 +601,8 @@ void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32
 
     vk::CommandBufferBeginInfo beginInfo{};
     commandBuffer.begin(beginInfo);
-    m_renderPasses[0]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_shadowDescriptorSets[m_currentFrame], m_shadowPipeline.pipeline, m_scenes, m_pipelineLayout);
-    m_renderPasses[1]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_shadowDescriptorSets[m_currentFrame], m_pipelines[m_currentPipelineId].pipeline, m_scenes, m_pipelineLayout);
+    m_renderPasses[0]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_shadowDescriptorSets[m_currentFrame], m_shadowPipeline->getPipeline(), m_scenes, m_pipelineLayout);
+    m_renderPasses[1]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_shadowDescriptorSets[m_currentFrame], m_pipelines[m_currentPipelineId]->getPipeline(), m_scenes, m_pipelineLayout);
     commandBuffer.end();
 }
 #pragma endregion
@@ -887,24 +729,103 @@ void VulkanRenderer::updateUniformBuffers(uint32_t imageIndex) {
     static auto startTime = std::chrono::high_resolution_clock::now();
 
     auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - startTime).count();
+  float time = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - startTime).count();  
     vk::Extent2D extent = m_renderPasses[RenderPassesId::MainRenderPassId]->getRenderPassExtent();
 
     float speed = 0.1f;
+
+
     //Model View Proj
     UniformBufferObject ubo{};
     ubo.view = m_camera->getViewMatrix();
-    ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float)extent.height, 0.1f, 1000.0f); //45deg vertical field of view, aspect ratio, near and far view planes
+    ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float)extent.height, 0.1f, 150.0f); //45deg vertical field of view, aspect ratio, near and far view planes
     ubo.proj[1][1] *= -1; //Designed for openGL but the Y coordinate of the clip coordinates is inverted
   
-    ubo.lightView = glm::lookAt(glm::vec3(0.f, 17.f, 4.f * sin(time)), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+    glm::vec3 lightPos = glm::vec3(0.f, 17.f, 4.f * sin(time));
+
+    ubo.lightView = glm::lookAt(lightPos, glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
     ubo.lightProj = glm::perspective(glm::radians(45.0f), 1.f, 1.f, 40.0f);
     ubo.lightProj[1][1] *= -1;
     
+    //TODO Extract update cascades
+    float nearClip = 0.1f;
+    float farClip = 150.f;
+    float clipRange = farClip - nearClip;
 
+    float minZ = nearClip;
+    float maxZ = nearClip + clipRange;
+
+    float range = maxZ - minZ;
+    float ratio = maxZ / minZ;
+
+    // Calculate split depths based on view camera frustum
+    // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
+    for (uint32_t i = 0; i < 4; i++) {
+        float p = (i + 1) / static_cast<float>(4);
+        float log = minZ * std::pow(ratio, p);
+        float uniform = minZ + range * p;
+        float d = 0.95f * (log - uniform) + uniform;
+        ubo.cascadeSplits[i] = (d - nearClip);
+    }
+
+    float lastSplitDist = 0.0;
+    for (uint32_t i = 0; i < 4; i++) {
+        float splitDist = ubo.cascadeSplits[i] /clipRange;
+
+        glm::vec3 frustumCorners[8] = {
+            glm::vec3(-1.0f,  1.0f, 0.0f),
+            glm::vec3(1.0f,  1.0f, 0.0f),
+            glm::vec3(1.0f, -1.0f, 0.0f),
+            glm::vec3(-1.0f, -1.0f, 0.0f),
+            glm::vec3(-1.0f,  1.0f,  1.0f),
+            glm::vec3(1.0f,  1.0f,  1.0f),
+            glm::vec3(1.0f, -1.0f,  1.0f),
+            glm::vec3(-1.0f, -1.0f,  1.0f),
+        };
+
+        // Project frustum corners into world space
+        glm::mat4 invCam = glm::inverse(ubo.proj * ubo.view);
+        for (uint32_t i = 0; i < 8; i++) {
+            glm::vec4 invCorner = invCam * glm::vec4(frustumCorners[i], 1.0f);
+            frustumCorners[i] = invCorner / invCorner.w;
+        }
+
+        for (uint32_t i = 0; i < 4; i++) {
+            glm::vec3 dist = frustumCorners[i + 4] - frustumCorners[i];
+            frustumCorners[i + 4] = frustumCorners[i] + (dist * splitDist);
+            frustumCorners[i] = frustumCorners[i] + (dist * lastSplitDist);
+        }
+
+        // Get frustum center
+        glm::vec3 frustumCenter = glm::vec3(0.0f);
+        for (uint32_t i = 0; i < 8; i++) {
+            frustumCenter += frustumCorners[i];
+        }
+        frustumCenter /= 8.0f;
+
+        float radius = 0.0f;
+        for (uint32_t i = 0; i < 8; i++) {
+            float distance = glm::length(frustumCorners[i] - frustumCenter);
+            radius = glm::max(radius, distance);
+        }
+        radius = std::ceil(radius * 16.0f) / 16.0f;
+
+        glm::vec3 maxExtents = glm::vec3(radius);
+        glm::vec3 minExtents = -maxExtents;
+
+        glm::vec3 lightDir = normalize(-lightPos);
+        glm::mat4 lightViewMatrix = glm::lookAt(frustumCenter - lightDir * -minExtents.z, frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z);
+
+        // Store split distance and matrix in cascade //TODONOW
+        /*cascades[i].splitDepth = (nearClip + splitDist * clipRange) * -1.0f;
+        cascades[i].viewProjMatrix = lightOrthoMatrix * lightViewMatrix;*/
+        //TODO C'est dégueulasse
+        lastSplitDist = ubo.cascadeSplits[i];
+    }
 
     void* data = m_allocator.mapMemory(m_uniformBuffersAllocations[imageIndex]);
-    memcpy(data, &ubo, sizeof(ubo));
+    memcpy(data, &ubo, sizeof(UniformBufferObject));
     m_allocator.unmapMemory(m_uniformBuffersAllocations[imageIndex]);
 }
 
@@ -922,7 +843,8 @@ void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
 #pragma region RENDER_PASSES
 void VulkanRenderer::createRenderPasses() {
     //Render pass 1: Shadow Render Pass
-    ShadowRenderPass* shadowRenderPass = new ShadowRenderPass(m_context); 
+    ShadowCascadeRenderPass* shadowRenderPass = new ShadowCascadeRenderPass(m_context, m_camera);
+    m_shadowPass = shadowRenderPass;
     shadowRenderPass->createRenderPass();
     m_renderPasses.push_back(shadowRenderPass);
 
