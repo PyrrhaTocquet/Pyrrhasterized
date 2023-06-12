@@ -3,8 +3,8 @@
 #include "Camera.h"
 
 struct CascadeUniformObject {
-	float cascadeSplits[4];
 	glm::mat4 cascadeViewProjMat[4];
+	float cascadeSplits[4];
 };
 
 class ShadowCascadeRenderPass : public ShadowRenderPass {
@@ -14,6 +14,8 @@ private:
 	Camera* m_camera;
 	std::vector<vk::Buffer> m_uniformBuffers;
 	std::vector<vma::Allocation> m_uniformBuffersAllocations;
+
+	std::array<CascadeUniformObject, MAX_FRAMES_IN_FLIGHT> m_cascadeUbos;
 
 public:
 	ShadowCascadeRenderPass(VulkanContext* context, Camera* camera);
@@ -30,8 +32,8 @@ public:
 	void createPushConstantsRanges()override;
 	void updatePipelineRessources(uint32_t currentFrame)override;
 	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t currentFrame, std::vector<VulkanScene*> scenes)override;
+	CascadeUniformObject getCurrentUbo(uint32_t currentFrame);
 private:
 	void createUniformBuffer();
 	void updateUniformBuffer(uint32_t currentFrame);
-
 };

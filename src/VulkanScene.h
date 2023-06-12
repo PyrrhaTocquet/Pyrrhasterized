@@ -33,7 +33,7 @@ public:
 	void createBuffers();
 	const uint32_t getIndexBufferSize();
 
-	void draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout ) override;
+	void draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant) override;
 private:
 	void createVertexBuffer();
 	void createIndexBuffer();

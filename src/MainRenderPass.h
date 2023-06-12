@@ -20,6 +20,7 @@ class MainRenderPass : public VulkanRenderPass {
 	std::vector<vk::Buffer> m_uniformBuffers;
 	std::vector<vma::Allocation> m_uniformBuffersAllocations;
 	vk::Sampler m_textureSampler = VK_NULL_HANDLE;
+	vk::Sampler m_shadowMapSampler = VK_NULL_HANDLE;
 
 	vk::DescriptorPool m_shadowDescriptorPool;
 	vk::DescriptorSetLayout m_shadowDescriptorSetLayout;
@@ -29,9 +30,9 @@ class MainRenderPass : public VulkanRenderPass {
 	Camera* m_camera;
 
 	//acquired at construction
-	ShadowRenderPass* m_shadowRenderPass = nullptr;
+	ShadowCascadeRenderPass* m_shadowRenderPass = nullptr;
 public:
-	MainRenderPass(VulkanContext* context, Camera* camera, ShadowRenderPass* shadowRenderPass);
+	MainRenderPass(VulkanContext* context, Camera* camera, ShadowCascadeRenderPass* shadowRenderPass);
 	virtual ~MainRenderPass()override;
 	void createRenderPass() override;
 	void createFramebuffer() override;
@@ -54,4 +55,5 @@ private:
 	void createDefaultTextures();
 	void createUniformBuffer();
 	void createTextureSampler();
+	void createShadowMapSampler();
 };

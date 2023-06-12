@@ -24,8 +24,13 @@ private:
 	CameraCoords m_cameraCoords;
 
 public:
+	const float nearPlane = 0.1f;
+	const float farPlane = 150.f;
+
 	Camera(VulkanContext* context);
 	void update() override;
 
 	glm::mat4 getViewMatrix();
+	glm::mat4 getProjMatrix(VulkanContext* context);
+	glm::vec3 getCameraPos();
 };

@@ -1,7 +1,7 @@
 #include "MainRenderPass.h"
 
 //Always create this render pass after creating the shadow render pass
-MainRenderPass::MainRenderPass(VulkanContext* context, Camera* camera, ShadowRenderPass* shadowRenderPass) : VulkanRenderPass(context)
+MainRenderPass::MainRenderPass(VulkanContext* context, Camera* camera, ShadowCascadeRenderPass* shadowRenderPass) : VulkanRenderPass(context)
 {
     m_shadowRenderPass = shadowRenderPass;
     m_camera = camera;
@@ -15,6 +15,7 @@ MainRenderPass::~MainRenderPass()
     delete m_defaultTexture;
     delete m_defaultNormalMap;
     device.destroySampler(m_textureSampler);
+    device.destroySampler(m_shadowMapSampler);
     cleanAttachments();
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         m_context->getAllocator().destroyBuffer(m_uniformBuffers[i], m_uniformBuffersAllocations[i]);
@@ -106,12 +107,23 @@ void MainRenderPass::createRenderPass()
     std::vector<vk::AttachmentDescription> attachments{ colorDescription, depthDescription, shadowMapReadDescription };
     if (ENABLE_MSAA)attachments.push_back(colorDescriptionResolve);
 
+    vk::SubpassDependency subpassDependency{
+        .srcSubpass = VK_SUBPASS_EXTERNAL,
+        .dstSubpass = 0,
+        .srcStageMask = vk::PipelineStageFlagBits::eFragmentShader,
+        .dstStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests,
+        .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite, //Waits for it to be written,
+        .dstAccessMask = vk::AccessFlagBits::eShaderRead,
+        .dependencyFlags = vk::DependencyFlagBits::eByRegion,
+    };
+
     vk::RenderPassCreateInfo renderPassInfo{
         .attachmentCount = static_cast<uint32_t>(attachments.size()),
         .pAttachments = attachments.data(),
         .subpassCount = 1,
         .pSubpasses = &subpass,
-        .dependencyCount = 0,
+        .dependencyCount = 1,
+        .pDependencies = &subpassDependency 
     };
 
     if (m_context->getDevice().createRenderPass(&renderPassInfo, nullptr, &m_renderPass) != vk::Result::eSuccess) {
@@ -398,7 +410,7 @@ void MainRenderPass::createDescriptorSet(VulkanScene* scene)
     {
         //SHADOW TODO REFACTOR
         vk::DescriptorImageInfo shadowTextureImageInfo{
-          .sampler = m_textureSampler,
+          .sampler = m_shadowMapSampler,
           .imageView = m_shadowRenderPass->getShadowAttachment(),
           .imageLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
         };
@@ -419,7 +431,7 @@ void MainRenderPass::createDescriptorSet(VulkanScene* scene)
             throw std::runtime_error("could not allocate descriptor sets");
         }
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vk::WriteDescriptorSet writeDescriptorSet;
             writeDescriptorSet.dstSet = m_shadowDescriptorSet[i];
             writeDescriptorSet.dstBinding = 0;
@@ -486,9 +498,11 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
     double framerate = ImGui::GetIO().Framerate;
     bool openRendererPerf = true;
     ImGui::Begin("Renderer Performance", &openRendererPerf);
-    ImGui::SetWindowSize(ImVec2(200.f, 50.f));
+    ImGui::SetWindowSize(ImVec2(300.f, 100.f));
     ImGui::SetWindowPos(ImVec2(10.f, 10.f));
     ImGui::Text("Framerate: %f", framerate);
+    glm::vec3 cameraPos = m_camera->getCameraPos();
+    ImGui::Text("CameraCoords: %f, %f, %f", cameraPos.x, cameraPos.y, cameraPos.z);
     ImGui::End();
 
     ImGui::Render();
@@ -551,6 +565,7 @@ void MainRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t sw
        .clearValueCount = static_cast<uint32_t>(MAIN_CLEAR_VALUES.size()),
        .pClearValues = MAIN_CLEAR_VALUES.data(),
     };
+    ModelPushConstant pushConstant;
     commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_mainPipeline->getPipeline()); //Only one main draw pipeline per frame in this renderer
@@ -558,7 +573,7 @@ void MainRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t sw
     for (auto& scene : scenes)
     {
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { m_mainDescriptorSet[m_currentFrame], m_shadowDescriptorSet[m_currentFrame]}, nullptr);
-        scene->draw(commandBuffer, m_currentFrame, m_pipelineLayout);
+        scene->draw(commandBuffer, m_currentFrame, m_pipelineLayout, pushConstant);
     }
     
     renderImGui(commandBuffer);
@@ -569,6 +584,7 @@ void MainRenderPass::createPipelineRessources() {
     createDefaultTextures();
     createUniformBuffer();
     createTextureSampler();
+    createShadowMapSampler();
 }
 
 void MainRenderPass::createPushConstantsRanges()
@@ -590,97 +606,19 @@ void MainRenderPass::updatePipelineRessources(uint32_t currentFrame)
     float time = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - startTime).count();
     vk::Extent2D extent = getRenderPassExtent();
 
-    float speed = 0.1f;
-
 
     //Model View Proj
     UniformBufferObject ubo{};
     ubo.view = m_camera->getViewMatrix();
-    ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float)extent.height, 0.1f, 150.0f); //45deg vertical field of view, aspect ratio, near and far view planes
-    ubo.proj[1][1] *= -1; //Designed for openGL but the Y coordinate of the clip coordinates is inverted
-
-    glm::vec3 lightPos = glm::vec3(0.f, 17.f, 4.f * sin(time));
-
-    ubo.lightView = glm::lookAt(lightPos, glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
-    ubo.lightProj = glm::perspective(glm::radians(45.0f), 1.f, 1.f, 40.0f);
-    ubo.lightProj[1][1] *= -1;
-    /*
-    //TODO Extract update cascades
-    float nearClip = 0.1f;
-    float farClip = 150.f;
-    float clipRange = farClip - nearClip;
-
-    float minZ = nearClip;
-    float maxZ = nearClip + clipRange;
-
-    float range = maxZ - minZ;
-    float ratio = maxZ / minZ;
-
-    // Calculate split depths based on view camera frustum
-    // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
-    for (uint32_t i = 0; i < 4; i++) {
-        float p = (i + 1) / static_cast<float>(4);
-        float log = minZ * std::pow(ratio, p);
-        float uniform = minZ + range * p;
-        float d = 0.95f * (log - uniform) + uniform;
-        ubo.cascadeSplits[i] = (d - nearClip);
+    ubo.proj = m_camera->getProjMatrix(m_context);
+    ubo.current_frame = currentFrame;//TODO Better solution
+    CascadeUniformObject cascadeUbo = m_shadowRenderPass->getCurrentUbo(currentFrame);
+    
+    for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
+    {
+        ubo.cascadeSplits[i] = cascadeUbo.cascadeSplits[i];
+        ubo.cascadeViewProj[i] = cascadeUbo.cascadeViewProjMat[i];
     }
-
-    float lastSplitDist = 0.0;
-    for (uint32_t i = 0; i < 4; i++) {
-        float splitDist = ubo.cascadeSplits[i] / clipRange;
-
-        glm::vec3 frustumCorners[8] = {
-            glm::vec3(-1.0f,  1.0f, 0.0f),
-            glm::vec3(1.0f,  1.0f, 0.0f),
-            glm::vec3(1.0f, -1.0f, 0.0f),
-            glm::vec3(-1.0f, -1.0f, 0.0f),
-            glm::vec3(-1.0f,  1.0f,  1.0f),
-            glm::vec3(1.0f,  1.0f,  1.0f),
-            glm::vec3(1.0f, -1.0f,  1.0f),
-            glm::vec3(-1.0f, -1.0f,  1.0f),
-        };
-
-        // Project frustum corners into world space
-        glm::mat4 invCam = glm::inverse(ubo.proj * ubo.view);
-        for (uint32_t i = 0; i < 8; i++) {
-            glm::vec4 invCorner = invCam * glm::vec4(frustumCorners[i], 1.0f);
-            frustumCorners[i] = invCorner / invCorner.w;
-        }
-
-        for (uint32_t i = 0; i < 4; i++) {
-            glm::vec3 dist = frustumCorners[i + 4] - frustumCorners[i];
-            frustumCorners[i + 4] = frustumCorners[i] + (dist * splitDist);
-            frustumCorners[i] = frustumCorners[i] + (dist * lastSplitDist);
-        }
-
-        // Get frustum center
-        glm::vec3 frustumCenter = glm::vec3(0.0f);
-        for (uint32_t i = 0; i < 8; i++) {
-            frustumCenter += frustumCorners[i];
-        }
-        frustumCenter /= 8.0f;
-
-        float radius = 0.0f;
-        for (uint32_t i = 0; i < 8; i++) {
-            float distance = glm::length(frustumCorners[i] - frustumCenter);
-            radius = glm::max(radius, distance);
-        }
-        radius = std::ceil(radius * 16.0f) / 16.0f;
-
-        glm::vec3 maxExtents = glm::vec3(radius);
-        glm::vec3 minExtents = -maxExtents;
-
-        glm::vec3 lightDir = normalize(-lightPos);
-        glm::mat4 lightViewMatrix = glm::lookAt(frustumCenter - lightDir * -minExtents.z, frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z);
-
-        // Store split distance and matrix in cascade //TODONOW
-        /*cascades[i].splitDepth = (nearClip + splitDist * clipRange) * -1.0f;
-        cascades[i].viewProjMatrix = lightOrthoMatrix * lightViewMatrix;
-        //TODO C'est dégueulasse
-        lastSplitDist = ubo.cascadeSplits[i];*
-    }*/
 
     void* data = m_context->getAllocator().mapMemory(m_uniformBuffersAllocations[currentFrame]);
     memcpy(data, &ubo, sizeof(UniformBufferObject));
@@ -755,4 +693,31 @@ void MainRenderPass::createTextureSampler() {
         throw std::runtime_error("failed to create texture sampler");
     }
 
+}
+
+void MainRenderPass::createShadowMapSampler() {
+    vk::PhysicalDeviceProperties properties = m_context->getProperties();
+
+    vk::SamplerCreateInfo samplerInfo{
+        .magFilter = vk::Filter::eNearest, //Linear filtering
+        .minFilter = vk::Filter::eNearest,
+        .mipmapMode = vk::SamplerMipmapMode::eLinear,
+        .addressModeU = vk::SamplerAddressMode::eClampToEdge,
+        .addressModeV = vk::SamplerAddressMode::eClampToEdge,
+        .addressModeW = vk::SamplerAddressMode::eClampToEdge,
+        .mipLodBias = 0.0f,
+        .maxAnisotropy = 1.0f, //Max texels samples to calculate the final color
+        .minLod = 0.0f,
+        .maxLod = 1.0f,
+        .borderColor = vk::BorderColor::eFloatOpaqueWhite, //only useful when clamping
+        .unnormalizedCoordinates = VK_FALSE, //Normalized coordinates allow to change texture resolution for the same UVs
+    };
+
+    try {
+        m_shadowMapSampler = m_context->getDevice().createSampler(samplerInfo);
+    }
+    catch (vk::SystemError err)
+    {
+        throw std::runtime_error("failed to create texture sampler");
+    }
 }

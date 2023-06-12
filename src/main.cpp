@@ -51,7 +51,7 @@ int main() {
     /* Chest */
     Transform chestTransform;
     chestTransform.translate = glm::vec3(0.f, 0.f, 2.f);
-
+    
     scene.addModel("assets/TreasureChest/model.gltf", chestTransform);
     scene.addModel("assets/SponzaGltf/sponza.glb", sponzaTransform);
     scene.addModel("assets/Ganon/ganon.gltf", ganonTransform);
@@ -60,6 +60,11 @@ int main() {
     scene.addEntity(peachEntity);
     renderer.registerEntity(peachEntity);
     scene.addModel("assets/Link/model.obj", linkTransform);
+    
+    /*
+    Transform transform;
+    scene.addModel("assets/CubeScene/cubeScene.gltf", transform);
+    */
 
     renderer.addScene(&scene);
     /* TODO Debug pipelines somewhere else

@@ -6,8 +6,8 @@ ShadowCascadeRenderPass::ShadowCascadeRenderPass(VulkanContext* context, Camera*
     m_camera = camera;
     std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
     //One per cascade times two per frames frames in flight
-    m_framebuffers.resize(m_context->getSwapchainImagesCount() * SHADOW_CASCADE_COUNT);
-    m_shadowDepthLayerViews.resize(m_context->getSwapchainImagesCount() * SHADOW_CASCADE_COUNT);
+    m_framebuffers.resize(MAX_FRAMES_IN_FLIGHT * SHADOW_CASCADE_COUNT);
+    m_shadowDepthLayerViews.resize(MAX_FRAMES_IN_FLIGHT * SHADOW_CASCADE_COUNT);
 
 }
 
@@ -29,7 +29,7 @@ void ShadowCascadeRenderPass::createAttachments() {
        .tiling = vk::ImageTiling::eOptimal,
        .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
        .useDedicatedMemory = true,
-       .layers = SHADOW_CASCADE_COUNT
+       .layers = SHADOW_CASCADE_COUNT * MAX_FRAMES_IN_FLIGHT
     };
 
     VulkanImageViewParams imageViewParams{
@@ -128,7 +128,7 @@ void ShadowCascadeRenderPass::createDescriptorSet(VulkanScene* scene)
         vk::DescriptorBufferInfo bufferInfo{
             .buffer = m_uniformBuffers[i],
             .offset = 0,
-            .range = sizeof(UniformBufferObject)
+            .range = sizeof(CascadeUniformObject)
         };
 
         vk::WriteDescriptorSet descriptorWrite;
@@ -218,24 +218,31 @@ void ShadowCascadeRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, ui
 
     for (uint32_t i = 0; i < SHADOW_CASCADE_COUNT; i++) {
 
-        renderPassInfo.framebuffer = m_framebuffers[MAX_FRAMES_IN_FLIGHT * currentFrame + i],
-     
+        renderPassInfo.framebuffer = m_framebuffers[currentFrame * SHADOW_CASCADE_COUNT + i];
+
+        ModelPushConstant pushConstant{
+            .cascadeId = i
+        };
 
         commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_mainPipeline->getPipeline());
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, m_mainDescriptorSet[currentFrame], nullptr);
         VkDeviceSize offset = 0;
         //Draws each scene
         for (auto& scene : scenes)
-        {
-            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, m_mainDescriptorSet[currentFrame], nullptr);
-           
-            scene->draw(commandBuffer, currentFrame, m_pipelineLayout);
+        {           
+            scene->draw(commandBuffer, currentFrame, m_pipelineLayout, pushConstant);
         }
 
         commandBuffer.endRenderPass();
     }
    
 
+}
+
+CascadeUniformObject ShadowCascadeRenderPass::getCurrentUbo(uint32_t currentFrame)
+{
+    return m_cascadeUbos[currentFrame];
 }
 
 void ShadowCascadeRenderPass::createUniformBuffer()
@@ -257,26 +264,15 @@ void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
 
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - startTime).count();
-    vk::Extent2D extent = getRenderPassExtent();
 
-    float speed = 0.1f;
-
-
+    //CASCADES
     //Model View Proj
-    UniformBufferObject ubo{};
-    ubo.view = m_camera->getViewMatrix();
-    ubo.proj = glm::perspective(glm::radians(45.0f), extent.width / (float)extent.height, 0.1f, 150.0f); //45deg vertical field of view, aspect ratio, near and far view planes
-    ubo.proj[1][1] *= -1; //Designed for openGL but the Y coordinate of the clip coordinates is inverted
-
-    glm::vec3 lightPos = glm::vec3(0.f, 17.f, 4.f * sin(time));
-
-    ubo.lightView = glm::lookAt(lightPos, glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
-    ubo.lightProj = glm::perspective(glm::radians(45.0f), 1.f, 1.f, 40.0f);
-    ubo.lightProj[1][1] *= -1;
-    /*
-    //TODO Extract update cascades
-    float nearClip = 0.1f;
-    float farClip = 150.f;
+    CascadeUniformObject ubo{};
+    glm::vec3 lightPos = glm::vec3(10.f, 50.f, 10.f);
+    float cascadeSplits[SHADOW_CASCADE_COUNT] = { 0.f, 0.f, 0.f, 0.f };
+    
+    float nearClip = m_camera->nearPlane;
+    float farClip = m_camera->farPlane;
     float clipRange = farClip - nearClip;
 
     float minZ = nearClip;
@@ -287,17 +283,19 @@ void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
 
     // Calculate split depths based on view camera frustum
     // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
-    for (uint32_t i = 0; i < 4; i++) {
-        float p = (i + 1) / static_cast<float>(4);
+    float cascadeSplitLambda = 0.95f;
+    for (uint32_t i = 0; i < SHADOW_CASCADE_COUNT; i++) {
+        float p = (i + 1) / static_cast<float>(SHADOW_CASCADE_COUNT);
         float log = minZ * std::pow(ratio, p);
         float uniform = minZ + range * p;
-        float d = 0.95f * (log - uniform) + uniform;
-        ubo.cascadeSplits[i] = (d - nearClip);
+        float d = cascadeSplitLambda * (log - uniform) + uniform;
+        cascadeSplits[i] = (d - nearClip) / clipRange;
     }
 
+    // Calculate orthographic projection matrix for each cascade
     float lastSplitDist = 0.0;
-    for (uint32_t i = 0; i < 4; i++) {
-        float splitDist = ubo.cascadeSplits[i] / clipRange;
+    for (uint32_t i = 0; i < SHADOW_CASCADE_COUNT; i++) {
+        float splitDist = cascadeSplits[i];
 
         glm::vec3 frustumCorners[8] = {
             glm::vec3(-1.0f,  1.0f, 0.0f),
@@ -311,7 +309,7 @@ void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
         };
 
         // Project frustum corners into world space
-        glm::mat4 invCam = glm::inverse(ubo.proj * ubo.view);
+        glm::mat4 invCam = glm::inverse(m_camera->getProjMatrix(m_context) * m_camera->getViewMatrix());
         for (uint32_t i = 0; i < 8; i++) {
             glm::vec4 invCorner = invCam * glm::vec4(frustumCorners[i], 1.0f);
             frustumCorners[i] = invCorner / invCorner.w;
@@ -340,19 +338,20 @@ void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
         glm::vec3 maxExtents = glm::vec3(radius);
         glm::vec3 minExtents = -maxExtents;
 
+        const float higher = m_camera->farPlane; //Why does this fix everything :sob:
         glm::vec3 lightDir = normalize(-lightPos);
-        glm::mat4 lightViewMatrix = glm::lookAt(frustumCenter - lightDir * -minExtents.z, frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z);
+        glm::mat4 lightViewMatrix = glm::lookAt(frustumCenter - lightDir * (- minExtents.z + higher), frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z + higher);
 
-        // Store split distance and matrix in cascade //TODONOW
-        /*cascades[i].splitDepth = (nearClip + splitDist * clipRange) * -1.0f;
-        cascades[i].viewProjMatrix = lightOrthoMatrix * lightViewMatrix;
-        //TODO C'est dégueulasse
-        lastSplitDist = ubo.cascadeSplits[i];*
-    }*/
+        // Store split distance and matrix in cascade
+        ubo.cascadeSplits[i] = (m_camera->nearPlane + splitDist * clipRange) * -1.0f;
+        ubo.cascadeViewProjMat[i] = lightOrthoMatrix * lightViewMatrix;
 
+        lastSplitDist = cascadeSplits[i];
+    }
+    m_cascadeUbos[currentFrame] = ubo;
     void* data = m_context->getAllocator().mapMemory(m_uniformBuffersAllocations[currentFrame]);
-    memcpy(data, &ubo, sizeof(UniformBufferObject));
+    memcpy(data, &ubo, sizeof(CascadeUniformObject));
     m_context->getAllocator().unmapMemory(m_uniformBuffersAllocations[currentFrame]);
 }
 
@@ -361,7 +360,7 @@ void ShadowCascadeRenderPass::createFramebuffer()
     vk::Extent2D extent = getRenderPassExtent();
     vk::Format depthFormat = findDepthFormat();
     //One framebuffer by cascade and two framebuffer per frame in flight
-    for (size_t i = 0; i < m_framebuffers.size(); i++) {
+    for (uint32_t i = 0; i < m_framebuffers.size(); i++) {
 
         vk::ImageViewCreateInfo viewInfo{
             .image = m_shadowDepthAttachment->m_image,
@@ -371,7 +370,7 @@ void ShadowCascadeRenderPass::createFramebuffer()
                 .aspectMask = vk::ImageAspectFlagBits::eDepth,
                 .baseMipLevel = 0,
                 .levelCount = 1,
-                .baseArrayLayer = i % 4, //framebuffer indexing [currentFrame * MAX_FRAMES_IN_FLIGHT + cascadeId]
+                .baseArrayLayer = i, //framebuffer indexing [currentFrame * SHADOW_CASCADE_COUNT + cascadeId]
                 .layerCount = 1,
             }
         };

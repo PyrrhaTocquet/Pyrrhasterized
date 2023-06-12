@@ -69,3 +69,16 @@ glm::mat4 Camera::getViewMatrix()
     return glm::lookAt(m_cameraCoords.cameraPos, m_cameraCoords.cameraPos - m_cameraCoords.getDirection(), glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
+glm::mat4 Camera::getProjMatrix(VulkanContext* context)
+{
+    vk::Extent2D extent = context->getSwapchainExtent();
+    glm::mat4 proj = glm::perspective(glm::radians(45.0f), extent.width / (float)extent.height, nearPlane, farPlane); //45deg vertical field of view, aspect ratio, near and far view planes
+    proj[1][1] *= -1; //Designed for openGL but the Y coordinate of the clip coordinates is inverted
+    return proj;
+}
+
+glm::vec3 Camera::getCameraPos()
+{
+    return m_cameraCoords.cameraPos;
+}
+

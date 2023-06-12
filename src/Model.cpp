@@ -27,20 +27,18 @@ glm::mat4 Model::getMatrix()
 }
 
 //Write command buffer at scene drawing
-void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, float time, uint32_t &indexOffset)
+void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, float time, uint32_t &indexOffset, ModelPushConstant& pushConstant)
 {
 
 	for (auto& mesh : m_texturedMeshes)
 	{
 
-		ModelPushConstant modelPushConstant{
-			.model = m_transform.computeMatrix(),
-			.textureId = static_cast<glm::int32>(mesh.textureId),
-			.normalMapId = static_cast<glm::int32>(mesh.normalMapId),
-			.time = time,
-		};
+		pushConstant.model = m_transform.computeMatrix();
+		pushConstant.textureId = static_cast<glm::int32>(mesh.textureId);
+		pushConstant.normalMapId = static_cast<glm::int32>(mesh.normalMapId);
 
-		commandBuffer.pushConstants<ModelPushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, modelPushConstant);
+
+		commandBuffer.pushConstants<ModelPushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		commandBuffer.drawIndexed(mesh.indices.size(), 1, indexOffset, 0, 0);
 		indexOffset += mesh.indices.size();
 	}
@@ -102,7 +100,13 @@ void Model::loadGltf(const std::filesystem::path& path)
 		throw std::runtime_error("Failed to parse glTf\n");
 	}
 
-	m_texturedMeshes.resize(gltfModel.materials.size());
+	size_t materialCount = gltfModel.materials.size();
+	m_texturedMeshes.resize(materialCount);
+	if (materialCount <= 0)
+	{
+		TexturedMesh texturedMesh;
+		m_texturedMeshes.push_back(texturedMesh);
+	}
 	for (const auto& mesh : gltfModel.meshes) {
 		for (const auto& attribute : mesh.primitives) {
 			int positionBufferIndex = attribute.attributes.at("POSITION");
@@ -148,8 +152,13 @@ void Model::loadGltf(const std::filesystem::path& path)
 				};
 
 				int materialIndex = attribute.material;
+				if (materialCount <= 0)
+				{
+					materialIndex = 0;
+				}
 				m_texturedMeshes[materialIndex].vertices.push_back(vertex);
 				m_texturedMeshes[materialIndex].indices.push_back(m_texturedMeshes[materialIndex].indices.size());
+			
 			}
 
 		}
@@ -169,7 +178,11 @@ void Model::loadGltf(const std::filesystem::path& path)
 	};
 	
 	for (int i = 0; i < m_texturedMeshes.size(); i++) {
-		int textureId = gltfModel.materials[i].pbrMetallicRoughness.baseColorTexture.index;
+		int textureId = -1;
+		if (gltfModel.materials.size() > 0)
+		{
+			textureId = gltfModel.materials[i].pbrMetallicRoughness.baseColorTexture.index;
+		}
 		if (textureId != -1)
 		{
 			std::string texturePath = gltfModel.images[gltfModel.textures[textureId].source].uri;
@@ -195,7 +208,11 @@ void Model::loadGltf(const std::filesystem::path& path)
 		.aspectFlags = vk::ImageAspectFlagBits::eColor,
 	};
 	for (int i = 0; i < m_texturedMeshes.size(); i++) {
-		int textureId = gltfModel.materials[i].normalTexture.index;
+		int textureId = -1;
+		if (gltfModel.materials.size() > 0) {
+			textureId = gltfModel.materials[i].normalTexture.index;
+		}
+
 		if (textureId != -1)
 		{
 			std::string texturePath = gltfModel.images[gltfModel.textures[textureId].source].uri;

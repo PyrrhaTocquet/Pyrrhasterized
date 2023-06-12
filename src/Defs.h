@@ -7,7 +7,7 @@
 #include <iostream>
 
 /* RENDERING CONSTS*/
-const bool ENABLE_MSAA = false;
+const bool ENABLE_MSAA = true;
 const uint32_t SHADOW_CASCADE_COUNT = 4;
 const uint32_t MAX_TEXTURE_COUNT = 4096;
 
@@ -21,9 +21,10 @@ enum RenderPassesId {
 struct UniformBufferObject {
 	glm::mat4 view;
 	glm::mat4 proj;
-	glm::mat4 lightView;
-	glm::mat4 lightProj;
-	float cascadeSplits[4] = { 0.f, 0.f, 0.f, 0.f };
+	glm::mat4 cascadeViewProj[4];
+	float cascadeSplits[4] = {0.f};
+	uint32_t current_frame = 0;
+	float padding[6] = { 0.f };
 };
 
 struct ModelPushConstant {
@@ -31,7 +32,8 @@ struct ModelPushConstant {
 	glm::int32 textureId;
 	glm::int32 normalMapId;
 	glm::float32 time;
-	glm::vec2 data;
+	glm::uint32 cascadeId;
+	float padding[12];
 };
 
 
@@ -40,20 +42,22 @@ struct Transform {
 	glm::vec3 rotate = glm::vec3(0.f, 0.f, 0.f);
 	glm::vec3 scale = glm::vec3(1.f, 1.f, 1.f);
 
-	glm::mat4 transformMatrix = glm::mat4();
 	bool hasChanged = true;
+	glm::mat4 transformMatrix = glm::mat4();
 
 	glm::mat4 computeMatrix() {
-		if (hasChanged)
-		{
+
+		if (hasChanged) {
+
 			glm::mat4 translateMatrix = glm::translate(glm::mat4(1.f), translate);
 			glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.f), glm::radians(rotate.x), glm::vec3(1.f, 0.f, 0.f));
 			rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotate.y), glm::vec3(0.f, 1.f, 0.f));
 			rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotate.z), glm::vec3(0.f, 0.f, 1.f));
 			glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.f), scale);
 			transformMatrix = translateMatrix * rotationMatrix * scaleMatrix;
-			hasChanged = false;
 		}
+
+
 		return transformMatrix;
 	};
 };
