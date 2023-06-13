@@ -109,7 +109,7 @@ void main(){
 	}
 		//Shadows
 
-	vec3 lightPosition = vec3(10.0, 50.f, 10.f);
+	vec3 lightPosition = vec3(0.0, 50.f, 10.f);
 	vec3 lightDirection = normalize(-lightPosition); //Light Position is distance to 0, 0, 0 here
 
 
@@ -118,7 +118,7 @@ void main(){
 	bias = clamp(bias, 0, 0.01);
 
 	vec4 lightViewPosition = (biasMat * ubo.cascadeViewProj[cascadeIndex]) * vec4(fragPosWorld, 1.0);	
-	float shadowFactor = filterPCF(lightViewPosition / lightViewPosition.w, bias, ubo.currentFrame * 4 + cascadeIndex);
+	float shadowFactor = readShadowMap(lightViewPosition / lightViewPosition.w, vec2(0,0) ,bias, ubo.currentFrame * 4 + cascadeIndex);
 	
 	
 

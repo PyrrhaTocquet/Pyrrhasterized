@@ -268,7 +268,7 @@ void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
     //CASCADES
     //Model View Proj
     CascadeUniformObject ubo{};
-    glm::vec3 lightPos = glm::vec3(10.f, 50.f, 10.f);
+    glm::vec3 lightPos = glm::vec3(0.f, 50.f, 10.f);
     float cascadeSplits[SHADOW_CASCADE_COUNT] = { 0.f, 0.f, 0.f, 0.f };
     
     float nearClip = m_camera->nearPlane;

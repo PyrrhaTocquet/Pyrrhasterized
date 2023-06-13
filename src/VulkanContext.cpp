@@ -187,7 +187,7 @@ void VulkanContext::createInstance()
 		createInfo.pNext = (vk::DebugUtilsMessengerCreateInfoEXT*)&debugMessengerCreateInfo;
 
 		//Best practices layer, added to the debugMessenger's pNext.
-		vk::ValidationFeatureEnableEXT enables[] = { vk::ValidationFeatureEnableEXT::eBestPractices };
+		vk::ValidationFeatureEnableEXT enables[] = {vk::ValidationFeatureEnableEXT::eSynchronizationValidation };
 		vk::ValidationFeaturesEXT features{
 			.enabledValidationFeatureCount = 1,
 			.pEnabledValidationFeatures = enables,

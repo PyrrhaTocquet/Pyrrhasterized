@@ -613,7 +613,7 @@ void MainRenderPass::updatePipelineRessources(uint32_t currentFrame)
     ubo.proj = m_camera->getProjMatrix(m_context);
     ubo.current_frame = currentFrame;//TODO Better solution
     CascadeUniformObject cascadeUbo = m_shadowRenderPass->getCurrentUbo(currentFrame);
-    
+
     for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
     {
         ubo.cascadeSplits[i] = cascadeUbo.cascadeSplits[i];
