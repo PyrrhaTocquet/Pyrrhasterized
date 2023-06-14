@@ -44,7 +44,7 @@ VulkanContext::VulkanContext()
 VulkanContext::~VulkanContext()
 {
 
-	for (auto imageView : m_swapchainImageViews) {
+	for (auto& imageView : m_swapchainImageViews) {
 		m_device.destroyImageView(imageView);
 	}
 
@@ -178,6 +178,8 @@ void VulkanContext::createInstance()
 	.ppEnabledExtensionNames = extensions.data()
 	};
 	
+
+
 	//Debug validation layers
 	vk::DebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo;
 	if (enableValidationLayers) {
@@ -187,13 +189,13 @@ void VulkanContext::createInstance()
 		createInfo.pNext = (vk::DebugUtilsMessengerCreateInfoEXT*)&debugMessengerCreateInfo;
 
 		//Best practices layer, added to the debugMessenger's pNext.
-		vk::ValidationFeatureEnableEXT enables[] = {vk::ValidationFeatureEnableEXT::eSynchronizationValidation };
-		vk::ValidationFeaturesEXT features{
-			.enabledValidationFeatureCount = 1,
-			.pEnabledValidationFeatures = enables,
+		std::array<vk::ValidationFeatureEnableEXT, 1> enables = {vk::ValidationFeatureEnableEXT::eSynchronizationValidation };
+		vk::ValidationFeaturesEXT validationFeatures{
+			.enabledValidationFeatureCount = enables.size(),
+			.pEnabledValidationFeatures = enables.data(),
 		};
 
-		debugMessengerCreateInfo.pNext = &features;
+		debugMessengerCreateInfo.pNext = &validationFeatures;
 
 	}
 	else {
@@ -219,6 +221,7 @@ bool VulkanContext::isDeviceSuitable(const vk::PhysicalDevice &device)
 {
 	vk::PhysicalDeviceProperties physicalDeviceProperties = device.getProperties();
 	vk::PhysicalDeviceFeatures physicalDeviceFeatures = device.getFeatures(); 
+
 
 	bool extensionsSupported = checkDeviceExtensionsSupport(device, requiredExtensions);
 	bool swapchainAdequate = false;
@@ -411,7 +414,7 @@ void VulkanContext::clearFramebufferResized() {
 }
 
 void VulkanContext::cleanupSwapchain() {
-	for (auto imageView : m_swapchainImageViews)
+	for (auto& imageView : m_swapchainImageViews)
 	{
 		m_device.destroyImageView(imageView);
 	}
@@ -628,7 +631,12 @@ void VulkanContext::createLogicalDevice()
 		.samplerAnisotropy = VK_TRUE,
 	};
 
+	vk::PhysicalDeviceSynchronization2Features synchronization2Feature{
+	.synchronization2 = VK_TRUE,
+	};
+
 	vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{
+		.pNext = &synchronization2Feature,
 		.shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
 		.descriptorBindingPartiallyBound = VK_TRUE,
 		.descriptorBindingVariableDescriptorCount = VK_TRUE,

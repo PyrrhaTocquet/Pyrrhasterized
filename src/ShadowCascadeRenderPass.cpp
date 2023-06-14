@@ -6,8 +6,8 @@ ShadowCascadeRenderPass::ShadowCascadeRenderPass(VulkanContext* context, Camera*
     m_camera = camera;
     std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
     //One per cascade times two per frames frames in flight
-    m_framebuffers.resize(MAX_FRAMES_IN_FLIGHT * SHADOW_CASCADE_COUNT);
-    m_shadowDepthLayerViews.resize(MAX_FRAMES_IN_FLIGHT * SHADOW_CASCADE_COUNT);
+    m_framebuffers.resize(SHADOW_CASCADE_COUNT);
+    m_shadowDepthLayerViews.resize(SHADOW_CASCADE_COUNT);
 
 }
 
@@ -20,6 +20,7 @@ ShadowCascadeRenderPass::~ShadowCascadeRenderPass() {
 
 void ShadowCascadeRenderPass::createAttachments() {
     vk::Extent2D extent = getRenderPassExtent();
+
     VulkanImageParams imageParams{
        .width = extent.width,
        .height = extent.height,
@@ -27,9 +28,9 @@ void ShadowCascadeRenderPass::createAttachments() {
        .numSamples = vk::SampleCountFlagBits::e1,
        .format = findDepthFormat(),
        .tiling = vk::ImageTiling::eOptimal,
-       .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
+       .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled,
        .useDedicatedMemory = true,
-       .layers = SHADOW_CASCADE_COUNT * MAX_FRAMES_IN_FLIGHT
+       .layers = SHADOW_CASCADE_COUNT,
     };
 
     VulkanImageViewParams imageViewParams{
@@ -38,7 +39,6 @@ void ShadowCascadeRenderPass::createAttachments() {
     };
 
     m_shadowDepthAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
-
 }
 
 
@@ -205,6 +205,33 @@ void ShadowCascadeRenderPass::updatePipelineRessources(uint32_t currentFrame)
 
 void ShadowCascadeRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t currentFrame, std::vector<VulkanScene*> scenes)
 {
+
+    vk::ImageMemoryBarrier2 memoryBarrier{
+    .srcStageMask = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
+    .srcAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+    .dstStageMask = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
+    .dstAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentRead | vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+    .oldLayout = vk::ImageLayout::eUndefined,
+    .newLayout = vk::ImageLayout::eAttachmentOptimal,
+    .image = m_shadowDepthAttachment->m_image,
+    .subresourceRange = {
+        .aspectMask = vk::ImageAspectFlagBits::eDepth,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = SHADOW_CASCADE_COUNT,
+    }
+    };
+
+    vk::DependencyInfo dependencyInfo = {
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers = &memoryBarrier,
+
+    };
+
+    commandBuffer.pipelineBarrier2(dependencyInfo);
+
+
     //RENOMMER currentFrame
     vk::RenderPassBeginInfo renderPassInfo{
         .renderPass = m_renderPass,
@@ -218,7 +245,7 @@ void ShadowCascadeRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, ui
 
     for (uint32_t i = 0; i < SHADOW_CASCADE_COUNT; i++) {
 
-        renderPassInfo.framebuffer = m_framebuffers[currentFrame * SHADOW_CASCADE_COUNT + i];
+        renderPassInfo.framebuffer = m_framebuffers[i];
 
         ModelPushConstant pushConstant{
             .cascadeId = i
@@ -236,8 +263,38 @@ void ShadowCascadeRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, ui
 
         commandBuffer.endRenderPass();
     }
+    recordShadowCascadeMemoryDependency(commandBuffer);
    
 
+
+}
+
+void ShadowCascadeRenderPass::recordShadowCascadeMemoryDependency(vk::CommandBuffer commandBuffer) {
+
+    vk::ImageMemoryBarrier2 memoryBarrier{
+        .srcStageMask = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
+        .srcAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+        .dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader,
+        .dstAccessMask = vk::AccessFlagBits2::eShaderRead,
+        .oldLayout = vk::ImageLayout::eAttachmentOptimal,
+        .newLayout = vk::ImageLayout::eReadOnlyOptimal,
+        .image = m_shadowDepthAttachment->m_image,
+        .subresourceRange = {
+            .aspectMask = vk::ImageAspectFlagBits::eDepth,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = SHADOW_CASCADE_COUNT,
+        }
+    };
+
+    vk::DependencyInfo dependencyInfo = {
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers = &memoryBarrier,
+
+    };
+
+    commandBuffer.pipelineBarrier2(dependencyInfo);
 }
 
 CascadeUniformObject ShadowCascadeRenderPass::getCurrentUbo(uint32_t currentFrame)
@@ -365,7 +422,7 @@ void ShadowCascadeRenderPass::createFramebuffer()
         vk::ImageViewCreateInfo viewInfo{
             .image = m_shadowDepthAttachment->m_image,
             .viewType = vk::ImageViewType::e2D,
-            .format = findDepthFormat(),
+            .format = depthFormat,
             .subresourceRange = {
                 .aspectMask = vk::ImageAspectFlagBits::eDepth,
                 .baseMipLevel = 0,

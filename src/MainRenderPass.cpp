@@ -3,6 +3,9 @@
 //Always create this render pass after creating the shadow render pass
 MainRenderPass::MainRenderPass(VulkanContext* context, Camera* camera, ShadowCascadeRenderPass* shadowRenderPass) : VulkanRenderPass(context)
 {
+    std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
+    m_framebuffers.resize(m_context->getSwapchainImagesCount());
+
     m_shadowRenderPass = shadowRenderPass;
     m_camera = camera;
 }
@@ -40,7 +43,7 @@ void MainRenderPass::createRenderPass()
     };
     vk::AttachmentReference colorAttachmentRef = {
         .attachment = 0,
-        .layout = ENABLE_MSAA ? vk::ImageLayout::eColorAttachmentOptimal : vk::ImageLayout::ePresentSrcKHR,
+        .layout = vk::ImageLayout::eColorAttachmentOptimal,
     };
 
     //MSAA depth target
@@ -53,17 +56,6 @@ void MainRenderPass::createRenderPass()
         .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
         .initialLayout = vk::ImageLayout::eUndefined,
         .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-    };
-
-    vk::AttachmentDescription shadowMapReadDescription{
-        .format = findDepthFormat(),
-        .samples = vk::SampleCountFlagBits::e1,
-        .loadOp = vk::AttachmentLoadOp::eLoad,
-        .storeOp = vk::AttachmentStoreOp::eDontCare,
-        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-        .initialLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
-        .finalLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal, //layout after render pass
     };
 
     vk::AttachmentReference depthAttachmentRef = {
@@ -84,46 +76,48 @@ void MainRenderPass::createRenderPass()
     };
 
     vk::AttachmentReference colorAttachmentResolveRef = {
-        .attachment = 3,
+        .attachment = 2,
         .layout = vk::ImageLayout::eColorAttachmentOptimal,
     };
 
 
-    vk::AttachmentReference shadowMapReadRef = {
-        .attachment = 2,
-        .layout = vk::ImageLayout::eDepthStencilReadOnlyOptimal
-    };
-
     vk::SubpassDescription subpass = vk::SubpassDescription{
         .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-        .inputAttachmentCount = 1,
-        .pInputAttachments = &shadowMapReadRef,
         .colorAttachmentCount = 1,
         .pColorAttachments = &colorAttachmentRef,
         .pResolveAttachments = ENABLE_MSAA ? &colorAttachmentResolveRef : nullptr,
         .pDepthStencilAttachment = &depthAttachmentRef,
     };
 
-    std::vector<vk::AttachmentDescription> attachments{ colorDescription, depthDescription, shadowMapReadDescription };
-    if (ENABLE_MSAA)attachments.push_back(colorDescriptionResolve);
-
-    vk::SubpassDependency subpassDependency{
+    vk::SubpassDependency dependencyColorAttachment{
         .srcSubpass = VK_SUBPASS_EXTERNAL,
         .dstSubpass = 0,
-        .srcStageMask = vk::PipelineStageFlagBits::eFragmentShader,
-        .dstStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests,
-        .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite, //Waits for it to be written,
-        .dstAccessMask = vk::AccessFlagBits::eShaderRead,
-        .dependencyFlags = vk::DependencyFlagBits::eByRegion,
+        .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        .dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
+    };
+    vk::SubpassDependency dependencyDepthAttachment{
+        .srcSubpass = VK_SUBPASS_EXTERNAL,
+        .dstSubpass = 0,
+        .srcStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests,
+        .dstStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests,
+        .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+        .dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
     };
 
+
+
+    std::vector<vk::AttachmentDescription> attachments{ colorDescription, depthDescription };
+    if (ENABLE_MSAA)attachments.push_back(colorDescriptionResolve);
+
+    std::vector<vk::SubpassDependency> dependencies{ dependencyColorAttachment, dependencyDepthAttachment };
     vk::RenderPassCreateInfo renderPassInfo{
         .attachmentCount = static_cast<uint32_t>(attachments.size()),
         .pAttachments = attachments.data(),
         .subpassCount = 1,
         .pSubpasses = &subpass,
-        .dependencyCount = 1,
-        .pDependencies = &subpassDependency 
+        .dependencyCount = static_cast<uint32_t>(dependencies.size()),
+        .pDependencies = dependencies.data(),
     };
 
     if (m_context->getDevice().createRenderPass(&renderPassInfo, nullptr, &m_renderPass) != vk::Result::eSuccess) {
@@ -202,7 +196,7 @@ void MainRenderPass::createDescriptorPool()
     //SHADOW MAP INPUT
     {
         vk::DescriptorPoolSize shadowPoolSize;
-        shadowPoolSize.type = vk::DescriptorType::eCombinedImageSampler;//Dynamic Indexing
+        shadowPoolSize.type = vk::DescriptorType::eCombinedImageSampler; 
         shadowPoolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
         vk::DescriptorPoolCreateInfo shadowPoolInfo{
@@ -375,7 +369,7 @@ void MainRenderPass::createDescriptorSet(VulkanScene* scene)
     }
 
     //Updating the descriptor sets with the appropriates references
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vk::DescriptorBufferInfo bufferInfo{
             .buffer = m_uniformBuffers[i],
             .offset = 0,
@@ -408,13 +402,6 @@ void MainRenderPass::createDescriptorSet(VulkanScene* scene)
     }
 
     {
-        //SHADOW TODO REFACTOR
-        vk::DescriptorImageInfo shadowTextureImageInfo{
-          .sampler = m_shadowMapSampler,
-          .imageView = m_shadowRenderPass->getShadowAttachment(),
-          .imageLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
-        };
-
         m_shadowDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
         std::vector<vk::DescriptorSetLayout> shadowLayouts(MAX_FRAMES_IN_FLIGHT, m_shadowDescriptorSetLayout);
 
@@ -431,7 +418,16 @@ void MainRenderPass::createDescriptorSet(VulkanScene* scene)
             throw std::runtime_error("could not allocate descriptor sets");
         }
 
+        //SHADOW TODO REFACTOR
+        vk::DescriptorImageInfo shadowTextureImageInfo{
+          .sampler = m_shadowMapSampler,
+          .imageView = m_shadowRenderPass->getShadowAttachment(),
+          .imageLayout = vk::ImageLayout::eReadOnlyOptimal,
+        };
+
         for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+
+
             vk::WriteDescriptorSet writeDescriptorSet;
             writeDescriptorSet.dstSet = m_shadowDescriptorSet[i];
             writeDescriptorSet.dstBinding = 0;
@@ -518,7 +514,6 @@ void MainRenderPass::createFramebuffer() {
             attachments = { //Order corresponds to the attachment references
             m_colorAttachment->m_imageView,
             m_depthAttachment->m_imageView,
-            m_shadowRenderPass->getShadowAttachment(),
             swapchainImageViews[i],
             };
         }
@@ -527,7 +522,6 @@ void MainRenderPass::createFramebuffer() {
             attachments = {
                 swapchainImageViews[i],
                 m_depthAttachment->m_imageView,
-                m_shadowRenderPass->getShadowAttachment(),
             };
         }
 
@@ -611,7 +605,6 @@ void MainRenderPass::updatePipelineRessources(uint32_t currentFrame)
     UniformBufferObject ubo{};
     ubo.view = m_camera->getViewMatrix();
     ubo.proj = m_camera->getProjMatrix(m_context);
-    ubo.current_frame = currentFrame;//TODO Better solution
     CascadeUniformObject cascadeUbo = m_shadowRenderPass->getCurrentUbo(currentFrame);
 
     for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)

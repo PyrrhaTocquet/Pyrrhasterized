@@ -36,4 +36,7 @@ public:
 private:
 	void createUniformBuffer();
 	void updateUniformBuffer(uint32_t currentFrame);
+
+
+	void recordShadowCascadeMemoryDependency(vk::CommandBuffer commandBuffer);
 };

@@ -149,7 +149,6 @@ void VulkanRenderer::createCommandBuffers() {
 //Records the main command buffer for frame generation
 void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex) 
 {
-
     vk::CommandBufferBeginInfo beginInfo{};
     commandBuffer.begin(beginInfo); //TODO Revirtualise it well
     m_renderPasses[0]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
@@ -207,7 +206,7 @@ void VulkanRenderer::mainloop() {
 void VulkanRenderer::drawFrame() {
 
     //Wait and reset CPU semaphore
-    m_device.waitForFences(m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);//Wait for one or all fences (VK_TRUE), uint64_max disables the timeout
+    m_device.waitForFences(1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);//Wait for one or all fences (VK_TRUE), uint64_max disables the timeout
     uint32_t imageIndex = m_context->acquireNextSwapchainImage(m_imageAvailableSemaphores[m_currentFrame]);
     m_device.resetFences(m_inFlightFences[m_currentFrame]); //Always reset fences (after being sure we are going to submit work
     m_commandBuffers[m_currentFrame].reset(); //Reset to record the command buffer
@@ -222,7 +221,7 @@ void VulkanRenderer::drawFrame() {
     vk::SubmitInfo submitInfo{
         .waitSemaphoreCount = 1, //Specifies which semaphores to wait on before executions begin and on which stage to wait.
         .pWaitSemaphores = waitSemaphores,
-        .pWaitDstStageMask = waitStages, //Vertex shader can be ran while the image is not yet available. (Stages are linked to waitSemaphores indexes)
+        .pWaitDstStageMask = waitStages, //Stages can be ran while the image is not yet available. (Stages are linked to waitSemaphores indexes)
         .commandBufferCount = 1, //Command buffers to submit for execution
         .pCommandBuffers = &m_commandBuffers[m_currentFrame],
         .signalSemaphoreCount = 1,  //Semaphores to signal once the buffers have finished execution

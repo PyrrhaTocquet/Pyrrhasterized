@@ -24,8 +24,6 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
 	mat4 proj;
 	mat4[SHADOW_CASCADE_COUNT] cascadeViewProj;
 	vec4 cascadeSplits;
-	uint currentFrame;
-	vec3 padding;
 }ubo;
 
 
@@ -68,7 +66,7 @@ float filterPCF(vec4 lightViewCoord, float bias, uint index)
 
 	float shadowFactor = 0.0;
 	int count = 0;
-	int range = 1; //Averaging 9 samples
+	int range = 40; //Averaging 9 samples
 
 	for (int x = -range; x <= range; x++)
 	{
@@ -118,7 +116,7 @@ void main(){
 	bias = clamp(bias, 0, 0.01);
 
 	vec4 lightViewPosition = (biasMat * ubo.cascadeViewProj[cascadeIndex]) * vec4(fragPosWorld, 1.0);	
-	float shadowFactor = readShadowMap(lightViewPosition / lightViewPosition.w, vec2(0,0) ,bias, ubo.currentFrame * 4 + cascadeIndex);
+	float shadowFactor = filterPCF(lightViewPosition / lightViewPosition.w ,bias, cascadeIndex);
 	
 	
 

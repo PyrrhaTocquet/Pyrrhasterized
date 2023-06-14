@@ -60,6 +60,7 @@ private:
 	std::vector<vk::Semaphore> m_imageAvailableSemaphores;
 	std::vector<vk::Semaphore> m_renderFinishedSemaphores;
 
+
 	/*-------------------------------------------*/
 
 	uint32_t m_mipLevels = 10;

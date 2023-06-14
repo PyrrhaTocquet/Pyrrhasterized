@@ -2,7 +2,7 @@
 
 ShadowRenderPass::ShadowRenderPass(VulkanContext* context) : VulkanRenderPass(context)
 {
-
+    m_framebuffers.resize(1);
 }
 
 ShadowRenderPass::~ShadowRenderPass()
@@ -20,12 +20,12 @@ void ShadowRenderPass::createRenderPass()
      .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
      .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
      .initialLayout = vk::ImageLayout::eUndefined,
-     .finalLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
+     .finalLayout = vk::ImageLayout::eAttachmentOptimal,
     };
 
     vk::AttachmentReference shadowDepthWriteAttachmentRef = {
         .attachment = 0,
-        .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal, //layout during render pass
+        .layout = vk::ImageLayout::eAttachmentOptimal, //layout during render pass
     };
 
     vk::SubpassDependency inDependency{
@@ -38,15 +38,8 @@ void ShadowRenderPass::createRenderPass()
         .dependencyFlags = vk::DependencyFlagBits::eByRegion,
     };
 
-    vk::SubpassDependency outDependency{
-        .srcSubpass = 0, //implicit first subpass
-        .dstSubpass = VK_SUBPASS_EXTERNAL,
-        .srcStageMask = vk::PipelineStageFlagBits::eLateFragmentTests,
-        .dstStageMask = vk::PipelineStageFlagBits::eFragmentShader,
-        .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite, //Waits for it to be written,
-        .dstAccessMask = vk::AccessFlagBits::eShaderRead,
-        .dependencyFlags = vk::DependencyFlagBits::eByRegion
-    };
+
+
 
     vk::SubpassDescription subpass{
         .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
@@ -54,7 +47,7 @@ void ShadowRenderPass::createRenderPass()
         .pDepthStencilAttachment = &shadowDepthWriteAttachmentRef,
     };
 
-    std::array<vk::SubpassDependency, 2> dependencies{ inDependency, outDependency };
+    std::array<vk::SubpassDependency, 1> dependencies{ inDependency};
     vk::RenderPassCreateInfo renderPassInfo{
         .attachmentCount = 1,
         .pAttachments = &shadowDepthWriteDescription,
@@ -72,15 +65,16 @@ void ShadowRenderPass::createRenderPass()
 
 void ShadowRenderPass::createAttachments() {
     vk::Extent2D extent = getRenderPassExtent();
+    
     VulkanImageParams imageParams{
-       .width = extent.width,
-       .height = extent.height,
-       .mipLevels = 1,
-       .numSamples = vk::SampleCountFlagBits::e1,
-       .format = findDepthFormat(),
-       .tiling = vk::ImageTiling::eOptimal,
-       .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled,
-       .useDedicatedMemory = true,
+        .width = extent.width,
+        .height = extent.height,
+        .mipLevels = 1,
+        .numSamples = vk::SampleCountFlagBits::e1,
+        .format = findDepthFormat(),
+        .tiling = vk::ImageTiling::eOptimal,
+        .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled,
+        .useDedicatedMemory = true,
     };
 
     VulkanImageViewParams imageViewParams{
@@ -88,6 +82,7 @@ void ShadowRenderPass::createAttachments() {
     };
 
     m_shadowDepthAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
+
 }
 
 void ShadowRenderPass::cleanAttachments()

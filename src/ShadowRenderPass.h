@@ -12,7 +12,7 @@ class ShadowRenderPass : public VulkanRenderPass {
 	const uint32_t SHADOW_MAP_SIZE = 4096;
 
 protected:
-	VulkanImage* m_shadowDepthAttachment = nullptr;
+	VulkanImage* m_shadowDepthAttachment;
 public:
 	ShadowRenderPass(VulkanContext* context);
 	ShadowRenderPass() {};

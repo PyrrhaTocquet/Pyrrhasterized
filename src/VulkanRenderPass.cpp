@@ -9,8 +9,6 @@ vk::Format VulkanRenderPass::findDepthFormat()
 VulkanRenderPass::VulkanRenderPass(VulkanContext* context)
 {
 	m_context = context;
-	std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
-	m_framebuffers.resize(m_context->getSwapchainImagesCount());
 }
 
 VulkanRenderPass::~VulkanRenderPass()

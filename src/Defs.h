@@ -7,7 +7,7 @@
 #include <iostream>
 
 /* RENDERING CONSTS*/
-const bool ENABLE_MSAA = true;
+const bool ENABLE_MSAA = false;
 const uint32_t SHADOW_CASCADE_COUNT = 4;
 const uint32_t MAX_TEXTURE_COUNT = 4096;
 
@@ -23,8 +23,6 @@ struct UniformBufferObject {
 	glm::mat4 proj;
 	glm::mat4 cascadeViewProj[4];
 	float cascadeSplits[4] = {0.f};
-	uint32_t current_frame = 0;
-	float padding[6] = { 0.f };
 };
 
 struct ModelPushConstant {

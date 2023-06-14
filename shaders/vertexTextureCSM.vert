@@ -9,8 +9,6 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
 	mat4 proj;
 	mat4[SHADOW_CASCADE_COUNT] cascadeViewProj;
 	vec4 cascadeSplits;
-	uint currentFrame;
-	vec3 padding;
 }ubo;
 
 layout( push_constant ) uniform constants
