@@ -245,18 +245,19 @@ void VulkanContext::pickPhysicalDevice() {
 	{
 		throw std::runtime_error("Failed to find GPUs with Vulkan support");
 	}
-
+	std::vector<vk::PhysicalDevice> suitableDevices;
 	for (const auto& device : physicalDevices)
 	{
 		if (isDeviceSuitable(device))
 		{
-			m_physicalDevice = device;
-			std::cout << "Device name: " << m_physicalDevice.getProperties().deviceName << std::endl;
-			break;
+
+			std::cout << "Device name: " << device.getProperties().deviceName << std::endl;
+			suitableDevices.push_back(device);
 		}
-		if (!m_physicalDevice) {
-			throw std::runtime_error("failed to find a suitable GPU!");
-		}
+	}
+	m_physicalDevice = suitableDevices[0];
+	if (!m_physicalDevice) {
+		throw std::runtime_error("failed to find a suitable GPU!");
 	}
 }
 #pragma endregion

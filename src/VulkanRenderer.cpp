@@ -193,10 +193,6 @@ void VulkanRenderer::mainloop() {
         m_context->manageWindow();
         manageInput();
         updateEntities();
-        for (auto& renderPass : m_renderPasses)
-        {
-            renderPass->updatePipelineRessources(m_currentFrame);
-        }
         drawFrame();
     }
     m_device.waitIdle();
@@ -207,12 +203,15 @@ void VulkanRenderer::drawFrame() {
 
     //Wait and reset CPU semaphore
     m_device.waitForFences(1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);//Wait for one or all fences (VK_TRUE), uint64_max disables the timeout
-    m_device.resetFences(m_inFlightFences[m_currentFrame]); //Always reset fences (after being sure we are going to submit work
     uint32_t imageIndex = m_context->acquireNextSwapchainImage(m_imageAvailableSemaphores[m_currentFrame]);
-    m_commandBuffers[m_currentFrame].reset(); //Reset to record the command buffer
+      m_device.resetFences(m_inFlightFences[m_currentFrame]); //Always reset fences (after being sure we are going to submit work
+    m_commandBuffers[imageIndex].reset(); //Reset to record the command buffer
     
-
-    recordCommandBuffer(m_commandBuffers[m_currentFrame], imageIndex);
+    for (auto& renderPass : m_renderPasses)
+    {
+        renderPass->updatePipelineRessources(m_currentFrame);
+    }
+    recordCommandBuffer(m_commandBuffers[imageIndex], imageIndex);
   
     //Submitting the command buffer
     vk::Semaphore waitSemaphores[] = { m_imageAvailableSemaphores[m_currentFrame] };

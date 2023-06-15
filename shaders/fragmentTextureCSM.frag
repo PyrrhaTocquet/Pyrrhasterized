@@ -33,11 +33,11 @@ layout(set = 1, binding = 0) uniform sampler2DArray shadowTexSampler;
 layout(location = 0) out vec4 outColor;
 
 /* Constants */
-vec4 lightColor = vec4(1.0, 1.0, .95, 3.0);
+vec4 lightColor = vec4(1.0, 1.0, .95, 7.0);
 vec3 ambientColor = vec3(1.0, 1.0, 1.0);
 
 float shininess = 5000;
-float ambientIntensity = .4;
+float ambientIntensity = .25;
 
 const mat4 biasMat = mat4( 
 	0.5, 0.0, 0.0, 0.0,
@@ -107,7 +107,7 @@ void main(){
 	}
 		//Shadows
 
-	vec3 lightPosition = vec3(0.0, 50.f, 10.f);
+	vec3 lightPosition = vec3(1.0, 50.f, 20.f * cos(PushConstants.time));
 	vec3 lightDirection = normalize(-lightPosition); //Light Position is distance to 0, 0, 0 here
 
 
@@ -116,7 +116,7 @@ void main(){
 	bias = clamp(bias, 0, 0.01);
 
 	vec4 lightViewPosition = (biasMat * ubo.cascadeViewProj[cascadeIndex]) * vec4(fragPosWorld, 1.0);	
-	float shadowFactor = filterPCF(lightViewPosition / lightViewPosition.w ,bias, cascadeIndex);
+	float shadowFactor = filterPCF(lightViewPosition / lightViewPosition.w , bias, cascadeIndex);
 	
 	
 

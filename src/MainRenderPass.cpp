@@ -35,7 +35,7 @@ void MainRenderPass::createRenderPass()
         .format = m_context->getSwapchainFormat(),
         .samples = ENABLE_MSAA ? msaaSampleCount : vk::SampleCountFlagBits::e1,
         .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eDontCare, //Best practice with multisampled images is to make the best of lazy allocation with don't care
+        .storeOp = ENABLE_MSAA ? vk::AttachmentStoreOp::eDontCare : vk::AttachmentStoreOp::eStore, //Best practice with multisampled images is to make the best of lazy allocation with don't care
         .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
         .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
         .initialLayout = vk::ImageLayout::eUndefined,

@@ -325,7 +325,7 @@ void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
     //CASCADES
     //Model View Proj
     CascadeUniformObject ubo{};
-    glm::vec3 lightPos = glm::vec3(0.f, 50.f, 10.f);
+    glm::vec3 lightPos = glm::vec3(1.f, 50.f, 20.f * cos(time));
     float cascadeSplits[SHADOW_CASCADE_COUNT] = { 0.f, 0.f, 0.f, 0.f };
     
     float nearClip = m_camera->nearPlane;
@@ -340,7 +340,7 @@ void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
 
     // Calculate split depths based on view camera frustum
     // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
-    float cascadeSplitLambda = 0.95f;
+    float cascadeSplitLambda = 0.80f;
     for (uint32_t i = 0; i < SHADOW_CASCADE_COUNT; i++) {
         float p = (i + 1) / static_cast<float>(SHADOW_CASCADE_COUNT);
         float log = minZ * std::pow(ratio, p);

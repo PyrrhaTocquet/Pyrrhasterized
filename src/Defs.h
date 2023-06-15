@@ -53,8 +53,8 @@ struct Transform {
 			rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotate.z), glm::vec3(0.f, 0.f, 1.f));
 			glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.f), scale);
 			transformMatrix = translateMatrix * rotationMatrix * scaleMatrix;
+			hasChanged = false;
 		}
-
 
 		return transformMatrix;
 	};
