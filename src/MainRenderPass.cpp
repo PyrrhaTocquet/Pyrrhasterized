@@ -616,6 +616,8 @@ void MainRenderPass::updatePipelineRessources(uint32_t currentFrame)
     void* data = m_context->getAllocator().mapMemory(m_uniformBuffersAllocations[currentFrame]);
     memcpy(data, &ubo, sizeof(UniformBufferObject));
     m_context->getAllocator().unmapMemory(m_uniformBuffersAllocations[currentFrame]);
+
+
 }
 
 void MainRenderPass::createDefaultTextures() {

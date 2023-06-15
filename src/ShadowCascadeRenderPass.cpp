@@ -407,9 +407,11 @@ void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
         lastSplitDist = cascadeSplits[i];
     }
     m_cascadeUbos[currentFrame] = ubo;
+
     void* data = m_context->getAllocator().mapMemory(m_uniformBuffersAllocations[currentFrame]);
     memcpy(data, &ubo, sizeof(CascadeUniformObject));
     m_context->getAllocator().unmapMemory(m_uniformBuffersAllocations[currentFrame]);
+
 }
 
 void ShadowCascadeRenderPass::createFramebuffer()
