@@ -499,8 +499,7 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
     ImGui::SetWindowSize(ImVec2(300.f, 100.f));
     ImGui::SetWindowPos(ImVec2(10.f, 10.f));
     ImGui::Text("Framerate: %f", framerate);
-    glm::vec3 cameraPos = m_camera->getCameraPos();
-    ImGui::Text("CameraCoords: %f, %f, %f", cameraPos.x, cameraPos.y, cameraPos.z);
+    ImGui::SliderFloat("Cascade Splitting Lambda: ", &m_shadowRenderPass->m_cascadeSplitLambda, 0.f, 1.f, "%.2f", 0);
     ImGui::End();
 
     ImGui::Render();

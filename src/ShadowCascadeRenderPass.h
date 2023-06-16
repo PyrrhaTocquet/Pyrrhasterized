@@ -17,7 +17,10 @@ private:
 
 	std::array<CascadeUniformObject, MAX_FRAMES_IN_FLIGHT> m_cascadeUbos;
 
+
+
 public:
+	float m_cascadeSplitLambda = 0.95f;
 	ShadowCascadeRenderPass(VulkanContext* context, Camera* camera);
 	virtual ~ShadowCascadeRenderPass();
 	void createFramebuffer()override;
@@ -34,6 +37,7 @@ public:
 	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t currentFrame, std::vector<VulkanScene*> scenes)override;
 	void recreateRenderPass() override;
 	CascadeUniformObject getCurrentUbo(uint32_t currentFrame);
+
 private:
 	void createUniformBuffer();
 	void updateUniformBuffer(uint32_t currentFrame);

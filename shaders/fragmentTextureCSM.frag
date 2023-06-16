@@ -66,7 +66,7 @@ float filterPCF(vec4 lightViewCoord, float bias, uint index)
 
 	float shadowFactor = 0.0;
 	int count = 0;
-	int range = 6; //Averaging 9 samples
+	int range = 1; //Averaging 9 samples
 
 	for (int x = -range; x <= range; x++)
 	{

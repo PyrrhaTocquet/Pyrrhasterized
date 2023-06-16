@@ -316,6 +316,7 @@ CascadeUniformObject ShadowCascadeRenderPass::getCurrentUbo(uint32_t currentFram
     return m_cascadeUbos[currentFrame];
 }
 
+
 void ShadowCascadeRenderPass::createUniformBuffer()
 {
     vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
@@ -354,12 +355,12 @@ void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
 
     // Calculate split depths based on view camera frustum
     // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
-    float cascadeSplitLambda = 0.80f;
+
     for (uint32_t i = 0; i < SHADOW_CASCADE_COUNT; i++) {
         float p = (i + 1) / static_cast<float>(SHADOW_CASCADE_COUNT);
         float log = minZ * std::pow(ratio, p);
         float uniform = minZ + range * p;
-        float d = cascadeSplitLambda * (log - uniform) + uniform;
+        float d = m_cascadeSplitLambda * (log - uniform) + uniform;
         cascadeSplits[i] = (d - nearClip) / clipRange;
     }
 
