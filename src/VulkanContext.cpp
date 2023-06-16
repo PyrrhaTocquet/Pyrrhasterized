@@ -645,10 +645,9 @@ uint32_t VulkanContext::acquireNextSwapchainImage(vk::Semaphore &imageAvailableS
 		vk::ResultValue result = m_device.acquireNextImageKHR(m_swapchain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, nullptr);
 		imageIndex = result.value;
 	}
-	/*catch (vk::OutOfDateKHRError err) {
-		renderer->recreateSwapchainSizedObjects();
-		return imageIndex;
-	}*/
+	catch (vk::OutOfDateKHRError err) {
+		m_framebufferResized = true;
+	}
 	catch (vk::SystemError err) {
 		throw std::runtime_error("failed to acquire swap chain image!");
 	}

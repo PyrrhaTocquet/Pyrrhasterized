@@ -44,7 +44,7 @@ const std::vector<const char*> requiredExtensions = {
 const int DEFAULT_WIDTH = 1920;
 const int DEFAULT_HEIGHT = 1080;
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
-const bool pickWorseDevice = true;
+const bool pickWorseDevice = false;
 
 /* APPLICATION INFO */
 const char applicationName[] = "Vulkan Base";

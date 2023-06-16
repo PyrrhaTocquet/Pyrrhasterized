@@ -204,7 +204,7 @@ void VulkanRenderer::drawFrame() {
     //Wait and reset CPU semaphore
     m_device.waitForFences(1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);//Wait for one or all fences (VK_TRUE), uint64_max disables the timeout
     uint32_t imageIndex = m_context->acquireNextSwapchainImage(m_imageAvailableSemaphores[m_currentFrame]);
-      m_device.resetFences(m_inFlightFences[m_currentFrame]); //Always reset fences (after being sure we are going to submit work
+     m_device.resetFences(m_inFlightFences[m_currentFrame]); //Always reset fences (after being sure we are going to submit work
     m_commandBuffers[imageIndex].reset(); //Reset to record the command buffer
     
     for (auto& renderPass : m_renderPasses)
@@ -253,17 +253,19 @@ void VulkanRenderer::drawFrame() {
 bool VulkanRenderer::present(vk::Semaphore *signalSemaphores, uint32_t imageIndex) {
 
     vk::SwapchainKHR swapchains[] = { m_context->getSwapchain()};
+    vk::Result cResult;
     vk::PresentInfoKHR presentInfo{
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = signalSemaphores,
         .swapchainCount = 1,
         .pSwapchains = swapchains,
         .pImageIndices = &imageIndex,
-        .pResults = nullptr,
+        .pResults = &cResult,
     };
+    //Vulkan Hpp crashes for eErrorOutOfDateKHR
+    vkQueuePresentKHR(static_cast<VkQueue>(m_context->getPresentQueue()), reinterpret_cast<VkPresentInfoKHR*>(&presentInfo));
     
-    vk::Result result = m_context->getPresentQueue().presentKHR(presentInfo);
-    
+    vk::Result result = reinterpret_cast<vk::Result>(cResult);
     if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || m_context->isFramebufferResized())
     {
         m_context->clearFramebufferResized();
