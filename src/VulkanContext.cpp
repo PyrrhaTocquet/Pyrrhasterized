@@ -237,6 +237,65 @@ bool VulkanContext::isDeviceSuitable(const vk::PhysicalDevice &device)
 	return indices.isComplete() && extensionsSupported && swapchainAdequate && physicalDeviceFeatures.samplerAnisotropy && physicalDeviceFeatures.shaderSampledImageArrayDynamicIndexing && physicalDeviceFeatures.fillModeNonSolid;
 
 }
+
+
+vk::PhysicalDevice VulkanContext::getBestDevice(std::vector<vk::PhysicalDevice> devices) {
+
+	vk::PhysicalDevice bestDevice;
+	float bestScore = pickWorseDevice ? std::numeric_limits<float>::max() : 0;
+	for (auto device : devices)
+	{
+		float score = 0;
+		switch (device.getProperties().deviceType)
+		{
+
+			case vk::PhysicalDeviceType::eDiscreteGpu:
+				score = 5;
+				break;
+			case vk::PhysicalDeviceType::eIntegratedGpu:
+				score = 4;
+				break;
+			case vk::PhysicalDeviceType::eVirtualGpu:
+				score = 3;
+				break;
+			case vk::PhysicalDeviceType::eCpu:
+				score = 2;
+				break;
+			case vk::PhysicalDeviceType::eOther:
+				score = 1;
+				break;
+			default:
+				score = 0;
+		};
+
+		auto memoryProps = device.getMemoryProperties();
+		auto heaps = memoryProps.memoryHeaps;
+		for (const auto& heap : heaps) {
+			if (heap.flags & vk::MemoryHeapFlagBits::eDeviceLocal) {
+				//Decimal part is VRAM / 100GO
+				score += heap.size / 100000000000.f;
+			}
+		}
+
+		if (!pickWorseDevice)
+		{
+			if (bestScore < score)
+			{
+				bestDevice = device;
+				bestScore = score;
+			}
+		}
+		else {
+			if (bestScore > score)
+			{
+				bestDevice = device;
+				bestScore = score;
+			}
+		}
+	}
+	return bestDevice;
+}
+
 //finds a reference to an appropriate physical device and keeps it as a member.
 void VulkanContext::pickPhysicalDevice() {
 	auto physicalDevices = m_instance.enumeratePhysicalDevices();
@@ -255,7 +314,7 @@ void VulkanContext::pickPhysicalDevice() {
 			suitableDevices.push_back(device);
 		}
 	}
-	m_physicalDevice = suitableDevices[0];
+	m_physicalDevice = getBestDevice(suitableDevices);
 	if (!m_physicalDevice) {
 		throw std::runtime_error("failed to find a suitable GPU!");
 	}
