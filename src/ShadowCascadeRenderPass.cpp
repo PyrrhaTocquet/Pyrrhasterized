@@ -12,9 +12,13 @@ ShadowCascadeRenderPass::ShadowCascadeRenderPass(VulkanContext* context, Camera*
 }
 
 ShadowCascadeRenderPass::~ShadowCascadeRenderPass() {
-    cleanAttachments();
+  
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         m_context->getAllocator().destroyBuffer(m_uniformBuffers[i], m_uniformBuffersAllocations[i]);
+    }
+    for (auto& framebufferImageView : m_shadowDepthLayerViews)
+    {
+        m_context->getDevice().destroyImageView(framebufferImageView);
     }
 }
 
@@ -47,6 +51,7 @@ void ShadowCascadeRenderPass::cleanAttachments() {
     {
         m_context->getDevice().destroyImageView(imageView);
     }
+    delete m_shadowDepthAttachment;
    
 }
 
@@ -267,6 +272,15 @@ void ShadowCascadeRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, ui
    
 
 
+}
+
+void ShadowCascadeRenderPass::recreateRenderPass()
+{
+    cleanFramebuffer();
+    updateDescriptorSets();
+    createFramebuffer();
+    m_context->getDevice().destroyPipeline(m_mainPipeline->getPipeline());
+    m_mainPipeline->recreatePipeline(getRenderPassExtent());
 }
 
 void ShadowCascadeRenderPass::recordShadowCascadeMemoryDependency(vk::CommandBuffer commandBuffer) {

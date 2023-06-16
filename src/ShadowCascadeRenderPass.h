@@ -32,6 +32,7 @@ public:
 	void createPushConstantsRanges()override;
 	void updatePipelineRessources(uint32_t currentFrame)override;
 	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t currentFrame, std::vector<VulkanScene*> scenes)override;
+	void recreateRenderPass() override;
 	CascadeUniformObject getCurrentUbo(uint32_t currentFrame);
 private:
 	void createUniformBuffer();

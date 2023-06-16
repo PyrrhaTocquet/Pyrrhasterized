@@ -26,7 +26,7 @@ public:
 	virtual void createDescriptorSet(VulkanScene* scene)override {};
 	virtual void createPipelineLayout()override {};
 	virtual void createDefaultPipeline()override {};
-	void recreateRenderPass() override;
+	virtual void recreateRenderPass() override;
 	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) override {};
 	vk::Extent2D getRenderPassExtent() override;
 	[[nodiscard]] vk::ImageView getShadowAttachment();

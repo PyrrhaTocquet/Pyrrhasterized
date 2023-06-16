@@ -47,6 +47,7 @@ public :
 	virtual void updatePipelineRessources(uint32_t currentFrame) = 0;
 	virtual vk::Extent2D getRenderPassExtent() = 0;
 	virtual void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) = 0;
+	virtual void updateDescriptorSets() {};
 	vk::RenderPass getRenderPass();
 	vk::Framebuffer getFramebuffer(uint32_t index);
 	void cleanFramebuffer();

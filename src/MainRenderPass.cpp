@@ -20,6 +20,7 @@ MainRenderPass::~MainRenderPass()
     device.destroySampler(m_textureSampler);
     device.destroySampler(m_shadowMapSampler);
     cleanAttachments();
+    
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         m_context->getAllocator().destroyBuffer(m_uniformBuffers[i], m_uniformBuffersAllocations[i]);
     }
@@ -161,11 +162,12 @@ void MainRenderPass::cleanAttachments()
 
 void MainRenderPass::recreateRenderPass()
 {
+    m_context->getDevice().destroyPipeline(m_mainPipeline->getPipeline());
+    m_mainPipeline->recreatePipeline(getRenderPassExtent());
     cleanAttachments();
     cleanFramebuffer();
     createAttachments();
     createFramebuffer();
-
 }
 
 void MainRenderPass::createDescriptorPool()
@@ -617,8 +619,8 @@ void MainRenderPass::updatePipelineRessources(uint32_t currentFrame)
     memcpy(data, &ubo, sizeof(UniformBufferObject));
     m_context->getAllocator().unmapMemory(m_uniformBuffersAllocations[currentFrame]);
 
-
 }
+
 
 void MainRenderPass::createDefaultTextures() {
     VulkanImageParams imageParams
