@@ -20,9 +20,10 @@ private:
 
 
 public:
-	float m_cascadeSplitLambda = 0.95f;
+	float m_cascadeSplitLambda = 0.89f;
+	float m_shadowMapsBlendWidth = 0.5f;
 	ShadowCascadeRenderPass(VulkanContext* context, Camera* camera);
-	virtual ~ShadowCascadeRenderPass();
+	virtual ~ShadowCascadeRenderPass()override;
 	void createFramebuffer()override;
 	void createAttachments()override;
 	void cleanAttachments()override;

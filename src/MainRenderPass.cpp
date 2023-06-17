@@ -500,6 +500,7 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
     ImGui::SetWindowPos(ImVec2(10.f, 10.f));
     ImGui::Text("Framerate: %f", framerate);
     ImGui::SliderFloat("Cascade Splitting Lambda: ", &m_shadowRenderPass->m_cascadeSplitLambda, 0.f, 1.f, "%.2f", 0);
+    ImGui::SliderFloat("Shadowmap Blend Width: ", &m_shadowRenderPass->m_shadowMapsBlendWidth, 0.f, 1.f, "%.2f", 0);
     ImGui::End();
 
     ImGui::Render();
@@ -606,6 +607,8 @@ void MainRenderPass::updatePipelineRessources(uint32_t currentFrame)
     UniformBufferObject ubo{};
     ubo.view = m_camera->getViewMatrix();
     ubo.proj = m_camera->getProjMatrix(m_context);
+    ubo.cameraPos = m_camera->getCameraPos();
+    ubo.shadowMapsBlendWidth = m_shadowRenderPass->m_shadowMapsBlendWidth;
     CascadeUniformObject cascadeUbo = m_shadowRenderPass->getCurrentUbo(currentFrame);
 
     for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)

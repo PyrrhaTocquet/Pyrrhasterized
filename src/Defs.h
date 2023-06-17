@@ -23,6 +23,8 @@ struct UniformBufferObject {
 	glm::mat4 proj;
 	glm::mat4 cascadeViewProj[4];
 	float cascadeSplits[4] = {0.f};
+	glm::vec3 cameraPos;
+	float shadowMapsBlendWidth;
 };
 
 struct ModelPushConstant {
