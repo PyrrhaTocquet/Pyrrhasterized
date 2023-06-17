@@ -60,6 +60,11 @@ int main() {
     scene.addEntity(peachEntity);
     renderer.registerEntity(peachEntity);
     scene.addModel("assets/Link/model.obj", linkTransform);
+
+    pikachuTransform.translate.y += 3;
+    pikachuTransform.translate.x += 10;
+    pikachuTransform.scale *= 0.2;
+    scene.addModel("assets/Sphere/sphere.obj", pikachuTransform);
     
     /*
     Transform transform;
