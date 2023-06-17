@@ -293,7 +293,12 @@ void Model::loadObj(const std::filesystem::path& path) {
 	auto& shapes = reader.GetShapes();
 	auto& materials = reader.GetMaterials();
 
-	m_texturedMeshes.resize(materials.size());
+
+	uint32_t materialCount = materials.size();
+	if (materialCount == 0) {
+		materialCount = 1;
+	}
+	m_texturedMeshes.resize(materialCount);
 
 	// Loop over shapes
 	for (size_t s = 0; s < shapes.size(); s++) {
@@ -331,7 +336,12 @@ void Model::loadObj(const std::filesystem::path& path) {
 					};
 
 				}
-				int materialIndex = shapes[s].mesh.material_ids[f];
+				
+				int materialIndex = 0;
+				if (materials.size() != 0 && shapes[s].mesh.material_ids[f] != -1)
+				{
+					materialIndex = shapes[s].mesh.material_ids[f];
+				}
 				m_texturedMeshes[materialIndex].vertices.push_back(vertex);
 				m_texturedMeshes[materialIndex].indices.push_back(m_texturedMeshes[materialIndex].indices.size());
 			}
