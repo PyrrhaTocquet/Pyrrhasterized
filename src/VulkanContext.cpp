@@ -189,13 +189,13 @@ void VulkanContext::createInstance()
 		createInfo.pNext = (vk::DebugUtilsMessengerCreateInfoEXT*)&debugMessengerCreateInfo;
 
 		//Best practices layer, added to the debugMessenger's pNext.
-		std::array<vk::ValidationFeatureEnableEXT, 1> enables = {vk::ValidationFeatureEnableEXT::eSynchronizationValidation };
+		/*std::array<vk::ValidationFeatureEnableEXT, 1> enables = {vk::ValidationFeatureEnableEXT::eSynchronizationValidation};
 		vk::ValidationFeaturesEXT validationFeatures{
 			.enabledValidationFeatureCount = enables.size(),
 			.pEnabledValidationFeatures = enables.data(),
 		};
 
-		debugMessengerCreateInfo.pNext = &validationFeatures;
+		debugMessengerCreateInfo.pNext = &validationFeatures;*/
 
 	}
 	else {

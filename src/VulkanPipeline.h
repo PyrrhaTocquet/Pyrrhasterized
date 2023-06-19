@@ -16,6 +16,7 @@ struct PipelineInfo {
 	vk::Bool32 depthWriteEnable = VK_TRUE;
 	RenderPassesId renderPassId = RenderPassesId::MainRenderPassId;
 	bool isMultisampled = true;
+	float depthBias[2] = { 0.f, 0.f }; //[0] is constant facto [1] is slope factor
 };
 
 class VulkanPipeline {

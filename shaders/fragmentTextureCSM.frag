@@ -47,11 +47,12 @@ const mat4 biasMat = mat4(
 	0.0, 0.0, 1.0, 0.0,
 	0.5, 0.5, 0.0, 1.0 );
 
+
 // returns the ambient intensity when in shadow or 1 when in light
-float readShadowMap(vec4 lightViewCoord, vec2 uvOffset, float bias, uint index){
+float readShadowMap(vec4 lightViewCoord, vec2 uvOffset, uint index){
 	
 	float dist = texture(shadowTexSampler, vec3(lightViewCoord.xy + uvOffset, index)).r;
-	if(dist < lightViewCoord.z - bias ){
+	if(dist < lightViewCoord.z ){
 		return ambientIntensity;
 	}else {
 		return 1;
@@ -59,16 +60,16 @@ float readShadowMap(vec4 lightViewCoord, vec2 uvOffset, float bias, uint index){
 }
 
 // Percentage Closer Filtering approach of shadow mapping. Returns a number between ambient intensity and 1, an attenuation factor due to shadowing
-float filterPCF(vec4[2] lightViewCoords, float bias, uint[2] index)
+float filterPCF(vec4[2] lightViewCoords, uint[2] index)
 {
 	ivec2 shadowMapDimensions = ivec2(4096, 4096);//textureSize(shadowTexSampler, 0);
-	float scale = 1.5;
+	float scale = 1;
 	float dx = scale * 1.0 / float(shadowMapDimensions.x);
 	float dy = scale * 1.0 / float(shadowMapDimensions.y);
 
 	float shadowFactor = 0.0;
 	int count = 0;
-	int range = 6; //Averaging 9 samples
+	int range = 3; //Averaging 16 samples
 
 	for (int x = -range; x <= range; x++)
 	{
@@ -76,13 +77,13 @@ float filterPCF(vec4[2] lightViewCoords, float bias, uint[2] index)
 		{
 			if(index[0] == index[1])
 			{
-				shadowFactor += readShadowMap(lightViewCoords[0], vec2(dx*x, dy*y), bias, index[0]);
+				shadowFactor += readShadowMap(lightViewCoords[0], vec2(dx*x, dy*y), index[0]);
 				count++;
 			}else{
 				float interpolationValue = (viewPosition.z - ubo.cascadeSplits[index[0]] + (ubo.shadowMapsBlendWidth/2)) / ubo.shadowMapsBlendWidth;
 				shadowFactor += mix(
-				readShadowMap(lightViewCoords[1], vec2(dx*x, dy*y), bias, index[1]),
-				readShadowMap(lightViewCoords[0], vec2(dx*x, dy*y), bias, index[0]),
+				readShadowMap(lightViewCoords[1], vec2(dx*x, dy*y), index[1]),
+				readShadowMap(lightViewCoords[0], vec2(dx*x, dy*y), index[0]),
 				interpolationValue);
 				count++;
 			}
@@ -94,10 +95,10 @@ float filterPCF(vec4[2] lightViewCoords, float bias, uint[2] index)
 void main(){
 
 	vec4 textureColor = texture(texSampler[PushConstants.textureId], fragTexCoord);
-	/*if(textureColor.a < 0.5)
+	if(textureColor.a < 0.5)
 	{
 		discard;
-	}*/
+	}
 
 	vec3 tangent = normalize(fragTangent.xyz);
 	vec3 normal = normalize(fragNormal);
@@ -122,23 +123,17 @@ void main(){
 	}
 		//Shadows
 
-	vec3 lightPosition = vec3(1.0, 50.f, 20.f * cos(PushConstants.time));
+	vec3 lightPosition = vec3(1.0, 50.f, 20.f * cos(PushConstants.time/8));
 	//vec3 lightPosition = vec3(1.0, 50.f, 2.f);
 	vec3 lightDirection = normalize(-lightPosition); //Light Position is distance to 0, 0, 0 here
-
-
-	float cosTheta = clamp(dot(-lightDirection, fragNormal), 0, 1);
-	float bias = 0.0005*tan(0.5*acos(cosTheta));
-	bias = clamp(bias, 0, 0.01);
 
 	vec4 lightViewPosition[2] = vec4[2](
 		biasMat * ubo.cascadeViewProj[cascadeIndex[0]] * vec4(fragPosWorld, 1.0),
 		biasMat * ubo.cascadeViewProj[cascadeIndex[1]] * vec4(fragPosWorld, 1.0));	
 	vec4 lightViewCoords[2] = vec4[2](lightViewPosition[0] / lightViewPosition[0].w, lightViewPosition[1] / lightViewPosition[1].w);
-	float shadowFactor = filterPCF(lightViewCoords , bias, cascadeIndex);
+	float shadowFactor = filterPCF(lightViewCoords , cascadeIndex);
 	
 	
-
 
 	// Diffuse lighting
 	vec3 lightColor = lightColor.xyz * lightColor.a;
@@ -149,10 +144,12 @@ void main(){
 	vec3 halfWayDirection = normalize(viewDirection - lightDirection);
 	float specular = pow(max(dot(normal, halfWayDirection), 0.0), shininess);
 	vec3 specularColor = lightColor.xyz * specular * 0.5;
+		
+	outColor = mix(vec4(shadowFactor * textureColor.xyz, textureColor.a),
+	vec4((diffuse + specular) * textureColor.xyz * shadowFactor, textureColor.a),
+	(shadowFactor-ambientIntensity)/(1-ambientIntensity));
 	
-	outColor = vec4((diffuse + specular) * textureColor.xyz * shadowFactor, textureColor.a);
-
-
+	
 
 	/*switch(cascadeIndex[0]) {
 			case 0 : 

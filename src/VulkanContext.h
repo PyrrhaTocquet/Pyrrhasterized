@@ -47,7 +47,7 @@ const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 const bool pickWorseDevice = false;
 
 /* APPLICATION INFO */
-const char applicationName[] = "Vulkan Base";
+const char applicationName[] = "Pyrrhasterized: a porte-folio rasterized renderer";
 const uint32_t applicationVersion = 0;
 
 class VulkanContext

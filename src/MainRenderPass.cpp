@@ -698,8 +698,8 @@ void MainRenderPass::createShadowMapSampler() {
     vk::PhysicalDeviceProperties properties = m_context->getProperties();
 
     vk::SamplerCreateInfo samplerInfo{
-        .magFilter = vk::Filter::eNearest, //Linear filtering
-        .minFilter = vk::Filter::eNearest,
+        .magFilter = vk::Filter::eLinear, //Linear filtering
+        .minFilter = vk::Filter::eLinear,
         .mipmapMode = vk::SamplerMipmapMode::eLinear,
         .addressModeU = vk::SamplerAddressMode::eClampToEdge,
         .addressModeV = vk::SamplerAddressMode::eClampToEdge,

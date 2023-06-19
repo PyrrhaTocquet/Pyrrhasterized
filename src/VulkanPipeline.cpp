@@ -109,7 +109,9 @@ void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
         .polygonMode = m_pipelineInfo.polygonMode,
         .cullMode = m_pipelineInfo.cullmode,
         .frontFace = m_pipelineInfo.frontFace,
-        .depthBiasEnable = VK_FALSE,
+        .depthBiasEnable = VK_TRUE,
+        .depthBiasConstantFactor = m_pipelineInfo.depthBias[0],
+        .depthBiasSlopeFactor = m_pipelineInfo.depthBias[1],
         .lineWidth = m_pipelineInfo.lineWidth,
     };
 

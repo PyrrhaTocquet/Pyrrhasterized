@@ -20,7 +20,6 @@ layout( push_constant ) uniform constants
 	uint cascadeId;
 } PushConstants;
 
-
 void main(){
 	vec4 positionWorld = PushConstants.model * vec4(inPosition, 1.0);
 	gl_Position = ubo.cascadeViewProj[PushConstants.cascadeId] * positionWorld;

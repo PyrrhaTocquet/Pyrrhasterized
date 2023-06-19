@@ -182,6 +182,7 @@ void ShadowCascadeRenderPass::createDefaultPipeline()
         .cullmode = vk::CullModeFlagBits::eNone,
         .renderPassId = RenderPassesId::ShadowMappingPassId,
         .isMultisampled = false,
+        .depthBias = {3.0f, 15.0f}
     };
 
     m_mainPipeline = new VulkanPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());
@@ -341,7 +342,7 @@ void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
     //Model View Proj
     CascadeUniformObject ubo{};
     //glm::vec3 lightPos = glm::vec3(1.f, 50.f, 2.f);
-    glm::vec3 lightPos = glm::vec3(1.f, 50.f, 20.f * cos(time));
+    glm::vec3 lightPos = glm::vec3(1.f, 50.f, 20.f * cos(time/8));
     float cascadeSplits[SHADOW_CASCADE_COUNT] = { 0.f, 0.f, 0.f, 0.f };
     
     float nearClip = m_camera->nearPlane;
