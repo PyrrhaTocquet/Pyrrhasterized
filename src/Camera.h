@@ -1,3 +1,9 @@
+/*
+author: Pyrrha Tocquet
+date: 01/06/23
+desc: Entity managing camera related data and camera movement
+*/
+
 #pragma once
 #include "Defs.h"
 #include "Entity.h"
