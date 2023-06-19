@@ -61,11 +61,15 @@ int main() {
     renderer.registerEntity(peachEntity);
     scene.addModel("assets/Link/model.obj", linkTransform);
 
-    pikachuTransform.translate.y += 3;
+    pikachuTransform.translate.y += 10;
     pikachuTransform.translate.x += 10;
     pikachuTransform.scale *= 0.2;
     scene.addModel("assets/Sphere/sphere.obj", pikachuTransform);
     
+    /*
+    Transform transform;
+    scene.addModel("assets/Splatoon/splatoon.gltf", transform);
+    */
     /*
     Transform transform;
     scene.addModel("assets/CubeScene/cubeScene.gltf", transform);
