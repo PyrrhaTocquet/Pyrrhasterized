@@ -75,6 +75,7 @@ private:
 	std::vector<Entity*> m_entities;
 
 	Camera* m_camera;
+	bool m_shouldStopRendering = false;
 public:
 	VulkanRenderer(VulkanContext* context);
 	void mainloop();

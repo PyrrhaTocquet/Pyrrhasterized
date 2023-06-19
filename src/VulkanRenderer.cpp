@@ -188,7 +188,7 @@ void VulkanRenderer::createSyncObjects()
 #pragma region EXECUTION_FLOW
 //Starts the window management and frame drawing loop
 void VulkanRenderer::mainloop() {
-    while (m_context->isWindowOpen())
+    while (m_context->isWindowOpen() && !m_shouldStopRendering)
     {
         m_context->manageWindow();
         m_context->updateTime();
@@ -312,33 +312,14 @@ void VulkanRenderer::createRenderPasses() {
 #pragma endregion RENDER_PASSES
 
 #pragma region INPUT
-//Function that manages keyboard input behavior, manages pipeline switch for debugging with arrow keys
+//Function that manages keyboard input behavior
 void VulkanRenderer::manageInput() {
-    static bool rightPressed = false;
-    static bool leftPressed = false;
 
     GLFWwindow* window = m_context->getWindowPtr();
-    int key = glfwGetKey(window, GLFW_KEY_RIGHT);
-    if (key == GLFW_PRESS && rightPressed == false) {
-        //m_currentPipelineId++;
-        rightPressed = true;
-    }
-    else if (rightPressed == true && key == GLFW_RELEASE)
-    {
-        rightPressed = false;
-    }
-
-    key = glfwGetKey(window, GLFW_KEY_LEFT);
-    if (key == GLFW_PRESS && leftPressed == false) {
-        //m_currentPipelineId--;
-        leftPressed = true;
-    }
-    else if (leftPressed == true && key == GLFW_RELEASE)
-    {
-        leftPressed = false;
-    }
-    /*if (m_currentPipelineId == -1) m_currentPipelineId = static_cast<uint32_t>(m_pipelines.size()) - 1;
-    m_currentPipelineId = m_currentPipelineId % static_cast<uint32_t>(m_pipelines.size());*/
+    int key = glfwGetKey(window, GLFW_KEY_ESCAPE);
+    if (key == GLFW_PRESS) {
+        m_shouldStopRendering = true;
+    } 
 }
 
 #pragma endregion

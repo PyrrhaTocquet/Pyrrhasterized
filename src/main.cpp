@@ -78,38 +78,6 @@ int main() {
     */
 
     renderer.addScene(&scene);
-    /* TODO Debug pipelines somewhere else
-    PipelineInfo pipelineInfo;
-
-    pipelineInfo.vertPath = "shaders/vertexTextureNoLight.spv";
-    pipelineInfo.fragPath = "shaders/fragmentTextureNoLight.spv";
-    renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-
-    pipelineInfo.vertPath = "shaders/vertexDebugNormals.spv";
-    pipelineInfo.fragPath = "shaders/fragmentDebugNormals.spv";
-    renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-
-    pipelineInfo.vertPath = "shaders/vertexDebugTextureCoords.spv";
-    pipelineInfo.fragPath = "shaders/fragmentDebugTextureCoords.spv";
-    renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-
-
-
-    pipelineInfo.vertPath = "shaders/vertexTextureNoLight.spv";
-    pipelineInfo.fragPath = "shaders/fragmentDepth.spv";
-    renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-
-    pipelineInfo.vertPath = "shaders/vertexTangents.spv";
-    pipelineInfo.fragPath = "shaders/fragmentTangents.spv";
-
-    renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-
-    pipelineInfo.vertPath = "shaders/vertexTextureNoLight.spv";
-    pipelineInfo.fragPath = "shaders/fragmentTextureNoLight.spv";
-    pipelineInfo.polygonMode = vk::PolygonMode::eLine;
-
-    renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-    */
 
     renderer.mainloop();
 
