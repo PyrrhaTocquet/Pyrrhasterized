@@ -277,9 +277,7 @@ void ShadowCascadeRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, ui
 
 void ShadowCascadeRenderPass::recreateRenderPass()
 {
-    cleanFramebuffer();
     updateDescriptorSets();
-    createFramebuffer();
     m_context->getDevice().destroyPipeline(m_mainPipeline->getPipeline());
     m_mainPipeline->recreatePipeline(getRenderPassExtent());
 }
