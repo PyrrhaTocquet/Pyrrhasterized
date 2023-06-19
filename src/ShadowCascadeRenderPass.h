@@ -27,7 +27,7 @@ private:
 	const float c_constantDepthBias = 3.0f;
 	const float c_slopeScaleDepthBias = 15.0f;
 public:
-	float m_cascadeSplitLambda = 0.89f;
+	float m_cascadeSplitLambda = 0.95f;
 	float m_shadowMapsBlendWidth = 0.5f;
 	ShadowCascadeRenderPass(VulkanContext* context, Camera* camera);
 	virtual ~ShadowCascadeRenderPass()override;
