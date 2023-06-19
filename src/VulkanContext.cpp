@@ -35,7 +35,7 @@ VulkanContext::VulkanContext()
 	pfnCmdDebugMarkerBegin = (PFN_vkCmdDebugMarkerBeginEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerBeginEXT");
 	pfnCmdDebugMarkerEnd = (PFN_vkCmdDebugMarkerEndEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerEndEXT");
 	pfnCmdDebugMarkerInsert = (PFN_vkCmdDebugMarkerInsertEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerInsertEXT");
-	createCommandPool();
+	m_commandPool = createCommandPool();
 	createAllocator();
 	createSwapchain();
 }
@@ -827,18 +827,18 @@ std::pair<vk::Buffer, vma::Allocation> VulkanContext::createBuffer(vk::DeviceSiz
 }
 
 void VulkanContext::copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size) {
-	vk::CommandBuffer commandBuffer = beginSingleTimeCommands();
+	vk::CommandBuffer commandBuffer = beginSingleTimeCommands(m_commandPool);
 
 	vk::BufferCopy copyRegion{
 		.size = size,
 	};
 	commandBuffer.copyBuffer(srcBuffer, dstBuffer, copyRegion);
-	endSingleTimeCommands(commandBuffer);
+	endSingleTimeCommands(commandBuffer, m_commandPool);
 }
 
-void VulkanContext::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height) {
+void VulkanContext::copyBufferToImage(vk::Buffer buffer, vk::Image image, vk::CommandPool commandPool, uint32_t width, uint32_t height) {
 
-	vk::CommandBuffer commandBuffer = beginSingleTimeCommands();
+	vk::CommandBuffer commandBuffer = beginSingleTimeCommands(commandPool);
 
 	vk::BufferImageCopy region{
 		.bufferOffset = 0,
@@ -860,7 +860,7 @@ void VulkanContext::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32
 
 	commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, region); 
 
-	endSingleTimeCommands(commandBuffer);
+	endSingleTimeCommands(commandBuffer, commandPool);
 
 }
 
@@ -879,10 +879,10 @@ uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, Vk
 #pragma endregion
 
 #pragma region COMMAND_BUFFERS
-vk::CommandBuffer VulkanContext::beginSingleTimeCommands() {
+vk::CommandBuffer VulkanContext::beginSingleTimeCommands(vk::CommandPool commandPool) {
 
 	vk::CommandBufferAllocateInfo allocInfo{
-		.commandPool = m_commandPool,
+		.commandPool = commandPool,
 		.level = vk::CommandBufferLevel::ePrimary,
 		.commandBufferCount = 1,
 	};
@@ -897,17 +897,17 @@ vk::CommandBuffer VulkanContext::beginSingleTimeCommands() {
 	return commandBuffer;
 
 }
-void VulkanContext::endSingleTimeCommands(vk::CommandBuffer commandBuffer) {
+void VulkanContext::endSingleTimeCommands(vk::CommandBuffer commandBuffer, vk::CommandPool commandPool) {
 	commandBuffer.end();
 
 	vk::SubmitInfo submitInfo{
 		.commandBufferCount = 1,
 		.pCommandBuffers = &commandBuffer,
 	};
-
+	std::lock_guard<std::mutex> lock(m_graphicsQueueMutex);
 	m_graphicsQueue.submit(submitInfo);
 	m_graphicsQueue.waitIdle();
-	m_device.freeCommandBuffers(m_commandPool, commandBuffer);
+	m_device.freeCommandBuffers(commandPool, commandBuffer);
 }
 #pragma endregion
 
@@ -928,7 +928,7 @@ vk::FormatProperties VulkanContext::getFormatProperties(vk::Format format) const
 #pragma endregion
 
 #pragma region COMMAND_POOL
-void VulkanContext::createCommandPool()
+vk::CommandPool VulkanContext::createCommandPool()
 {
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies();
 
@@ -938,7 +938,7 @@ void VulkanContext::createCommandPool()
 	};
 
 	try {
-		m_commandPool = m_device.createCommandPool(poolInfo);
+		return m_device.createCommandPool(poolInfo);
 	}
 	catch (vk::SystemError err)
 	{

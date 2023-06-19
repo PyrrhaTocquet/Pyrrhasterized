@@ -1,6 +1,7 @@
 #include "VulkanScene.h"
 
 #include <unordered_map>
+#include <future>
 
 VulkanScene::VulkanScene(VulkanContext* context) {
 	m_allocator = context->getAllocator();
@@ -27,8 +28,11 @@ void VulkanScene::addChildren(VulkanScene* childrenScene) {
 
 void VulkanScene::addModel(const std::filesystem::path& path, const Transform& transform)
 {
-	Model* model = new Model(m_context, path, transform);
-	m_models.push_back(model);
+	ModelLoadingInfo modelInfo{
+		.path = path,
+		.transform = transform,
+	};
+	m_modelLoadingInfos.push_back(modelInfo);
 }
 
 void VulkanScene::addModel(Model* model)
@@ -36,6 +40,27 @@ void VulkanScene::addModel(Model* model)
 	m_models.push_back(model);
 }
 
+
+static Model* newModel(VulkanContext* context, std::filesystem::path path, Transform transform) {
+	return new Model(context, path, transform);
+};
+
+void VulkanScene::loadModels()
+{
+	std::vector<std::future<Model*>> modelLoadingFutures;
+	modelLoadingFutures.resize(m_modelLoadingInfos.size());
+	for (uint32_t i = 0; i < m_modelLoadingInfos.size(); i++)
+	{
+		modelLoadingFutures[i] = std::async(std::launch::async, newModel, m_context, m_modelLoadingInfos[i].path, m_modelLoadingInfos[i].transform);
+
+	}
+	for (auto& modelLoadingFuture : modelLoadingFutures)
+	{
+		m_models.push_back(modelLoadingFuture.get());
+	}
+	
+
+}
 
 void VulkanScene::addEntity(Entity* entity) {
 	addModel(entity->getModelPtr());

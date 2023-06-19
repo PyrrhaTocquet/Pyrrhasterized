@@ -9,6 +9,11 @@
 #include <filesystem>
 #include "Model.h"
 
+struct ModelLoadingInfo {
+	std::filesystem::path path;
+	Transform transform;
+};
+
 class VulkanScene : Drawable
 {
 public :
@@ -22,13 +27,14 @@ private:
 	vma::Allocation m_vertexBufferAllocation, m_indexBufferAllocation;
 	vma::Allocator m_allocator;
 
-
+	std::vector<ModelLoadingInfo> m_modelLoadingInfos;
 public:
 	VulkanScene(VulkanContext* context);
 	~VulkanScene();
 	void addChildren(VulkanScene* childrenScene);
 	void addModel(const std::filesystem::path& path, const Transform& transform);
 	void addModel(Model* model);
+	void loadModels();
 	void addEntity(Entity* entity);
 	void createBuffers();
 	const uint32_t getIndexBufferSize();

@@ -31,6 +31,7 @@ class VulkanImage
 public:
 	vk::Image m_image = VK_NULL_HANDLE;
 	vk::ImageView m_imageView = VK_NULL_HANDLE;
+	vk::CommandPool m_commandPool = VK_NULL_HANDLE;
 private:
 	void constructVkImage(VulkanContext* context, VulkanImageParams imageParams);
 	void constructVkImageView(VulkanContext* context, VulkanImageParams imageParams, VulkanImageViewParams imageViewParams);

@@ -30,8 +30,7 @@ void VulkanImage::constructVkImage(VulkanContext* context, VulkanImageParams ima
 		allocInfo.flags = vma::AllocationCreateFlagBits::eDedicatedMemory;
 	}
 
-	std::tie(m_image, m_allocation) = m_allocator.createImage(imageInfo, allocInfo); //TODO error checking ?
-
+	std::tie(m_image, m_allocation) = m_allocator.createImage(imageInfo, allocInfo); 
 
 }
 
@@ -66,6 +65,7 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 {
 	m_allocator = context->getAllocator();
 	m_device = context->getDevice();
+	m_commandPool = context->createCommandPool();
 	constructVkImage(context, imageParams);
 	constructVkImageView(context, imageParams, imageViewParams);
 }
@@ -75,7 +75,7 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 {
 	m_allocator = context->getAllocator();
 	m_device = context->getDevice();
-
+	m_commandPool = context->createCommandPool();
 	//Texture file read
 	int texWidth, texHeight, texChannels;
 	stbi_uc* pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha); //Forces the image to be loaded with an alpha channel for consistency
@@ -111,7 +111,7 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 
 	//Copy the staging buffer to the texture image
 	transitionImageLayout( context, imageParams.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, imageParams.mipLevels); 
-	context->copyBufferToImage(stagingBuffer, m_image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+	context->copyBufferToImage(stagingBuffer, m_image, m_commandPool, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 	m_allocator.destroyBuffer(stagingBuffer, stagingBufferAllocation);
 
 
@@ -125,6 +125,7 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 
 VulkanImage::~VulkanImage()
 {
+	m_device.destroyCommandPool(m_commandPool);
 	m_allocator.destroyImage(m_image, m_allocation);
 	m_device.destroyImageView(m_imageView);
 
@@ -141,7 +142,7 @@ void VulkanImage::generateMipmaps(VulkanContext* context, vk::Image image, vk::F
 		throw std::runtime_error("texture image format does not support linear blitting!");
 	}
 
-	vk::CommandBuffer commandBuffer = context->beginSingleTimeCommands();
+	vk::CommandBuffer commandBuffer = context->beginSingleTimeCommands(m_commandPool);
 
 	vk::ImageMemoryBarrier barrier{
 		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -211,7 +212,7 @@ void VulkanImage::generateMipmaps(VulkanContext* context, vk::Image image, vk::F
 
 	commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, nullptr, nullptr, barrier);
 
-	context->endSingleTimeCommands(commandBuffer);
+	context->endSingleTimeCommands(commandBuffer, m_commandPool);
 }
 
 bool VulkanImage::hasLoadingFailed()
@@ -223,7 +224,7 @@ bool VulkanImage::hasLoadingFailed()
 //Transition the image from the oldLayout to a newLayout
 void VulkanImage::transitionImageLayout(VulkanContext* context, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) 
 {
-	vk::CommandBuffer commandBuffer = context->beginSingleTimeCommands();
+	vk::CommandBuffer commandBuffer = context->beginSingleTimeCommands(m_commandPool);
 
 
 	vk::ImageMemoryBarrier barrier{
@@ -266,5 +267,5 @@ void VulkanImage::transitionImageLayout(VulkanContext* context, vk::Format forma
 
 	commandBuffer.pipelineBarrier(sourceStage, destinationStage, {}, nullptr, nullptr, barrier);
 
-	context->endSingleTimeCommands(commandBuffer);
+	context->endSingleTimeCommands(commandBuffer, m_commandPool);
 }

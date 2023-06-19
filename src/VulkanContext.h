@@ -65,7 +65,11 @@ private:
 	vk::PhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
 	vk::Device m_device = VK_NULL_HANDLE;
 	QueueFamilyIndices m_queueIndices;
+
+	std::mutex m_graphicsQueueMutex;
 	vk::Queue m_graphicsQueue = VK_NULL_HANDLE;
+
+
 	vk::Queue m_presentQueue = VK_NULL_HANDLE;
 	vk::CommandPool m_commandPool = VK_NULL_HANDLE;
 	VkSurfaceKHR m_surface = VK_NULL_HANDLE;
@@ -127,11 +131,13 @@ public:
 	//BUFFERS
 	[[nodiscard("Release the allocation when the buffer is no longer used")]] std::pair<vk::Buffer, vma::Allocation> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::MemoryUsage memoryUsage);
 	void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
-	void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
+	void copyBufferToImage(vk::Buffer buffer, vk::Image image, vk::CommandPool commandPool, uint32_t width, uint32_t height);
 
 	//COMMAND BUFFERS
-	[[nodiscard("Call endSingleTimeCommands(returnValue) to end and submit the buffer")]] vk::CommandBuffer beginSingleTimeCommands();
-	void endSingleTimeCommands(vk::CommandBuffer commandBuffer);
+	[[nodiscard("Call endSingleTimeCommands(returnValue) to end and submit the buffer")]] vk::CommandBuffer beginSingleTimeCommands(vk::CommandPool commandPool);
+	void endSingleTimeCommands(vk::CommandBuffer commandBuffer, vk::CommandPool commandPool);
+	[[nodiscard("Creation of unused command pools !")]] vk::CommandPool createCommandPool();
+
 
 	//PROPERTIES
 	[[nodiscard]] vk::PhysicalDeviceProperties getProperties()const;
@@ -165,8 +171,7 @@ private:
 	//LOGICAL DEVICE
 	void createLogicalDevice();
 
-	//COMMAND POOL
-	void createCommandPool();
+
 
 	//SURFACE
 	void createSurface();

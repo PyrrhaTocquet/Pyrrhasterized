@@ -316,7 +316,7 @@ void MainRenderPass::createDescriptorSet(VulkanScene* scene)
                 texturedMesh.textureId = textureId;
                 textureId++;
             }
-            if (texturedMesh.normalMapImage != nullptr && !texturedMesh.textureImage->hasLoadingFailed())
+            if (texturedMesh.normalMapImage != nullptr && !texturedMesh.normalMapImage->hasLoadingFailed())
             {
                 vk::DescriptorImageInfo imageInfo{
                 .sampler = m_textureSampler,

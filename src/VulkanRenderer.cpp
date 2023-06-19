@@ -39,9 +39,9 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     m_device.waitIdle();
 
     //execute a gpu command to upload imgui font textures
-    vk::CommandBuffer cmd = m_context->beginSingleTimeCommands();
+    vk::CommandBuffer cmd = m_context->beginSingleTimeCommands(m_context->getCommandPool());
     ImGui_ImplVulkan_CreateFontsTexture(cmd);
-    m_context->endSingleTimeCommands(cmd);
+    m_context->endSingleTimeCommands(cmd, m_context->getCommandPool());
 
     //clear font textures from cpu data
     ImGui_ImplVulkan_DestroyFontUploadObjects();
@@ -282,6 +282,7 @@ bool VulkanRenderer::present(vk::Semaphore *signalSemaphores, uint32_t imageInde
 //Adds a scene to the scenes to be renderer. Generates the descriptor sets with the textures before adding.
 void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
     //TODO MAKE SURE THERE IS A UNIQUE SCENE !!!!!
+    vulkanScene->loadModels();
     vulkanScene->createBuffers();
     for (auto& renderPass : m_renderPasses)
     {
