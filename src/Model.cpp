@@ -1,9 +1,16 @@
+/*
+author: Pyrrha Tocquet
+date: 01/06/23
+desc: Manages model loading and drawing
+*/
+
 #include "Model.h"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #define TINYGLTF_IMPLEMENTATION
 #include "tiny_gltf.h"
+#include <future>
 
 
 Model::Model(VulkanContext* context, const std::filesystem::path& path, const Transform& transform) {
@@ -21,62 +28,90 @@ Model::~Model() {
 	}
 }
 
+//returns the model matrix (world space) of the model computed from transform data
 glm::mat4 Model::getMatrix()
 {
 	return m_transform.computeMatrix();
 }
 
 //Write command buffer at scene drawing
-void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, float time, uint32_t &indexOffset)
+void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, uint32_t &indexOffset, ModelPushConstant& pushConstant)
 {
 
 	for (auto& mesh : m_texturedMeshes)
 	{
+		pushConstant.model = m_transform.computeMatrix();
+		pushConstant.textureId = static_cast<glm::int32>(mesh.textureId);
+		pushConstant.normalMapId = static_cast<glm::int32>(mesh.normalMapId);
 
-		ModelPushConstant modelPushConstant{
-			.model = m_transform.computeMatrix(),
-			.textureId = static_cast<glm::int32>(mesh.textureId),
-			.normalMapId = static_cast<glm::int32>(mesh.normalMapId),
-			.time = time,
-		};
-
-		commandBuffer.pushConstants<ModelPushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, modelPushConstant);
-		commandBuffer.drawIndexed(mesh.indices.size(), 1, indexOffset, 0, 0);
-		indexOffset += mesh.indices.size();
+		commandBuffer.pushConstants<ModelPushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+		commandBuffer.drawIndexed(mesh.indicesCount, 1, indexOffset, 0, 0);
+		indexOffset += mesh.indicesCount;
 	}
 }
 
+//returns textured meshes dividing the model
 std::vector<TexturedMesh>& Model::getMeshes()
 {
 	return m_texturedMeshes;
 }
 
+//Translates the model by the inputed vector (do before computing model matrix)
 void Model::translateBy(glm::vec3 translation)
 {
 	m_transform.translate += translation;
 	m_transform.hasChanged = true;
 }
 
+//Rotates the model by the inputed vector (do before computing model matrix). Rotations are in degrees.
 void Model::rotateBy(glm::vec3 rotation)
 {
 	m_transform.rotate += rotation;
 	m_transform.hasChanged = true;
 }
 
+//Scales the model by the inputed vector (do before computing model matrix)
 void Model::scaleBy(glm::vec3 scale)
 {
-	m_transform.scale += scale;
+	m_transform.scale *= scale;
 	m_transform.hasChanged = true;
 }
 
-void Model::loadGltf(const std::filesystem::path& path)
+//Releases vertices memory
+void Model::clearLoadingVertexData()
 {
-	tinygltf::Model gltfModel;
+	for (auto& mesh : m_texturedMeshes)
+	{
+		mesh.verticesCount = mesh.loadingVertices.size();
+		std::vector<Vertex>().swap(mesh.loadingVertices);
+
+	}
+}
+
+//Releases indices memory
+void Model::clearLoadingIndexData()
+{
+	for (auto& mesh : m_texturedMeshes)
+	{
+		mesh.indicesCount = mesh.loadingIndices.size();
+		std::vector<uint32_t>().swap(mesh.loadingIndices);
+	}
+}
+
+//Proxy function used for multithreading
+static VulkanImage* newVulkanImage(VulkanContext* context, VulkanImageParams imageParams, VulkanImageViewParams imageViewParams, std::string path)
+{
+	return new VulkanImage(context, imageParams, imageViewParams, path);
+}
+
+
+//Picks the right tinygltf function depending on the file format and manages errors
+static void loadGltfData(const std::filesystem::path& path, tinygltf::Model& gltfModel) {
+	bool ret = false;
 	tinygltf::TinyGLTF loader;
 	std::string err;
 	std::string warn;
 
-	bool ret = false;
 	std::filesystem::path ext = path.extension();
 	if (path.extension() == ".gltf")
 	{
@@ -90,10 +125,6 @@ void Model::loadGltf(const std::filesystem::path& path)
 		std::runtime_error("Model format not supported");
 	}
 
-	/*
-	if (!warn.empty()) {
-
-	}*/
 	if (!err.empty()) {
 		throw std::runtime_error(err);
 	}
@@ -102,7 +133,21 @@ void Model::loadGltf(const std::filesystem::path& path)
 		throw std::runtime_error("Failed to parse glTf\n");
 	}
 
-	m_texturedMeshes.resize(gltfModel.materials.size());
+}
+
+//Loads GLTF and GLB files
+void Model::loadGltf(const std::filesystem::path& path)
+{
+	tinygltf::Model gltfModel;
+	loadGltfData(path, gltfModel);
+	
+	size_t materialCount = gltfModel.materials.size();
+	m_texturedMeshes.resize(materialCount);
+	if (materialCount <= 0)
+	{
+		TexturedMesh texturedMesh;
+		m_texturedMeshes.push_back(texturedMesh);
+	}
 	for (const auto& mesh : gltfModel.meshes) {
 		for (const auto& attribute : mesh.primitives) {
 			int positionBufferIndex = attribute.attributes.at("POSITION");
@@ -148,8 +193,13 @@ void Model::loadGltf(const std::filesystem::path& path)
 				};
 
 				int materialIndex = attribute.material;
-				m_texturedMeshes[materialIndex].vertices.push_back(vertex);
-				m_texturedMeshes[materialIndex].indices.push_back(m_texturedMeshes[materialIndex].indices.size());
+				if (materialCount <= 0)
+				{
+					materialIndex = 0;
+				}
+				m_texturedMeshes[materialIndex].loadingVertices.push_back(vertex);
+				m_texturedMeshes[materialIndex].loadingIndices.push_back(m_texturedMeshes[materialIndex].loadingIndices.size());
+			
 			}
 
 		}
@@ -168,19 +218,35 @@ void Model::loadGltf(const std::filesystem::path& path)
 		.aspectFlags = vk::ImageAspectFlagBits::eColor,
 	};
 	
+
+	std::vector<std::future<VulkanImage*>> textureLoadFutures;
+
+	textureLoadFutures.resize(m_texturedMeshes.size());
 	for (int i = 0; i < m_texturedMeshes.size(); i++) {
-		int textureId = gltfModel.materials[i].pbrMetallicRoughness.baseColorTexture.index;
+		int textureId = -1;
+		if (gltfModel.materials.size() > 0)
+		{
+			textureId = gltfModel.materials[i].pbrMetallicRoughness.baseColorTexture.index;
+		}
 		if (textureId != -1)
 		{
 			std::string texturePath = gltfModel.images[gltfModel.textures[textureId].source].uri;
 			if (texturePath == "")texturePath = gltfModel.images[gltfModel.textures[textureId].source].name + ".png";
 			if (texturePath != "")
 			{
-				m_texturedMeshes[i].textureImage = new VulkanImage(m_context, imageParams, imageViewParams, parentPath.string() + "/" + texturePath);
+				textureLoadFutures[i] = std::async(std::launch::async, newVulkanImage, m_context, imageParams, imageViewParams, parentPath.string() + "/" + texturePath);
 			}
 
 		}
 	}
+
+	for (int i = 0; i < textureLoadFutures.size(); i++) {
+		if (textureLoadFutures[i].valid())
+		{
+			m_texturedMeshes[i].textureImage = textureLoadFutures[i].get();
+		}
+	}
+
 
 	//Creating NormalMaps
 	VulkanImageParams normalImageParams
@@ -195,17 +261,29 @@ void Model::loadGltf(const std::filesystem::path& path)
 		.aspectFlags = vk::ImageAspectFlagBits::eColor,
 	};
 	for (int i = 0; i < m_texturedMeshes.size(); i++) {
-		int textureId = gltfModel.materials[i].normalTexture.index;
+		int textureId = -1;
+		if (gltfModel.materials.size() > 0) {
+			textureId = gltfModel.materials[i].normalTexture.index;
+		}
+
 		if (textureId != -1)
 		{
 			std::string texturePath = gltfModel.images[gltfModel.textures[textureId].source].uri;
 			if(texturePath == "")texturePath = gltfModel.images[gltfModel.textures[textureId].source].name + ".png";
 			if (texturePath != "")
 			{
-				m_texturedMeshes[i].normalMapImage = new VulkanImage(m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + texturePath);
+				//m_texturedMeshes[i].normalMapImage = new VulkanImage(m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + texturePath);
+				textureLoadFutures[i] = std::async(std::launch::async, newVulkanImage, m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + texturePath);
 			}
 		}
 	}
+	for (int i = 0; i < textureLoadFutures.size(); i++) {
+		if (textureLoadFutures[i].valid())
+		{
+			m_texturedMeshes[i].normalMapImage = textureLoadFutures[i].get();
+		}
+	}
+
 	generateTangents();
 };
 
@@ -224,42 +302,52 @@ void Model::loadModel(const std::filesystem::path& path) {
 	}
 }
 
+//Used in a new thread by generateTangents to compute tangent data
+static void generateTangentData(TexturedMesh* texturedMesh) {
+	for (uint32_t i = 0; i < texturedMesh->loadingIndices.size(); i += 3)
+	{
+		uint32_t i0 = texturedMesh->loadingIndices[i + 0];
+		uint32_t i1 = texturedMesh->loadingIndices[i + 1];
+		uint32_t i2 = texturedMesh->loadingIndices[i + 2];
+
+		glm::vec3 edge1 = texturedMesh->loadingVertices[i1].pos - texturedMesh->loadingVertices[i0].pos;
+		glm::vec3 edge2 = texturedMesh->loadingVertices[i2].pos - texturedMesh->loadingVertices[i0].pos;
+
+		glm::vec2 deltaUV1 = texturedMesh->loadingVertices[i1].texCoord - texturedMesh->loadingVertices[i0].texCoord;
+		glm::vec2 deltaUV2 = texturedMesh->loadingVertices[i2].texCoord - texturedMesh->loadingVertices[i0].texCoord;
+
+		float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+
+		glm::vec3 tangent3 = (edge1 * deltaUV2.y - edge2 * deltaUV1.y) * r;
+		tangent3 = glm::normalize(tangent3);
+		float handedness = ((deltaUV1.y * deltaUV2.x - deltaUV2.y * deltaUV1.x) < 0.0f) ? -1.0f : 1.0f;
+
+		glm::vec4 tangent4 = glm::vec4(tangent3, handedness);
+		texturedMesh->loadingVertices[i0].tangent = tangent4;
+		texturedMesh->loadingVertices[i1].tangent = tangent4;
+		texturedMesh->loadingVertices[i2].tangent = tangent4;
+	}
+}
 //Generates the tangent data in the Vertex struct
 void Model::generateTangents() {
-	for (auto& texturedMesh : m_texturedMeshes)
+	std::vector<std::future<void>> generateTangentDataFutures;
+	generateTangentDataFutures.resize(m_texturedMeshes.size());
+	for (uint32_t i = 0; i < m_texturedMeshes.size(); i++)
 	{
-		for (uint32_t i = 0; i < texturedMesh.indices.size(); i += 3)
-		{
-			uint32_t i0 = texturedMesh.indices[i + 0];
-			uint32_t i1 = texturedMesh.indices[i + 1];
-			uint32_t i2 = texturedMesh.indices[i + 2];
+		generateTangentDataFutures[i] = std::async(std::launch::async, generateTangentData, &m_texturedMeshes[i]);
+	}
 
-			glm::vec3 edge1 = texturedMesh.vertices[i1].pos - texturedMesh.vertices[i0].pos;
-			glm::vec3 edge2 = texturedMesh.vertices[i2].pos - texturedMesh.vertices[i0].pos;
-
-			glm::vec2 deltaUV1 = texturedMesh.vertices[i1].texCoord - texturedMesh.vertices[i0].texCoord;
-			glm::vec2 deltaUV2 = texturedMesh.vertices[i2].texCoord - texturedMesh.vertices[i0].texCoord;
-
-			float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
-
-			glm::vec3 tangent3 = (edge1 * deltaUV2.y - edge2 * deltaUV1.y) * r;
-			tangent3 = glm::normalize(tangent3);
-			float handedness = ((deltaUV1.y * deltaUV2.x - deltaUV2.y * deltaUV1.x) < 0.0f) ? -1.0f : 1.0f;
-
-			glm::vec4 tangent4 = glm::vec4(tangent3, handedness);
-			texturedMesh.vertices[i0].tangent = tangent4;
-			texturedMesh.vertices[i1].tangent = tangent4;
-			texturedMesh.vertices[i2].tangent = tangent4;
-		}
+	for (uint32_t i = 0; i < m_texturedMeshes.size(); i++)
+	{
+		generateTangentDataFutures[i].wait();
 	}
 }
 
-void Model::loadObj(const std::filesystem::path& path) {
+//Abstracts away boilerplate from objloader
+static void objLoaderLoad(const std::filesystem::path& path, tinyobj::ObjReader& reader)
+{
 	tinyobj::ObjReaderConfig reader_config;
 	reader_config.mtl_search_path = ""; // Path to material files
-
-	tinyobj::ObjReader reader;
-
 
 	if (!reader.ParseFromFile(path.string(), reader_config)) {
 		if (!reader.Error().empty()) {
@@ -271,12 +359,22 @@ void Model::loadObj(const std::filesystem::path& path) {
 	if (!reader.Warning().empty()) {
 		std::cout << "TinyObjReader: " << reader.Warning();
 	}
+}
+//Loads Obj files
+void Model::loadObj(const std::filesystem::path& path) 
+{
+	tinyobj::ObjReader reader;
+	objLoaderLoad(path, reader);
 
 	auto& attrib = reader.GetAttrib();
 	auto& shapes = reader.GetShapes();
 	auto& materials = reader.GetMaterials();
 
-	m_texturedMeshes.resize(materials.size());
+	uint32_t materialCount = materials.size();
+	if (materialCount == 0) {
+		materialCount = 1;
+	}
+	m_texturedMeshes.resize(materialCount);
 
 	// Loop over shapes
 	for (size_t s = 0; s < shapes.size(); s++) {
@@ -314,14 +412,22 @@ void Model::loadObj(const std::filesystem::path& path) {
 					};
 
 				}
-				int materialIndex = shapes[s].mesh.material_ids[f];
-				m_texturedMeshes[materialIndex].vertices.push_back(vertex);
-				m_texturedMeshes[materialIndex].indices.push_back(m_texturedMeshes[materialIndex].indices.size());
+				
+				int materialIndex = 0;
+				if (materials.size() != 0 && shapes[s].mesh.material_ids[f] != -1)
+				{
+					materialIndex = shapes[s].mesh.material_ids[f];
+				}
+				m_texturedMeshes[materialIndex].loadingVertices.push_back(vertex);
+				m_texturedMeshes[materialIndex].loadingIndices.push_back(m_texturedMeshes[materialIndex].loadingIndices.size());
 			}
 			index_offset += fv;
 
 		}
 	}
+
+	std::vector<std::future<VulkanImage*>> textureLoadFutures;
+	textureLoadFutures.resize(m_texturedMeshes.size());
 	std::filesystem::path parentPath = path.parent_path();
 	//Creating Textures
 	VulkanImageParams imageParams
@@ -338,7 +444,15 @@ void Model::loadObj(const std::filesystem::path& path) {
 	for (int i = 0; i < m_texturedMeshes.size(); i++) {
 		if (materials[i].diffuse_texname != "")
 		{
-			m_texturedMeshes[i].textureImage = new VulkanImage(m_context, imageParams, imageViewParams, parentPath.string() + "/" + materials[i].diffuse_texname);
+			//m_texturedMeshes[i].textureImage = new VulkanImage(m_context, imageParams, imageViewParams, parentPath.string() + "/" + materials[i].diffuse_texname);
+			textureLoadFutures[i] = std::async(std::launch::async, newVulkanImage, m_context, imageParams, imageViewParams, parentPath.string() + "/" + materials[i].diffuse_texname);
+		}
+	}
+
+	for (int i = 0; i < textureLoadFutures.size(); i++) {
+		if (textureLoadFutures[i].valid())
+		{
+			m_texturedMeshes[i].textureImage = textureLoadFutures[i].get();
 		}
 	}
 
@@ -359,9 +473,17 @@ void Model::loadObj(const std::filesystem::path& path) {
 		{
 			if (materials[i].displacement_texname != "")
 			{
-				m_texturedMeshes[i].normalMapImage = new VulkanImage(m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + materials[i].displacement_texname);
+				//m_texturedMeshes[i].normalMapImage = new VulkanImage(m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + materials[i].displacement_texname);
+				textureLoadFutures[i] = std::async(std::launch::async, newVulkanImage, m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + materials[i].displacement_texname);
 			}
 
+		}
+	}
+
+	for (int i = 0; i < textureLoadFutures.size(); i++) {
+		if (textureLoadFutures[i].valid())
+		{
+			m_texturedMeshes[i].normalMapImage = textureLoadFutures[i].get();
 		}
 	}
 	generateTangents();

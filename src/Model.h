@@ -5,8 +5,10 @@
 #include "VulkanContext.h"
 
 struct TexturedMesh {
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
+	std::vector<Vertex> loadingVertices;
+	std::vector<uint32_t> loadingIndices;
+	uint32_t verticesCount = 0;
+	uint32_t indicesCount = 0;
 	VulkanImage* textureImage = nullptr;
 	VulkanImage* normalMapImage = nullptr;
 	uint32_t textureId;
@@ -27,13 +29,15 @@ public:
 	Model(VulkanContext* context, const std::filesystem::path& path, const Transform& transform);
 	Model();
 	~Model();
-	glm::mat4 getMatrix();
-	void drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, float time, uint32_t& indexOffset);
-	std::vector<TexturedMesh>& getMeshes();
+	[[nodiscard]]glm::mat4 getMatrix();
+	void drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, uint32_t& indexOffset, ModelPushConstant& pushConstant);
+	[[nodiscard]]std::vector<TexturedMesh>& getMeshes();
 
 	void translateBy(glm::vec3 translation);
 	void rotateBy(glm::vec3 rotation);
 	void scaleBy(glm::vec3 scale);
 
+	void clearLoadingVertexData();
+	void clearLoadingIndexData();
 
 };

@@ -24,6 +24,7 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 
 VulkanContext::VulkanContext()
 {
+	updateTime();
 	createWindow();
 	createInstance();
 	createDebugMessenger();
@@ -35,7 +36,7 @@ VulkanContext::VulkanContext()
 	pfnCmdDebugMarkerBegin = (PFN_vkCmdDebugMarkerBeginEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerBeginEXT");
 	pfnCmdDebugMarkerEnd = (PFN_vkCmdDebugMarkerEndEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerEndEXT");
 	pfnCmdDebugMarkerInsert = (PFN_vkCmdDebugMarkerInsertEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerInsertEXT");
-	createCommandPool();
+	m_commandPool = createCommandPool();
 	createAllocator();
 	createSwapchain();
 }
@@ -44,7 +45,7 @@ VulkanContext::VulkanContext()
 VulkanContext::~VulkanContext()
 {
 
-	for (auto imageView : m_swapchainImageViews) {
+	for (auto& imageView : m_swapchainImageViews) {
 		m_device.destroyImageView(imageView);
 	}
 
@@ -88,6 +89,10 @@ bool VulkanContext::checkValidationLayerSupport()
 	return true;
 
 }
+Time VulkanContext::getTime()
+{
+	return m_time;
+}
 /*	Debug Callback function
 	PFN_vkDebugUtilsMessengerCallbackEXT signature
 	VKAPI_ATTR and VKAPI_CALL ensure that the function has the right signature for Vulkan to use it
@@ -123,6 +128,19 @@ void VulkanContext::createDebugMessenger() {
 	if (CreateDebugUtilsMessengerEXT(m_instance, reinterpret_cast<const VkDebugUtilsMessengerCreateInfoEXT*>(&createInfo), nullptr, &m_debugMessenger) != VK_SUCCESS) {
 		throw std::runtime_error("failed to set up debug callback!");
 	}
+}
+void VulkanContext::updateTime()
+{
+	//Time since rendering start
+	static auto firstTime = std::chrono::high_resolution_clock::now();
+	static auto prevTime = firstTime;
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - prevTime).count();
+	float elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - firstTime).count();
+	prevTime = currentTime;
+
+	m_time.elapsedSinceStart = elapsedTime;
+	m_time.deltaTime = deltaTime;
 }
 #pragma endregion
 
@@ -178,6 +196,8 @@ void VulkanContext::createInstance()
 	.ppEnabledExtensionNames = extensions.data()
 	};
 	
+
+
 	//Debug validation layers
 	vk::DebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo;
 	if (enableValidationLayers) {
@@ -187,13 +207,13 @@ void VulkanContext::createInstance()
 		createInfo.pNext = (vk::DebugUtilsMessengerCreateInfoEXT*)&debugMessengerCreateInfo;
 
 		//Best practices layer, added to the debugMessenger's pNext.
-		vk::ValidationFeatureEnableEXT enables[] = { vk::ValidationFeatureEnableEXT::eBestPractices };
-		vk::ValidationFeaturesEXT features{
-			.enabledValidationFeatureCount = 1,
-			.pEnabledValidationFeatures = enables,
+		/*std::array<vk::ValidationFeatureEnableEXT, 1> enables = {vk::ValidationFeatureEnableEXT::eSynchronizationValidation};
+		vk::ValidationFeaturesEXT validationFeatures{
+			.enabledValidationFeatureCount = enables.size(),
+			.pEnabledValidationFeatures = enables.data(),
 		};
 
-		debugMessengerCreateInfo.pNext = &features;
+		debugMessengerCreateInfo.pNext = &validationFeatures;*/
 
 	}
 	else {
@@ -220,6 +240,7 @@ bool VulkanContext::isDeviceSuitable(const vk::PhysicalDevice &device)
 	vk::PhysicalDeviceProperties physicalDeviceProperties = device.getProperties();
 	vk::PhysicalDeviceFeatures physicalDeviceFeatures = device.getFeatures(); 
 
+
 	bool extensionsSupported = checkDeviceExtensionsSupport(device, requiredExtensions);
 	bool swapchainAdequate = false;
 	QueueFamilyIndices indices = findQueueFamilies(device);
@@ -234,6 +255,65 @@ bool VulkanContext::isDeviceSuitable(const vk::PhysicalDevice &device)
 	return indices.isComplete() && extensionsSupported && swapchainAdequate && physicalDeviceFeatures.samplerAnisotropy && physicalDeviceFeatures.shaderSampledImageArrayDynamicIndexing && physicalDeviceFeatures.fillModeNonSolid;
 
 }
+
+//Picks physical device depending on an arbitrary score. Best or Worse device picking can be chosen with the c_pickWorseDevice bool
+vk::PhysicalDevice VulkanContext::getBestDevice(std::vector<vk::PhysicalDevice> devices) {
+
+	vk::PhysicalDevice bestDevice;
+	float bestScore = c_pickWorseDevice ? std::numeric_limits<float>::max() : 0;
+	for (auto device : devices)
+	{
+		float score = 0;
+		switch (device.getProperties().deviceType)
+		{
+
+			case vk::PhysicalDeviceType::eDiscreteGpu:
+				score = 5;
+				break;
+			case vk::PhysicalDeviceType::eIntegratedGpu:
+				score = 4;
+				break;
+			case vk::PhysicalDeviceType::eVirtualGpu:
+				score = 3;
+				break;
+			case vk::PhysicalDeviceType::eCpu:
+				score = 2;
+				break;
+			case vk::PhysicalDeviceType::eOther:
+				score = 1;
+				break;
+			default:
+				score = 0;
+		};
+
+		auto memoryProps = device.getMemoryProperties();
+		auto heaps = memoryProps.memoryHeaps;
+		for (const auto& heap : heaps) {
+			if (heap.flags & vk::MemoryHeapFlagBits::eDeviceLocal) {
+				//Decimal part is VRAM / 100GO
+				score += heap.size / 100000000000.f;
+			}
+		}
+
+		if (!c_pickWorseDevice)
+		{
+			if (bestScore < score)
+			{
+				bestDevice = device;
+				bestScore = score;
+			}
+		}
+		else {
+			if (bestScore > score)
+			{
+				bestDevice = device;
+				bestScore = score;
+			}
+		}
+	}
+	return bestDevice;
+}
+
 //finds a reference to an appropriate physical device and keeps it as a member.
 void VulkanContext::pickPhysicalDevice() {
 	auto physicalDevices = m_instance.enumeratePhysicalDevices();
@@ -242,18 +322,19 @@ void VulkanContext::pickPhysicalDevice() {
 	{
 		throw std::runtime_error("Failed to find GPUs with Vulkan support");
 	}
-
+	std::vector<vk::PhysicalDevice> suitableDevices;
 	for (const auto& device : physicalDevices)
 	{
 		if (isDeviceSuitable(device))
 		{
-			m_physicalDevice = device;
-			std::cout << "Device name: " << m_physicalDevice.getProperties().deviceName << std::endl;
-			break;
+
+			std::cout << "Device name: " << device.getProperties().deviceName << std::endl;
+			suitableDevices.push_back(device);
 		}
-		if (!m_physicalDevice) {
-			throw std::runtime_error("failed to find a suitable GPU!");
-		}
+	}
+	m_physicalDevice = getBestDevice(suitableDevices);
+	if (!m_physicalDevice) {
+		throw std::runtime_error("failed to find a suitable GPU!");
 	}
 }
 #pragma endregion
@@ -331,7 +412,7 @@ void VulkanContext::createSurface() {
 }
 
 
-//TODO Documentation
+//TODO creates a GLFW window
 void VulkanContext::createWindow() {
 	glfwInit(); // Initializes the GLFW library
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // Tells GLFW that we don't need an OpenGL Context
@@ -358,7 +439,7 @@ void VulkanContext::createWindow() {
 	glfwSetWindowUserPointer(m_window, m_instance);
 }
 
-
+//returns true if the window is open. Used in a while loop for the program loop
 bool VulkanContext::isWindowOpen() const
 {
 	return !glfwWindowShouldClose(m_window);
@@ -370,6 +451,7 @@ void VulkanContext::manageWindow() {
 #pragma endregion
 
 #pragma region SWAPCHAIN
+//returns Swapchain image views
 const std::vector<vk::ImageView> VulkanContext::getSwapchainImageViews() {
 	if (m_swapchainImageViews.size() == 0)
 	{
@@ -402,22 +484,26 @@ vk::Extent2D VulkanContext::getSwapchainExtent() const
 	}
 }
 
+//Return true if the window framebuffer has been resized
 bool VulkanContext::isFramebufferResized() {
 	return m_framebufferResized;
 }
 
+//Clears flags that manage window framebuffer resizing
 void VulkanContext::clearFramebufferResized() {
 	m_framebufferResized = false;
 }
 
+//Destroys swapchain image views and swapchain
 void VulkanContext::cleanupSwapchain() {
-	for (auto imageView : m_swapchainImageViews)
+	for (auto& imageView : m_swapchainImageViews)
 	{
 		m_device.destroyImageView(imageView);
 	}
 	m_device.destroySwapchainKHR(m_swapchain);
 }
 
+//recreates the swapchain when the window makes it available. Does not destroy the swapchain or image views
 void VulkanContext::recreateSwapchain() {
 	int width = 0, height = 0;
 	while (width == 0 || height == 0) {
@@ -427,7 +513,7 @@ void VulkanContext::recreateSwapchain() {
 	createSwapchain();
 }
 
-
+//Returns a struct that contains surface capabilities, formats and presentmode supported
 SwapchainSupportDetails VulkanContext::querySwapchainSupport(const vk::PhysicalDevice &physicalDevice) 
 {
 	SwapchainSupportDetails details;
@@ -438,6 +524,7 @@ SwapchainSupportDetails VulkanContext::querySwapchainSupport(const vk::PhysicalD
 	return details;
 }
 
+//returns the best surface format
 vk::SurfaceFormatKHR VulkanContext::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats) 
 {
 	for (const auto& availableFormat : availableFormats) {
@@ -448,25 +535,26 @@ vk::SurfaceFormatKHR VulkanContext::chooseSwapSurfaceFormat(const std::vector<vk
 	return availableFormats[0];
 }
 
+//Returns the best present mode depending on the surface/Swapchain
 vk::PresentModeKHR VulkanContext::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> availablePresentModes) 
 {
 	vk::PresentModeKHR bestMode = vk::PresentModeKHR::eFifo;
 
 	for (const auto& availablePresentMode : availablePresentModes) {
 		if (availablePresentMode == vk::PresentModeKHR::eMailbox) {
-			return availablePresentMode;
+			return availablePresentMode; //Waits for vertical blank
 		}
 		else if (availablePresentMode == vk::PresentModeKHR::eImmediate) {
-			bestMode = availablePresentMode;
+			bestMode = availablePresentMode; //Does not wait for vertical blank (tearing)
 		}
 	}
 
 	return bestMode;
 }
 
+//Computes the extent of the swapchain depending on the surface and screen
 vk::Extent2D VulkanContext::chooseSwapExtent(vk::SurfaceCapabilitiesKHR capabilities)
 {
-
 	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
 		return capabilities.currentExtent;
 	}
@@ -575,17 +663,16 @@ void VulkanContext::createSwapchain()
 	createSwapchainImageViews();
 }
 
-
+//acquireNextImageKHR and result management
 uint32_t VulkanContext::acquireNextSwapchainImage(vk::Semaphore &imageAvailableSemaphore) {
 	uint32_t imageIndex = 0;
 	try {
 		vk::ResultValue result = m_device.acquireNextImageKHR(m_swapchain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, nullptr);
 		imageIndex = result.value;
 	}
-	/*catch (vk::OutOfDateKHRError err) {
-		renderer->recreateSwapchainSizedObjects();
-		return imageIndex;
-	}*/
+	catch (vk::OutOfDateKHRError err) {
+		m_framebufferResized = true;
+	}
 	catch (vk::SystemError err) {
 		throw std::runtime_error("failed to acquire swap chain image!");
 	}
@@ -628,7 +715,12 @@ void VulkanContext::createLogicalDevice()
 		.samplerAnisotropy = VK_TRUE,
 	};
 
+	vk::PhysicalDeviceSynchronization2Features synchronization2Feature{
+	.synchronization2 = VK_TRUE,
+	};
+
 	vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{
+		.pNext = &synchronization2Feature,
 		.shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
 		.descriptorBindingPartiallyBound = VK_TRUE,
 		.descriptorBindingVariableDescriptorCount = VK_TRUE,
@@ -665,6 +757,7 @@ void VulkanContext::createLogicalDevice()
 #pragma endregion
 
 #pragma region FEATURES_AND_PROPERTIES
+//Returns the format that has all the requested features
 vk::Format VulkanContext::findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlagBits features)
 {
 	for (vk::Format format : candidates)
@@ -681,8 +774,13 @@ vk::Format VulkanContext::findSupportedFormat(const std::vector<vk::Format>& can
 	}
 
 }
+// Returns the maximum sample count used. Return vk::SamplecountFlagBits::e1 if MSAA is not enabled
 vk::SampleCountFlagBits VulkanContext::getMaxUsableSampleCount() const
 {
+	if (!ENABLE_MSAA)
+	{
+		return vk::SampleCountFlagBits::e1;
+	}
 	vk::PhysicalDeviceProperties properties = m_physicalDevice.getProperties();
 
 	vk::SampleCountFlags counts = properties.limits.framebufferColorSampleCounts & properties.limits.framebufferDepthSampleCounts;
@@ -717,6 +815,7 @@ vk::SampleCountFlagBits VulkanContext::getMaxUsableSampleCount() const
 #pragma endregion 
 
 #pragma region ALLOCATORS
+//creates the vma allocator
 void VulkanContext::createAllocator() {
 	vma::AllocatorCreateInfo createInfo{
 		.physicalDevice = m_physicalDevice,
@@ -735,6 +834,7 @@ vma::Allocator VulkanContext::getAllocator()
 #pragma endregion
 
 #pragma region BUFFERS
+//Creates and return the buffer and the allocation that matches the input arguments
 std::pair<vk::Buffer, vma::Allocation> VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::MemoryUsage memoryUsage) 
 {
 	vk::BufferCreateInfo bufferInfo{
@@ -755,19 +855,21 @@ std::pair<vk::Buffer, vma::Allocation> VulkanContext::createBuffer(vk::DeviceSiz
 	return m_allocator.createBuffer(bufferInfo, bufferAllocInfo);
 }
 
+//Copies a srcBuffer to a dstBuffer (GPU execution)
 void VulkanContext::copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size) {
-	vk::CommandBuffer commandBuffer = beginSingleTimeCommands();
+	vk::CommandBuffer commandBuffer = beginSingleTimeCommands(m_commandPool);
 
 	vk::BufferCopy copyRegion{
 		.size = size,
 	};
 	commandBuffer.copyBuffer(srcBuffer, dstBuffer, copyRegion);
-	endSingleTimeCommands(commandBuffer);
+	endSingleTimeCommands(commandBuffer, m_commandPool);
 }
 
-void VulkanContext::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height) {
+//Copies buffer data to an imageData
+void VulkanContext::copyBufferToImage(vk::Buffer buffer, vk::Image image, vk::CommandPool commandPool, uint32_t width, uint32_t height) {
 
-	vk::CommandBuffer commandBuffer = beginSingleTimeCommands();
+	vk::CommandBuffer commandBuffer = beginSingleTimeCommands(commandPool);
 
 	vk::BufferImageCopy region{
 		.bufferOffset = 0,
@@ -789,10 +891,11 @@ void VulkanContext::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32
 
 	commandBuffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, region); 
 
-	endSingleTimeCommands(commandBuffer);
+	endSingleTimeCommands(commandBuffer, commandPool);
 
 }
 
+//Finds a memory type that have the inputed properties
 uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
@@ -808,10 +911,11 @@ uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, Vk
 #pragma endregion
 
 #pragma region COMMAND_BUFFERS
-vk::CommandBuffer VulkanContext::beginSingleTimeCommands() {
+//Helper function that starts a command buffer made to be used once
+vk::CommandBuffer VulkanContext::beginSingleTimeCommands(vk::CommandPool commandPool) {
 
 	vk::CommandBufferAllocateInfo allocInfo{
-		.commandPool = m_commandPool,
+		.commandPool = commandPool,
 		.level = vk::CommandBufferLevel::ePrimary,
 		.commandBufferCount = 1,
 	};
@@ -826,17 +930,19 @@ vk::CommandBuffer VulkanContext::beginSingleTimeCommands() {
 	return commandBuffer;
 
 }
-void VulkanContext::endSingleTimeCommands(vk::CommandBuffer commandBuffer) {
+
+//Helper function that ends a command buffer made to be used once
+void VulkanContext::endSingleTimeCommands(vk::CommandBuffer commandBuffer, vk::CommandPool commandPool) {
 	commandBuffer.end();
 
 	vk::SubmitInfo submitInfo{
 		.commandBufferCount = 1,
 		.pCommandBuffers = &commandBuffer,
 	};
-
+	std::lock_guard<std::mutex> lock(m_graphicsQueueMutex);
 	m_graphicsQueue.submit(submitInfo);
 	m_graphicsQueue.waitIdle();
-	m_device.freeCommandBuffers(m_commandPool, commandBuffer);
+	m_device.freeCommandBuffers(commandPool, commandBuffer);
 }
 #pragma endregion
 
@@ -845,11 +951,13 @@ GLFWwindow* VulkanContext::getWindowPtr()
 {
 	return m_window;
 }
+//Gets the physical device properties
 vk::PhysicalDeviceProperties VulkanContext::getProperties() const
 {
 	return m_physicalDevice.getProperties();
 }
 
+//Gets the physical device properties relative to a format
 vk::FormatProperties VulkanContext::getFormatProperties(vk::Format format) const
 {
 	return m_physicalDevice.getFormatProperties(format);
@@ -857,7 +965,8 @@ vk::FormatProperties VulkanContext::getFormatProperties(vk::Format format) const
 #pragma endregion
 
 #pragma region COMMAND_POOL
-void VulkanContext::createCommandPool()
+//returns a new commandPool
+vk::CommandPool VulkanContext::createCommandPool()
 {
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies();
 
@@ -867,7 +976,7 @@ void VulkanContext::createCommandPool()
 	};
 
 	try {
-		m_commandPool = m_device.createCommandPool(poolInfo);
+		return m_device.createCommandPool(poolInfo);
 	}
 	catch (vk::SystemError err)
 	{
@@ -875,12 +984,14 @@ void VulkanContext::createCommandPool()
 	}
 }
 
+//Returns the VulkanContext CommandPool
 vk::CommandPool VulkanContext::getCommandPool() {
 	return m_commandPool;
 }
 #pragma endregion
 
 #pragma region IMGUI
+//IMGUI necessary Vulkan objects creation. Returns populated InitInfo
 ImGui_ImplVulkan_InitInfo VulkanContext::getImGuiInitInfo() {
 	//TODO better sized imgui pool ?
 	vk::DescriptorPoolSize poolSizes[] =
@@ -936,7 +1047,7 @@ ImGui_ImplVulkan_InitInfo VulkanContext::getImGuiInitInfo() {
 	return initGuiInfo;
 }
 #pragma engregion IMGUI
-
+//Sets the debug name of a Vulkan object
 void VulkanContext::setDebugObjectName(uint64_t object, VkDebugReportObjectTypeEXT objectType, const char* name)
 {
 

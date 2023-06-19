@@ -1,3 +1,10 @@
+/*
+author: Pyrrha Tocquet
+date: 22/05/23
+desc: Manages Vulkan device, queues, swapchain, window and useful globals(time)
+(Basically everything that is not directly related to rendering)
+*/
+
 #pragma once
 #define VULKAN_HPP_NO_CONSTRUCTORS
 #include <vulkan/vulkan.hpp>
@@ -6,6 +13,7 @@
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
 #include "imgui_impl_glfw.h"
+#include "Defs.h"
 
 #include<iostream>
 #include <optional>
@@ -43,20 +51,20 @@ const std::vector<const char*> requiredExtensions = {
 const int DEFAULT_WIDTH = 1920;
 const int DEFAULT_HEIGHT = 1080;
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
-
+const bool c_pickWorseDevice = false;
 
 /* APPLICATION INFO */
-const char applicationName[] = "Vulkan Base";
+const char applicationName[] = "Pyrrhasterized: a porte-folio rasterized renderer";
 const uint32_t applicationVersion = 0;
 
 class VulkanContext
 {
 private:
-
+#define NDEBUG = true;
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
 #else
-	const bool enableValidationLayers = true;
+	const bool enableValidationLayers = false;
 #endif
 
 	vma::Allocator m_allocator;
@@ -64,7 +72,11 @@ private:
 	vk::PhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
 	vk::Device m_device = VK_NULL_HANDLE;
 	QueueFamilyIndices m_queueIndices;
+
+	std::mutex m_graphicsQueueMutex;
 	vk::Queue m_graphicsQueue = VK_NULL_HANDLE;
+
+
 	vk::Queue m_presentQueue = VK_NULL_HANDLE;
 	vk::CommandPool m_commandPool = VK_NULL_HANDLE;
 	VkSurfaceKHR m_surface = VK_NULL_HANDLE;
@@ -83,6 +95,9 @@ private:
 	bool m_framebufferResized = false;
 	
 	vk::DescriptorPool m_imGUIDescriptorPool = VK_NULL_HANDLE;
+
+	//TIME
+	Time m_time;
 
 public:
 	VulkanContext();
@@ -126,11 +141,13 @@ public:
 	//BUFFERS
 	[[nodiscard("Release the allocation when the buffer is no longer used")]] std::pair<vk::Buffer, vma::Allocation> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::MemoryUsage memoryUsage);
 	void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
-	void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
+	void copyBufferToImage(vk::Buffer buffer, vk::Image image, vk::CommandPool commandPool, uint32_t width, uint32_t height);
 
 	//COMMAND BUFFERS
-	[[nodiscard("Call endSingleTimeCommands(returnValue) to end and submit the buffer")]] vk::CommandBuffer beginSingleTimeCommands();
-	void endSingleTimeCommands(vk::CommandBuffer commandBuffer);
+	[[nodiscard("Call endSingleTimeCommands(returnValue) to end and submit the buffer")]] vk::CommandBuffer beginSingleTimeCommands(vk::CommandPool commandPool);
+	void endSingleTimeCommands(vk::CommandBuffer commandBuffer, vk::CommandPool commandPool);
+	[[nodiscard("Creation of unused command pools !")]] vk::CommandPool createCommandPool();
+
 
 	//PROPERTIES
 	[[nodiscard]] vk::PhysicalDeviceProperties getProperties()const;
@@ -141,6 +158,10 @@ public:
 
 
 	void setDebugObjectName(uint64_t object, VkDebugReportObjectTypeEXT objectType, const char* name);
+
+	//TIME
+	Time getTime();
+	void updateTime();
 private:
 	//VALIDATION LAYERS
 	[[nodiscard]] bool checkValidationLayerSupport();
@@ -158,13 +179,13 @@ private:
 	//PHYSICAL DEVICE
 	void pickPhysicalDevice();
 	[[nodiscard]] bool isDeviceSuitable(const vk::PhysicalDevice& device);
+	[[nodiscard]] vk::PhysicalDevice getBestDevice(std::vector<vk::PhysicalDevice> devices);
 
 
 	//LOGICAL DEVICE
 	void createLogicalDevice();
 
-	//COMMAND POOL
-	void createCommandPool();
+
 
 	//SURFACE
 	void createSurface();

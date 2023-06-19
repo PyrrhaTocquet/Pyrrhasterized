@@ -1,6 +1,7 @@
 #include "VulkanScene.h"
 
 #include <unordered_map>
+#include <future>
 
 VulkanScene::VulkanScene(VulkanContext* context) {
 	m_allocator = context->getAllocator();
@@ -18,6 +19,7 @@ VulkanScene::~VulkanScene()
 
 }
 
+//adds the inputed scene to the list of children scenes
 void VulkanScene::addChildren(VulkanScene* childrenScene) {
 	if (childrenScene == nullptr) {
 		throw std::runtime_error("Children scene is nullptr !");
@@ -25,52 +27,72 @@ void VulkanScene::addChildren(VulkanScene* childrenScene) {
 	m_childrenScenes.push_back(childrenScene);
 }
 
+//Adds the model information to the model information list for further loading
 void VulkanScene::addModel(const std::filesystem::path& path, const Transform& transform)
 {
-	Model* model = new Model(m_context, path, transform);
-	m_models.push_back(model);
+	ModelLoadingInfo modelInfo{
+		.path = path,
+		.transform = transform,
+	};
+	m_modelLoadingInfos.push_back(modelInfo);
 }
 
+//Adds the model to the model list
 void VulkanScene::addModel(Model* model)
 {
 	m_models.push_back(model);
 }
 
 
+//Function used in order to multithread model loading
+static std::mutex modelsMutex;
+static void newModel(VulkanContext* context, std::filesystem::path path, Transform transform, std::vector<Model*>* models) {
+	Model* model = new Model(context, path, transform);
+	std::lock_guard<std::mutex> lock(modelsMutex);
+	models->push_back(model);
+};
+
+//Loads the models in the model info list (multithreaded)
+void VulkanScene::loadModels()
+{
+	std::vector<std::future<void>> modelLoadingFutures;
+	modelLoadingFutures.resize(m_modelLoadingInfos.size());
+	for (uint32_t i = 0; i < m_modelLoadingInfos.size(); i++)
+	{
+		modelLoadingFutures[i] = std::async(std::launch::async, newModel, m_context, m_modelLoadingInfos[i].path, m_modelLoadingInfos[i].transform, &m_models);
+	}
+	for (auto& future : modelLoadingFutures) {
+		future.wait();
+	}
+}
+
+//Adds the entity modl to the scene
 void VulkanScene::addEntity(Entity* entity) {
 	addModel(entity->getModelPtr());
 }
 
+//Creates the index and vertex buffer
 void VulkanScene::createBuffers()
 {
 	createVertexBuffer();
 	createIndexBuffer();
 }
 
-void VulkanScene::setDescriptorSets(std::vector<vk::DescriptorSet> descriptorSet)
-{
-	m_descriptorSets = descriptorSet;
-}
-
+//Computes the index buffer size from indices count
 const uint32_t VulkanScene::getIndexBufferSize()
 {
 	uint32_t indicesCount = 0;
 	for (const auto& model : m_models) {
 		for (const auto& texturedMesh : model->getMeshes()) {
-			indicesCount += texturedMesh.indices.size();
+			indicesCount += texturedMesh.loadingIndices.size();
 		}
 
 	}
 	return indicesCount;
 }
 
-void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout)
+void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant)
 {
-	static auto startTime = std::chrono::high_resolution_clock::now(); //Todo, engine solution for time
-
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - startTime).count();
-
 	VkDeviceSize offset = 0;
 	commandBuffer.bindVertexBuffers(0, 1, &m_vertexBuffer, &offset);
 	commandBuffer.bindIndexBuffer(m_indexBuffer, 0, vk::IndexType::eUint32);
@@ -78,10 +100,11 @@ void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, v
 	uint32_t indexOffset = 0;
 	//Draws each model in a scene
 	for (auto& model : m_models) {
-		model->drawModel(commandBuffer, pipelineLayout, time, indexOffset);
+		model->drawModel(commandBuffer, pipelineLayout, indexOffset, pushConstant);
 	}
 }
 
+//creates the index buffer
 void VulkanScene::createIndexBuffer() 
 {
 	uint32_t indicesCount = getIndexBufferSize();
@@ -101,13 +124,14 @@ void VulkanScene::createIndexBuffer()
 		for (int texturedMeshIndex = 0; texturedMeshIndex < texturedMeshes.size(); texturedMeshIndex++) {
 			
 			auto& texturedMesh = texturedMeshes[texturedMeshIndex];
-			for (auto& index : texturedMesh.indices) {
+			for (auto& index : texturedMesh.loadingIndices) {
 				index += indexOffset;
 			}
-			indexOffset += texturedMesh.indices.size();
-			memcpy(data, texturedMesh.indices.data(), static_cast<size_t>(texturedMesh.indices.size()*sizeof(uint32_t)));
-			data += texturedMesh.indices.size() * sizeof(uint32_t);
+			indexOffset += texturedMesh.loadingIndices.size();
+			memcpy(data, texturedMesh.loadingIndices.data(), static_cast<size_t>(texturedMesh.loadingIndices.size()*sizeof(uint32_t)));
+			data += texturedMesh.loadingIndices.size() * sizeof(uint32_t);
 		}
+		m_models[modelIndex]->clearLoadingIndexData();
 	}
 	m_allocator.unmapMemory(stagingAllocation);
 
@@ -120,13 +144,13 @@ void VulkanScene::createIndexBuffer()
 }
 
 
-
+//creates the vertex buffer
 void VulkanScene::createVertexBuffer() 
 {
 	size_t verticesCount = 0;
 	for (const auto& model : m_models) {
 		for (const auto& texturedMesh : model->getMeshes()) {
-			verticesCount += texturedMesh.vertices.size();
+			verticesCount += texturedMesh.loadingVertices.size();
 		}
 		
 	}
@@ -142,9 +166,10 @@ void VulkanScene::createVertexBuffer()
 
 	for (const auto& model : m_models) {
 		for (const auto& texturedMesh : model->getMeshes()) {
-			memcpy(data, texturedMesh.vertices.data(), static_cast<size_t>(texturedMesh.vertices.size() * sizeof(Vertex)));
-			data += texturedMesh.vertices.size() * sizeof(Vertex);
+			memcpy(data, texturedMesh.loadingVertices.data(), static_cast<size_t>(texturedMesh.loadingVertices.size() * sizeof(Vertex)));
+			data += texturedMesh.loadingVertices.size() * sizeof(Vertex);
 		}
+		model->clearLoadingVertexData();
 	}
 	m_allocator.unmapMemory(stagingAllocation);
 

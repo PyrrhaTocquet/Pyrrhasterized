@@ -1,3 +1,10 @@
+/*
+author: Pyrrha Tocquet
+date: 07/06/23
+desc: Remnants of regular (non cascaded) shadow mapping
+TODO Refactor
+*/
+
 #pragma once
 
 #define VULKAN_HPP_NO_CONSTRUCTORS
@@ -11,17 +18,23 @@ class ShadowRenderPass : public VulkanRenderPass {
 
 	const uint32_t SHADOW_MAP_SIZE = 4096;
 
-private:
-	VulkanImage* m_shadowDepthAttachment = nullptr;
+protected:
+	VulkanImage* m_shadowDepthAttachment;
 public:
 	ShadowRenderPass(VulkanContext* context);
-	~ShadowRenderPass() override;
+	ShadowRenderPass() {};
+	virtual ~ShadowRenderPass() override;
 	void createRenderPass() override;
-	void createFramebuffer() override;
-	void createAttachments() override;
-	void cleanAttachments() override;
-	void recreateRenderPass() override;
-	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, vk::DescriptorSet descriptorSet, vk::Pipeline pipeline, std::vector<VulkanScene*> scenes, vk::PipelineLayout pipelineLayout) override;
+	virtual void createFramebuffer() override;
+	virtual void createAttachments() override;
+	virtual void cleanAttachments() override;
+	virtual void createDescriptorPool()override {}; //TODO
+	virtual void createDescriptorSetLayout()override {};
+	virtual void createDescriptorSet(VulkanScene* scene)override {};
+	virtual void createPipelineLayout()override {};
+	virtual void createDefaultPipeline()override {};
+	virtual void recreateRenderPass() override;
+	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) override {};
 	vk::Extent2D getRenderPassExtent() override;
 	[[nodiscard]] vk::ImageView getShadowAttachment();
 

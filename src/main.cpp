@@ -1,7 +1,9 @@
-/*  Vulkan Base Project
-    Goal: Making a best practice Vulkan project to be used as a starting point for rasterized computer graphics projects
+/*  Pyrrhasterized
+    Goal: Making a porte-folio + learning project 3D rasterized renderer
     Author: Pyrrha Tocquet
-    Date: 24/03/2023
+    Date: 22/05/2023
+
+    Forked from Vulkan Base Project (Private repo) (original file date: 24/03/2023)
 */
 
 
@@ -51,7 +53,7 @@ int main() {
     /* Chest */
     Transform chestTransform;
     chestTransform.translate = glm::vec3(0.f, 0.f, 2.f);
-
+    
     scene.addModel("assets/TreasureChest/model.gltf", chestTransform);
     scene.addModel("assets/SponzaGltf/sponza.glb", sponzaTransform);
     scene.addModel("assets/Ganon/ganon.gltf", ganonTransform);
@@ -61,41 +63,21 @@ int main() {
     renderer.registerEntity(peachEntity);
     scene.addModel("assets/Link/model.obj", linkTransform);
 
+    pikachuTransform.translate.y += 10;
+    pikachuTransform.translate.x += 10;
+    pikachuTransform.scale *= 0.2;
+    scene.addModel("assets/Sphere/sphere.obj", pikachuTransform);
+    
+    /*
+    Transform transform;
+    scene.addModel("assets/Splatoon/splatoon.gltf", transform);
+    */
+    /*
+    Transform transform;
+    scene.addModel("assets/CubeScene/cubeScene.gltf", transform);
+    */
+
     renderer.addScene(&scene);
-    
-    PipelineInfo pipelineInfo;
-
-    pipelineInfo.vertPath = "shaders/vertexTextureNoLight.spv";
-    pipelineInfo.fragPath = "shaders/fragmentTextureNoLight.spv";
-    renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-
-    pipelineInfo.vertPath = "shaders/vertexDebugNormals.spv";
-    pipelineInfo.fragPath = "shaders/fragmentDebugNormals.spv";
-    renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-
-    pipelineInfo.vertPath = "shaders/vertexDebugTextureCoords.spv";
-    pipelineInfo.fragPath = "shaders/fragmentDebugTextureCoords.spv";
-    renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-
-
-
-    pipelineInfo.vertPath = "shaders/vertexTextureNoLight.spv";
-    pipelineInfo.fragPath = "shaders/fragmentDepth.spv";
-    renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-
-    pipelineInfo.vertPath = "shaders/vertexTangents.spv";
-    pipelineInfo.fragPath = "shaders/fragmentTangents.spv";
-
-    renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-
-    pipelineInfo.vertPath = "shaders/vertexTextureNoLight.spv";
-    pipelineInfo.fragPath = "shaders/fragmentTextureNoLight.spv";
-    pipelineInfo.polygonMode = vk::PolygonMode::eLine;
-
-    renderer.addPipeline(renderer.createPipeline(pipelineInfo));
-
-
-    
 
     renderer.mainloop();
 

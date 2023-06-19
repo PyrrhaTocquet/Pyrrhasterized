@@ -9,17 +9,20 @@ vk::Format VulkanRenderPass::findDepthFormat()
 VulkanRenderPass::VulkanRenderPass(VulkanContext* context)
 {
 	m_context = context;
-	std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
-	m_framebuffers.resize(m_context->getSwapchainImagesCount());
 }
 
 VulkanRenderPass::~VulkanRenderPass()
 {
+	m_context->getDevice().destroyDescriptorPool(m_mainDescriptorPool);
+	m_context->getDevice().destroyDescriptorSetLayout(m_mainDescriptorSetLayout);
 	for (auto& framebuffer : m_framebuffers)
 	{
 		m_context->getDevice().destroyFramebuffer(framebuffer);
 	}
 	m_context->getDevice().destroyRenderPass(m_renderPass);
+	delete m_mainPipeline;
+	m_context->getDevice().destroyPipelineLayout(m_pipelineLayout);
+
 }
 
 vk::RenderPass VulkanRenderPass::getRenderPass()

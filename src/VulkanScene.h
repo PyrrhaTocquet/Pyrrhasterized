@@ -8,13 +8,17 @@
 #include "Entity.h"
 #include <filesystem>
 #include "Model.h"
+#include "Drawable.h"
+
+struct ModelLoadingInfo {
+	std::filesystem::path path;
+	Transform transform;
+};
 
 class VulkanScene : Drawable
 {
 public :
 	vk::Buffer m_vertexBuffer, m_indexBuffer = VK_NULL_HANDLE;
-
-	std::vector<vk::DescriptorSet> m_descriptorSets;
 	std::vector<Model*> m_models; //TODO private after drawScene refactoring ??
 private:
 	std::vector<VulkanScene*> m_childrenScenes;
@@ -24,19 +28,19 @@ private:
 	vma::Allocation m_vertexBufferAllocation, m_indexBufferAllocation;
 	vma::Allocator m_allocator;
 
-
+	std::vector<ModelLoadingInfo> m_modelLoadingInfos;
 public:
 	VulkanScene(VulkanContext* context);
 	~VulkanScene();
 	void addChildren(VulkanScene* childrenScene);
 	void addModel(const std::filesystem::path& path, const Transform& transform);
 	void addModel(Model* model);
+	void loadModels();
 	void addEntity(Entity* entity);
 	void createBuffers();
-	void setDescriptorSets(std::vector<vk::DescriptorSet> descriptorSet);
-	const uint32_t getIndexBufferSize();
+	[[nodiscard]]const uint32_t getIndexBufferSize();
 
-	void draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout ) override;
+	void draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant) override;
 private:
 	void createVertexBuffer();
 	void createIndexBuffer();
