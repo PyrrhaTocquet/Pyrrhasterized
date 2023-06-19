@@ -13,20 +13,13 @@ void Peach::update()
 {
     float speed = 1.0f;
 
-    //Time since rendering start
-    static auto prevTime = std::chrono::high_resolution_clock::now();
-
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - prevTime).count();
-    prevTime = currentTime;
-
     static bool oPressed = false;
     static bool lPressed = false;
     static bool kPressed = false;
     static bool mPressed = false;
 
     GLFWwindow* window = m_context->getWindowPtr();
-
+    float deltaTime = m_context->getTime().deltaTime;
     int key = glfwGetKey(window, GLFW_KEY_O);
     if (key == GLFW_PRESS) {
         m_model->translateBy(glm::vec3(deltaTime * speed, 0.f, 0.f));

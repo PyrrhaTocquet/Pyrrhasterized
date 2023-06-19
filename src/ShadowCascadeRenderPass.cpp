@@ -330,17 +330,11 @@ void ShadowCascadeRenderPass::createUniformBuffer()
 
 void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
 {
-    //Time since rendering start
-    static auto startTime = std::chrono::high_resolution_clock::now();
-
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - startTime).count();
-
     //CASCADES
     //Model View Proj
     CascadeUniformObject ubo{};
     //glm::vec3 lightPos = glm::vec3(1.f, 50.f, 2.f);
-    glm::vec3 lightPos = glm::vec3(1.f, 50.f, 20.f * cos(time/8));
+    glm::vec3 lightPos = glm::vec3(1.f, 50.f, 20.f * cos(m_context->getTime().elapsedSinceStart/8));
     float cascadeSplits[SHADOW_CASCADE_COUNT] = { 0.f, 0.f, 0.f, 0.f };
     
     float nearClip = m_camera->nearPlane;

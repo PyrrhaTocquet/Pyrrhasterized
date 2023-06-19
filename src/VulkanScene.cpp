@@ -88,12 +88,6 @@ const uint32_t VulkanScene::getIndexBufferSize()
 
 void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant)
 {
-	static auto startTime = std::chrono::high_resolution_clock::now(); //Todo, engine solution for time
-
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - startTime).count();
-	pushConstant.time = time;
-
 	VkDeviceSize offset = 0;
 	commandBuffer.bindVertexBuffers(0, 1, &m_vertexBuffer, &offset);
 	commandBuffer.bindIndexBuffer(m_indexBuffer, 0, vk::IndexType::eUint32);
@@ -101,7 +95,7 @@ void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, v
 	uint32_t indexOffset = 0;
 	//Draws each model in a scene
 	for (auto& model : m_models) {
-		model->drawModel(commandBuffer, pipelineLayout, time, indexOffset, pushConstant);
+		model->drawModel(commandBuffer, pipelineLayout, indexOffset, pushConstant);
 	}
 }
 

@@ -25,15 +25,20 @@ struct UniformBufferObject {
 	float cascadeSplits[4] = {0.f};
 	glm::vec3 cameraPos;
 	float shadowMapsBlendWidth;
+	float time;
 };
 
 struct ModelPushConstant {
 	glm::mat4 model;
 	glm::int32 textureId;
 	glm::int32 normalMapId;
-	glm::float32 time;
 	glm::uint32 cascadeId;
-	float padding[12];
+	float padding[13];
+};
+
+struct Time {
+	float elapsedSinceStart;
+	float deltaTime;
 };
 
 

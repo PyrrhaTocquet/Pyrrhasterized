@@ -14,9 +14,8 @@ layout( push_constant ) uniform constants
 	mat4 model;
 	int textureId;
 	int normalMapId;
-	float time;
 	uint cascadeId;
-	float[12] padding;
+	float[13] padding;
 } PushConstants;
 
 layout(set = 0, binding = 0) uniform UniformBufferObject {
@@ -26,6 +25,7 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
 	vec4 cascadeSplits;
 	vec3 cameraPosition;
 	float shadowMapsBlendWidth;
+	float time;
 }ubo;
 
 
@@ -95,7 +95,7 @@ float filterPCF(vec4[2] lightViewCoords, uint[2] index)
 void main(){
 
 	vec4 textureColor = texture(texSampler[PushConstants.textureId], fragTexCoord);
-	if(textureColor.a < 0.5)
+	if(textureColor.a < 0.8)
 	{
 		discard;
 	}
@@ -123,7 +123,7 @@ void main(){
 	}
 		//Shadows
 
-	vec3 lightPosition = vec3(1.0, 50.f, 20.f * cos(PushConstants.time/8));
+	vec3 lightPosition = vec3(1.0, 50.f, 20.f * cos(ubo.time/8));
 	//vec3 lightPosition = vec3(1.0, 50.f, 2.f);
 	vec3 lightDirection = normalize(-lightPosition); //Light Position is distance to 0, 0, 0 here
 

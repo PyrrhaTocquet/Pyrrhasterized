@@ -12,19 +12,13 @@ Camera::Camera(VulkanContext* context) : Entity(context)
 
 void Camera::update()
 {
-    //Time since rendering start
-    static auto prevTime = std::chrono::high_resolution_clock::now();
-
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - prevTime).count();
-    prevTime = currentTime;
-
+  
     static bool zPressed = false;
 
     GLFWwindow* window = m_context->getWindowPtr();
    
     //Camrea Movement
-    float cameraMovement = c_cameraSpeed * deltaTime;
+    float cameraMovement = c_cameraSpeed * m_context->getTime().deltaTime;
     int key = glfwGetKey(window, GLFW_KEY_W);
     if (key == GLFW_PRESS && zPressed == false) {
         m_cameraCoords.cameraPos -= cameraMovement * m_cameraCoords.getDirection(); //TODO better

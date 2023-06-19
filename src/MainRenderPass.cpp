@@ -594,19 +594,14 @@ void MainRenderPass::createPushConstantsRanges()
 
 void MainRenderPass::updatePipelineRessources(uint32_t currentFrame)
 {
-    //Time since rendering start
-    static auto startTime = std::chrono::high_resolution_clock::now();
-
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration_cast<std::chrono::duration<float>>(currentTime - startTime).count();
     vk::Extent2D extent = getRenderPassExtent();
-
 
     //Model View Proj
     UniformBufferObject ubo{};
     ubo.view = m_camera->getViewMatrix();
     ubo.proj = m_camera->getProjMatrix(m_context);
     ubo.cameraPos = m_camera->getCameraPos();
+    ubo.time = m_context->getTime().elapsedSinceStart;
     ubo.shadowMapsBlendWidth = m_shadowRenderPass->m_shadowMapsBlendWidth;
     CascadeUniformObject cascadeUbo = m_shadowRenderPass->getCurrentUbo(currentFrame);
 

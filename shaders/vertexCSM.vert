@@ -16,7 +16,6 @@ layout( push_constant ) uniform constants
 	mat4 model;
 	int textureId;
 	int normalMapId;
-	float time;
 	uint cascadeId;
 } PushConstants;
 

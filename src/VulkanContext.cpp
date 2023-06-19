@@ -24,6 +24,7 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 
 VulkanContext::VulkanContext()
 {
+	updateTime();
 	createWindow();
 	createInstance();
 	createDebugMessenger();
@@ -88,6 +89,10 @@ bool VulkanContext::checkValidationLayerSupport()
 	return true;
 
 }
+Time VulkanContext::getTime()
+{
+	return m_time;
+}
 /*	Debug Callback function
 	PFN_vkDebugUtilsMessengerCallbackEXT signature
 	VKAPI_ATTR and VKAPI_CALL ensure that the function has the right signature for Vulkan to use it
@@ -123,6 +128,19 @@ void VulkanContext::createDebugMessenger() {
 	if (CreateDebugUtilsMessengerEXT(m_instance, reinterpret_cast<const VkDebugUtilsMessengerCreateInfoEXT*>(&createInfo), nullptr, &m_debugMessenger) != VK_SUCCESS) {
 		throw std::runtime_error("failed to set up debug callback!");
 	}
+}
+void VulkanContext::updateTime()
+{
+	//Time since rendering start
+	static auto firstTime = std::chrono::high_resolution_clock::now();
+	static auto prevTime = firstTime;
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - prevTime).count();
+	float elapsedTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - firstTime).count();
+	prevTime = currentTime;
+
+	m_time.elapsedSinceStart = elapsedTime;
+	m_time.deltaTime = deltaTime;
 }
 #pragma endregion
 

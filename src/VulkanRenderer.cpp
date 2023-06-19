@@ -191,6 +191,7 @@ void VulkanRenderer::mainloop() {
     while (m_context->isWindowOpen())
     {
         m_context->manageWindow();
+        m_context->updateTime();
         manageInput();
         updateEntities();
         drawFrame();

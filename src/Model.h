@@ -30,7 +30,7 @@ public:
 	Model();
 	~Model();
 	glm::mat4 getMatrix();
-	void drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, float time, uint32_t& indexOffset, ModelPushConstant& pushConstant);
+	void drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, uint32_t& indexOffset, ModelPushConstant& pushConstant);
 	std::vector<TexturedMesh>& getMeshes();
 
 	void translateBy(glm::vec3 translation);

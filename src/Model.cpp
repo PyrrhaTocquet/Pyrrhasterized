@@ -28,16 +28,14 @@ glm::mat4 Model::getMatrix()
 }
 
 //Write command buffer at scene drawing
-void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, float time, uint32_t &indexOffset, ModelPushConstant& pushConstant)
+void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, uint32_t &indexOffset, ModelPushConstant& pushConstant)
 {
 
 	for (auto& mesh : m_texturedMeshes)
 	{
-
 		pushConstant.model = m_transform.computeMatrix();
 		pushConstant.textureId = static_cast<glm::int32>(mesh.textureId);
 		pushConstant.normalMapId = static_cast<glm::int32>(mesh.normalMapId);
-
 
 		commandBuffer.pushConstants<ModelPushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		commandBuffer.drawIndexed(mesh.indicesCount, 1, indexOffset, 0, 0);

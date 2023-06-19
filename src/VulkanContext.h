@@ -89,6 +89,9 @@ private:
 	
 	vk::DescriptorPool m_imGUIDescriptorPool = VK_NULL_HANDLE;
 
+	//TIME
+	Time m_time;
+
 public:
 	VulkanContext();
 	~VulkanContext();
@@ -148,6 +151,10 @@ public:
 
 
 	void setDebugObjectName(uint64_t object, VkDebugReportObjectTypeEXT objectType, const char* name);
+
+	//TIME
+	Time getTime();
+	void updateTime();
 private:
 	//VALIDATION LAYERS
 	[[nodiscard]] bool checkValidationLayerSupport();

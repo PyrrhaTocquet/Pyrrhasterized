@@ -5,10 +5,13 @@ layout(location = 2) in vec3 inNormal;
 layout(location = 3) in vec4 inTangent;
 #define SHADOW_CASCADE_COUNT 4
 layout(set = 0, binding = 0) uniform UniformBufferObject {
-	mat4 view;
+mat4 view;
 	mat4 proj;
 	mat4[SHADOW_CASCADE_COUNT] cascadeViewProj;
 	vec4 cascadeSplits;
+	vec3 cameraPosition;
+	float shadowMapsBlendWidth;
+	float time;
 }ubo;
 
 layout( push_constant ) uniform constants
@@ -16,9 +19,8 @@ layout( push_constant ) uniform constants
 	mat4 model;
 	int textureId;
 	int normalMapId;
-	float time;
 	uint cascadeId;
-	float[12] padding;
+	float[13] padding;
 } PushConstants;
 
 
