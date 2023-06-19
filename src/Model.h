@@ -5,8 +5,10 @@
 #include "VulkanContext.h"
 
 struct TexturedMesh {
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
+	std::vector<Vertex> loadingVertices;
+	std::vector<uint32_t> loadingIndices;
+	uint32_t verticesCount = 0;
+	uint32_t indicesCount = 0;
 	VulkanImage* textureImage = nullptr;
 	VulkanImage* normalMapImage = nullptr;
 	uint32_t textureId;
@@ -35,5 +37,7 @@ public:
 	void rotateBy(glm::vec3 rotation);
 	void scaleBy(glm::vec3 scale);
 
+	void clearLoadingVertexData();
+	void clearLoadingIndexData();
 
 };

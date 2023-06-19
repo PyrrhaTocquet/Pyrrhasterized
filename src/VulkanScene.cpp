@@ -53,7 +53,7 @@ const uint32_t VulkanScene::getIndexBufferSize()
 	uint32_t indicesCount = 0;
 	for (const auto& model : m_models) {
 		for (const auto& texturedMesh : model->getMeshes()) {
-			indicesCount += texturedMesh.indices.size();
+			indicesCount += texturedMesh.loadingIndices.size();
 		}
 
 	}
@@ -98,13 +98,14 @@ void VulkanScene::createIndexBuffer()
 		for (int texturedMeshIndex = 0; texturedMeshIndex < texturedMeshes.size(); texturedMeshIndex++) {
 			
 			auto& texturedMesh = texturedMeshes[texturedMeshIndex];
-			for (auto& index : texturedMesh.indices) {
+			for (auto& index : texturedMesh.loadingIndices) {
 				index += indexOffset;
 			}
-			indexOffset += texturedMesh.indices.size();
-			memcpy(data, texturedMesh.indices.data(), static_cast<size_t>(texturedMesh.indices.size()*sizeof(uint32_t)));
-			data += texturedMesh.indices.size() * sizeof(uint32_t);
+			indexOffset += texturedMesh.loadingIndices.size();
+			memcpy(data, texturedMesh.loadingIndices.data(), static_cast<size_t>(texturedMesh.loadingIndices.size()*sizeof(uint32_t)));
+			data += texturedMesh.loadingIndices.size() * sizeof(uint32_t);
 		}
+		m_models[modelIndex]->clearLoadingIndexData();
 	}
 	m_allocator.unmapMemory(stagingAllocation);
 
@@ -123,7 +124,7 @@ void VulkanScene::createVertexBuffer()
 	size_t verticesCount = 0;
 	for (const auto& model : m_models) {
 		for (const auto& texturedMesh : model->getMeshes()) {
-			verticesCount += texturedMesh.vertices.size();
+			verticesCount += texturedMesh.loadingVertices.size();
 		}
 		
 	}
@@ -139,9 +140,10 @@ void VulkanScene::createVertexBuffer()
 
 	for (const auto& model : m_models) {
 		for (const auto& texturedMesh : model->getMeshes()) {
-			memcpy(data, texturedMesh.vertices.data(), static_cast<size_t>(texturedMesh.vertices.size() * sizeof(Vertex)));
-			data += texturedMesh.vertices.size() * sizeof(Vertex);
+			memcpy(data, texturedMesh.loadingVertices.data(), static_cast<size_t>(texturedMesh.loadingVertices.size() * sizeof(Vertex)));
+			data += texturedMesh.loadingVertices.size() * sizeof(Vertex);
 		}
+		model->clearLoadingVertexData();
 	}
 	m_allocator.unmapMemory(stagingAllocation);
 

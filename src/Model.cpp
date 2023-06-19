@@ -39,8 +39,8 @@ void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipeli
 
 
 		commandBuffer.pushConstants<ModelPushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-		commandBuffer.drawIndexed(mesh.indices.size(), 1, indexOffset, 0, 0);
-		indexOffset += mesh.indices.size();
+		commandBuffer.drawIndexed(mesh.indicesCount, 1, indexOffset, 0, 0);
+		indexOffset += mesh.indicesCount;
 	}
 }
 
@@ -65,6 +65,25 @@ void Model::scaleBy(glm::vec3 scale)
 {
 	m_transform.scale += scale;
 	m_transform.hasChanged = true;
+}
+
+void Model::clearLoadingVertexData()
+{
+	for (auto& mesh : m_texturedMeshes)
+	{
+		mesh.verticesCount = mesh.loadingVertices.size();
+		std::vector<Vertex>().swap(mesh.loadingVertices);
+
+	}
+}
+
+void Model::clearLoadingIndexData()
+{
+	for (auto& mesh : m_texturedMeshes)
+	{
+		mesh.indicesCount = mesh.loadingIndices.size();
+		std::vector<uint32_t>().swap(mesh.loadingIndices);
+	}
 }
 
 void Model::loadGltf(const std::filesystem::path& path)
@@ -156,8 +175,8 @@ void Model::loadGltf(const std::filesystem::path& path)
 				{
 					materialIndex = 0;
 				}
-				m_texturedMeshes[materialIndex].vertices.push_back(vertex);
-				m_texturedMeshes[materialIndex].indices.push_back(m_texturedMeshes[materialIndex].indices.size());
+				m_texturedMeshes[materialIndex].loadingVertices.push_back(vertex);
+				m_texturedMeshes[materialIndex].loadingIndices.push_back(m_texturedMeshes[materialIndex].loadingIndices.size());
 			
 			}
 
@@ -245,17 +264,17 @@ void Model::loadModel(const std::filesystem::path& path) {
 void Model::generateTangents() {
 	for (auto& texturedMesh : m_texturedMeshes)
 	{
-		for (uint32_t i = 0; i < texturedMesh.indices.size(); i += 3)
+		for (uint32_t i = 0; i < texturedMesh.loadingIndices.size(); i += 3)
 		{
-			uint32_t i0 = texturedMesh.indices[i + 0];
-			uint32_t i1 = texturedMesh.indices[i + 1];
-			uint32_t i2 = texturedMesh.indices[i + 2];
+			uint32_t i0 = texturedMesh.loadingIndices[i + 0];
+			uint32_t i1 = texturedMesh.loadingIndices[i + 1];
+			uint32_t i2 = texturedMesh.loadingIndices[i + 2];
 
-			glm::vec3 edge1 = texturedMesh.vertices[i1].pos - texturedMesh.vertices[i0].pos;
-			glm::vec3 edge2 = texturedMesh.vertices[i2].pos - texturedMesh.vertices[i0].pos;
+			glm::vec3 edge1 = texturedMesh.loadingVertices[i1].pos - texturedMesh.loadingVertices[i0].pos;
+			glm::vec3 edge2 = texturedMesh.loadingVertices[i2].pos - texturedMesh.loadingVertices[i0].pos;
 
-			glm::vec2 deltaUV1 = texturedMesh.vertices[i1].texCoord - texturedMesh.vertices[i0].texCoord;
-			glm::vec2 deltaUV2 = texturedMesh.vertices[i2].texCoord - texturedMesh.vertices[i0].texCoord;
+			glm::vec2 deltaUV1 = texturedMesh.loadingVertices[i1].texCoord - texturedMesh.loadingVertices[i0].texCoord;
+			glm::vec2 deltaUV2 = texturedMesh.loadingVertices[i2].texCoord - texturedMesh.loadingVertices[i0].texCoord;
 
 			float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
 
@@ -264,9 +283,9 @@ void Model::generateTangents() {
 			float handedness = ((deltaUV1.y * deltaUV2.x - deltaUV2.y * deltaUV1.x) < 0.0f) ? -1.0f : 1.0f;
 
 			glm::vec4 tangent4 = glm::vec4(tangent3, handedness);
-			texturedMesh.vertices[i0].tangent = tangent4;
-			texturedMesh.vertices[i1].tangent = tangent4;
-			texturedMesh.vertices[i2].tangent = tangent4;
+			texturedMesh.loadingVertices[i0].tangent = tangent4;
+			texturedMesh.loadingVertices[i1].tangent = tangent4;
+			texturedMesh.loadingVertices[i2].tangent = tangent4;
 		}
 	}
 }
@@ -342,8 +361,8 @@ void Model::loadObj(const std::filesystem::path& path) {
 				{
 					materialIndex = shapes[s].mesh.material_ids[f];
 				}
-				m_texturedMeshes[materialIndex].vertices.push_back(vertex);
-				m_texturedMeshes[materialIndex].indices.push_back(m_texturedMeshes[materialIndex].indices.size());
+				m_texturedMeshes[materialIndex].loadingVertices.push_back(vertex);
+				m_texturedMeshes[materialIndex].loadingIndices.push_back(m_texturedMeshes[materialIndex].loadingIndices.size());
 			}
 			index_offset += fv;
 
