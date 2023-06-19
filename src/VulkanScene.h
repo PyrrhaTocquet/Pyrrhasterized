@@ -8,6 +8,7 @@
 #include "Entity.h"
 #include <filesystem>
 #include "Model.h"
+#include "Drawable.h"
 
 struct ModelLoadingInfo {
 	std::filesystem::path path;
@@ -37,7 +38,7 @@ public:
 	void loadModels();
 	void addEntity(Entity* entity);
 	void createBuffers();
-	const uint32_t getIndexBufferSize();
+	[[nodiscard]]const uint32_t getIndexBufferSize();
 
 	void draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant) override;
 private:

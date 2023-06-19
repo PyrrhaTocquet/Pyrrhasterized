@@ -19,6 +19,7 @@ VulkanScene::~VulkanScene()
 
 }
 
+//adds the inputed scene to the list of children scenes
 void VulkanScene::addChildren(VulkanScene* childrenScene) {
 	if (childrenScene == nullptr) {
 		throw std::runtime_error("Children scene is nullptr !");
@@ -26,6 +27,7 @@ void VulkanScene::addChildren(VulkanScene* childrenScene) {
 	m_childrenScenes.push_back(childrenScene);
 }
 
+//Adds the model information to the model information list for further loading
 void VulkanScene::addModel(const std::filesystem::path& path, const Transform& transform)
 {
 	ModelLoadingInfo modelInfo{
@@ -35,21 +37,22 @@ void VulkanScene::addModel(const std::filesystem::path& path, const Transform& t
 	m_modelLoadingInfos.push_back(modelInfo);
 }
 
+//Adds the model to the model list
 void VulkanScene::addModel(Model* model)
 {
 	m_models.push_back(model);
 }
 
 
+//Function used in order to multithread model loading
 static std::mutex modelsMutex;
 static void newModel(VulkanContext* context, std::filesystem::path path, Transform transform, std::vector<Model*>* models) {
 	Model* model = new Model(context, path, transform);
 	std::lock_guard<std::mutex> lock(modelsMutex);
 	models->push_back(model);
-
 };
 
-
+//Loads the models in the model info list (multithreaded)
 void VulkanScene::loadModels()
 {
 	std::vector<std::future<void>> modelLoadingFutures;
@@ -63,17 +66,19 @@ void VulkanScene::loadModels()
 	}
 }
 
+//Adds the entity modl to the scene
 void VulkanScene::addEntity(Entity* entity) {
 	addModel(entity->getModelPtr());
 }
 
+//Creates the index and vertex buffer
 void VulkanScene::createBuffers()
 {
 	createVertexBuffer();
 	createIndexBuffer();
 }
 
-
+//Computes the index buffer size from indices count
 const uint32_t VulkanScene::getIndexBufferSize()
 {
 	uint32_t indicesCount = 0;
@@ -99,6 +104,7 @@ void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, v
 	}
 }
 
+//creates the index buffer
 void VulkanScene::createIndexBuffer() 
 {
 	uint32_t indicesCount = getIndexBufferSize();
@@ -138,7 +144,7 @@ void VulkanScene::createIndexBuffer()
 }
 
 
-
+//creates the vertex buffer
 void VulkanScene::createVertexBuffer() 
 {
 	size_t verticesCount = 0;

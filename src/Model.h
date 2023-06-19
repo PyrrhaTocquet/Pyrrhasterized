@@ -29,9 +29,9 @@ public:
 	Model(VulkanContext* context, const std::filesystem::path& path, const Transform& transform);
 	Model();
 	~Model();
-	glm::mat4 getMatrix();
+	[[nodiscard]]glm::mat4 getMatrix();
 	void drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, uint32_t& indexOffset, ModelPushConstant& pushConstant);
-	std::vector<TexturedMesh>& getMeshes();
+	[[nodiscard]]std::vector<TexturedMesh>& getMeshes();
 
 	void translateBy(glm::vec3 translation);
 	void rotateBy(glm::vec3 rotation);

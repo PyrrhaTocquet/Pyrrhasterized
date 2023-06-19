@@ -117,13 +117,13 @@ void VulkanRenderer::cleanSwapchainSizedObjects() {
 
 }
 
+//creates framebuffer and attachments for each render passes
 void VulkanRenderer::createFramebuffers() {
     for (auto& renderPass : m_renderPasses) {
         renderPass->createAttachments();
         renderPass->createFramebuffer();
     }
 }
-
 #pragma endregion
 
 #pragma region COMMAND_BUFFERS
@@ -312,6 +312,7 @@ void VulkanRenderer::createRenderPasses() {
 #pragma endregion RENDER_PASSES
 
 #pragma region INPUT
+//Function that manages keyboard input behavior, manages pipeline switch for debugging with arrow keys
 void VulkanRenderer::manageInput() {
     static bool rightPressed = false;
     static bool leftPressed = false;
@@ -344,12 +345,14 @@ void VulkanRenderer::manageInput() {
 
 
 #pragma region ENTITIES
+//Iterates the entity list to call their update function
 void VulkanRenderer::updateEntities() {
     for (auto& entity : m_entities) {
         entity->update();
     }
 }
 
+//Adds the entity pointer to the entity list
 void VulkanRenderer::registerEntity(Entity* entity) {
     m_entities.push_back(entity);
 }

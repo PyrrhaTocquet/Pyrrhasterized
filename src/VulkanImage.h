@@ -1,3 +1,9 @@
+/*
+author: Pyrrha Tocquet
+date: 22/05/23
+desc: Abstraction of an image that wraps around vk::Image and vk::ImageView. Manages textures loading and image creation.
+It has a unique command pool for multithreading
+*/
 #pragma once
 
 #define VULKAN_HPP_NO_CONSTRUCTORS
@@ -51,6 +57,6 @@ public:
 
 	void transitionImageLayout(VulkanContext* context, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels);
 	void generateMipmaps(VulkanContext* context, vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
-	bool hasLoadingFailed();
+	[[nodiscard]]bool hasLoadingFailed();
 };
 

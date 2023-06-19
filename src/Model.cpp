@@ -1,3 +1,9 @@
+/*
+author: Pyrrha Tocquet
+date: 01/06/23
+desc: Manages model loading and drawing
+*/
+
 #include "Model.h"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
@@ -22,6 +28,7 @@ Model::~Model() {
 	}
 }
 
+//returns the model matrix (world space) of the model computed from transform data
 glm::mat4 Model::getMatrix()
 {
 	return m_transform.computeMatrix();
@@ -43,29 +50,34 @@ void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipeli
 	}
 }
 
+//returns textured meshes dividing the model
 std::vector<TexturedMesh>& Model::getMeshes()
 {
 	return m_texturedMeshes;
 }
 
+//Translates the model by the inputed vector (do before computing model matrix)
 void Model::translateBy(glm::vec3 translation)
 {
 	m_transform.translate += translation;
 	m_transform.hasChanged = true;
 }
 
+//Rotates the model by the inputed vector (do before computing model matrix). Rotations are in degrees.
 void Model::rotateBy(glm::vec3 rotation)
 {
 	m_transform.rotate += rotation;
 	m_transform.hasChanged = true;
 }
 
+//Scales the model by the inputed vector (do before computing model matrix)
 void Model::scaleBy(glm::vec3 scale)
 {
-	m_transform.scale += scale;
+	m_transform.scale *= scale;
 	m_transform.hasChanged = true;
 }
 
+//Releases vertices memory
 void Model::clearLoadingVertexData()
 {
 	for (auto& mesh : m_texturedMeshes)
@@ -76,6 +88,7 @@ void Model::clearLoadingVertexData()
 	}
 }
 
+//Releases indices memory
 void Model::clearLoadingIndexData()
 {
 	for (auto& mesh : m_texturedMeshes)
@@ -85,20 +98,20 @@ void Model::clearLoadingIndexData()
 	}
 }
 
-
+//Proxy function used for multithreading
 static VulkanImage* newVulkanImage(VulkanContext* context, VulkanImageParams imageParams, VulkanImageViewParams imageViewParams, std::string path)
 {
 	return new VulkanImage(context, imageParams, imageViewParams, path);
 }
 
-void Model::loadGltf(const std::filesystem::path& path)
-{
-	tinygltf::Model gltfModel;
+
+//Picks the right tinygltf function depending on the file format and manages errors
+static void loadGltfData(const std::filesystem::path& path, tinygltf::Model& gltfModel) {
+	bool ret = false;
 	tinygltf::TinyGLTF loader;
 	std::string err;
 	std::string warn;
 
-	bool ret = false;
 	std::filesystem::path ext = path.extension();
 	if (path.extension() == ".gltf")
 	{
@@ -112,10 +125,6 @@ void Model::loadGltf(const std::filesystem::path& path)
 		std::runtime_error("Model format not supported");
 	}
 
-	/*
-	if (!warn.empty()) {
-
-	}*/
 	if (!err.empty()) {
 		throw std::runtime_error(err);
 	}
@@ -124,6 +133,14 @@ void Model::loadGltf(const std::filesystem::path& path)
 		throw std::runtime_error("Failed to parse glTf\n");
 	}
 
+}
+
+//Loads GLTF and GLB files
+void Model::loadGltf(const std::filesystem::path& path)
+{
+	tinygltf::Model gltfModel;
+	loadGltfData(path, gltfModel);
+	
 	size_t materialCount = gltfModel.materials.size();
 	m_texturedMeshes.resize(materialCount);
 	if (materialCount <= 0)
@@ -285,7 +302,7 @@ void Model::loadModel(const std::filesystem::path& path) {
 	}
 }
 
-
+//Used in a new thread by generateTangents to compute tangent data
 static void generateTangentData(TexturedMesh* texturedMesh) {
 	for (uint32_t i = 0; i < texturedMesh->loadingIndices.size(); i += 3)
 	{
@@ -326,12 +343,11 @@ void Model::generateTangents() {
 	}
 }
 
-void Model::loadObj(const std::filesystem::path& path) {
+//Abstracts away boilerplate from objloader
+static void objLoaderLoad(const std::filesystem::path& path, tinyobj::ObjReader& reader)
+{
 	tinyobj::ObjReaderConfig reader_config;
 	reader_config.mtl_search_path = ""; // Path to material files
-
-	tinyobj::ObjReader reader;
-
 
 	if (!reader.ParseFromFile(path.string(), reader_config)) {
 		if (!reader.Error().empty()) {
@@ -343,11 +359,16 @@ void Model::loadObj(const std::filesystem::path& path) {
 	if (!reader.Warning().empty()) {
 		std::cout << "TinyObjReader: " << reader.Warning();
 	}
+}
+//Loads Obj files
+void Model::loadObj(const std::filesystem::path& path) 
+{
+	tinyobj::ObjReader reader;
+	objLoaderLoad(path, reader);
 
 	auto& attrib = reader.GetAttrib();
 	auto& shapes = reader.GetShapes();
 	auto& materials = reader.GetMaterials();
-
 
 	uint32_t materialCount = materials.size();
 	if (materialCount == 0) {

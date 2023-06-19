@@ -1,3 +1,9 @@
+/*
+author: Pyrrha Tocquet
+date: 07/06/23
+desc: Render pass that renders the multiple shadow cascades
+*/
+
 #pragma once
 #include "ShadowRenderPass.h"
 #include "Camera.h"
@@ -18,7 +24,8 @@ private:
 	std::array<CascadeUniformObject, MAX_FRAMES_IN_FLIGHT> m_cascadeUbos;
 
 
-
+	const float c_constantDepthBias = 3.0f;
+	const float c_slopeScaleDepthBias = 15.0f;
 public:
 	float m_cascadeSplitLambda = 0.89f;
 	float m_shadowMapsBlendWidth = 0.5f;

@@ -1,3 +1,8 @@
+/*
+author: Pyrrha Tocquet
+date: 22/05/23
+desc: Manages the rendering flow and logic. "Heart of the Renderer"
+*/
 #pragma once
 
 #include "Defs.h"

@@ -1,3 +1,10 @@
+/*
+author: Pyrrha Tocquet
+date: 22/05/23
+desc: Manages Vulkan device, queues, swapchain, window and useful globals(time)
+(Basically everything that is not directly related to rendering)
+*/
+
 #pragma once
 #define VULKAN_HPP_NO_CONSTRUCTORS
 #include <vulkan/vulkan.hpp>
@@ -44,7 +51,7 @@ const std::vector<const char*> requiredExtensions = {
 const int DEFAULT_WIDTH = 1920;
 const int DEFAULT_HEIGHT = 1080;
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
-const bool pickWorseDevice = false;
+const bool c_pickWorseDevice = false;
 
 /* APPLICATION INFO */
 const char applicationName[] = "Pyrrhasterized: a porte-folio rasterized renderer";
@@ -57,7 +64,7 @@ private:
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
 #else
-	const bool enableValidationLayers = true;
+	const bool enableValidationLayers = false;
 #endif
 
 	vma::Allocator m_allocator;

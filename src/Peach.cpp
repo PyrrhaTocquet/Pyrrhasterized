@@ -60,7 +60,4 @@ void Peach::update()
         mPressed = false;
     }
 
-
-
-
 }

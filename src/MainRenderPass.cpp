@@ -126,7 +126,6 @@ void MainRenderPass::createRenderPass()
     }
 }
 
-
 void MainRenderPass::createAttachments() {
     vk::Extent2D extent = m_context->getSwapchainExtent();
 
@@ -285,7 +284,7 @@ void MainRenderPass::createDescriptorSetLayout()
 
 void MainRenderPass::createDescriptorSet(VulkanScene* scene)
 {
-
+    //TODO Refactor
     //Creates a vector of descriptorImageInfo from the scene's textures
     std::vector<vk::DescriptorImageInfo> textureImageInfo;
     uint32_t textureId = 0;
@@ -484,6 +483,7 @@ vk::Extent2D MainRenderPass::getRenderPassExtent()
     return m_context->getSwapchainExtent();
 }
 
+//Records commands for drawing ImGUI debug window
 void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
 {
     ImGui_ImplVulkan_NewFrame();
@@ -592,6 +592,7 @@ void MainRenderPass::createPushConstantsRanges()
 
 }
 
+//Populates the main uniform buffer
 void MainRenderPass::updatePipelineRessources(uint32_t currentFrame)
 {
     vk::Extent2D extent = getRenderPassExtent();
@@ -603,6 +604,8 @@ void MainRenderPass::updatePipelineRessources(uint32_t currentFrame)
     ubo.cameraPos = m_camera->getCameraPos();
     ubo.time = m_context->getTime().elapsedSinceStart;
     ubo.shadowMapsBlendWidth = m_shadowRenderPass->m_shadowMapsBlendWidth;
+    
+    //Get the cascade view/proj matrices and frustrum splits previously calculated in the shadowRenderPass
     CascadeUniformObject cascadeUbo = m_shadowRenderPass->getCurrentUbo(currentFrame);
 
     for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
@@ -617,7 +620,7 @@ void MainRenderPass::updatePipelineRessources(uint32_t currentFrame)
 
 }
 
-
+//Creates the default albedo and normal map textures
 void MainRenderPass::createDefaultTextures() {
     VulkanImageParams imageParams
     {
@@ -630,7 +633,7 @@ void MainRenderPass::createDefaultTextures() {
     VulkanImageViewParams imageViewParams{
         .aspectFlags = vk::ImageAspectFlagBits::eColor,
     };
-    m_defaultTexture = new VulkanImage(m_context, imageParams, imageViewParams, "assets/defaultTexture.png");
+    m_defaultTexture = new VulkanImage(m_context, imageParams, imageViewParams, c_defaultTexturePath);
 
     imageParams = VulkanImageParams
     {
@@ -643,7 +646,7 @@ void MainRenderPass::createDefaultTextures() {
     imageViewParams = VulkanImageViewParams{
         .aspectFlags = vk::ImageAspectFlagBits::eColor,
     };
-    m_defaultNormalMap = new VulkanImage(m_context, imageParams, imageViewParams, "assets/defaultNormalMap.png");
+    m_defaultNormalMap = new VulkanImage(m_context, imageParams, imageViewParams, c_defaultNormalMapPath);
 }
 
 void MainRenderPass::createUniformBuffer() {
@@ -657,6 +660,7 @@ void MainRenderPass::createUniformBuffer() {
     }
 }
 
+//creates the sampler used for textures
 void MainRenderPass::createTextureSampler() {
     vk::PhysicalDeviceProperties properties = m_context->getProperties();
 
@@ -688,6 +692,7 @@ void MainRenderPass::createTextureSampler() {
 
 }
 
+//Creates the sampler used for shadow mapping sampling
 void MainRenderPass::createShadowMapSampler() {
     vk::PhysicalDeviceProperties properties = m_context->getProperties();
 

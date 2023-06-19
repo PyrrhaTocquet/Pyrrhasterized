@@ -1,3 +1,8 @@
+/*
+author: Pyrrha Tocquet
+date: 30/05/23
+desc: Manages the render pass that draws the final image
+*/
 #pragma once
 
 #define VULKAN_HPP_NO_CONSTRUCTORS
@@ -34,6 +39,9 @@ class MainRenderPass : public VulkanRenderPass {
 
 	//IMGUI
 	bool m_hideImGui = false;
+
+	const std::string c_defaultTexturePath = "assets/defaultTexture.png";
+	const std::string c_defaultNormalMapPath = "assets/defaultNormalMap.png";
 public:
 	MainRenderPass(VulkanContext* context, Camera* camera, ShadowCascadeRenderPass* shadowRenderPass);
 	virtual ~MainRenderPass()override;
@@ -50,7 +58,7 @@ public:
 	void createPipelineRessources()override;
 	void createPushConstantsRanges()override;
 	void updatePipelineRessources(uint32_t currentFrame)override;
-	vk::Extent2D getRenderPassExtent() override;
+	[[nodiscard]] vk::Extent2D getRenderPassExtent() override;
 	void renderImGui(vk::CommandBuffer commandBuffer);
 	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) override;
 

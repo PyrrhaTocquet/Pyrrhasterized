@@ -256,11 +256,11 @@ bool VulkanContext::isDeviceSuitable(const vk::PhysicalDevice &device)
 
 }
 
-
+//Picks physical device depending on an arbitrary score. Best or Worse device picking can be chosen with the c_pickWorseDevice bool
 vk::PhysicalDevice VulkanContext::getBestDevice(std::vector<vk::PhysicalDevice> devices) {
 
 	vk::PhysicalDevice bestDevice;
-	float bestScore = pickWorseDevice ? std::numeric_limits<float>::max() : 0;
+	float bestScore = c_pickWorseDevice ? std::numeric_limits<float>::max() : 0;
 	for (auto device : devices)
 	{
 		float score = 0;
@@ -295,7 +295,7 @@ vk::PhysicalDevice VulkanContext::getBestDevice(std::vector<vk::PhysicalDevice> 
 			}
 		}
 
-		if (!pickWorseDevice)
+		if (!c_pickWorseDevice)
 		{
 			if (bestScore < score)
 			{
@@ -412,7 +412,7 @@ void VulkanContext::createSurface() {
 }
 
 
-//TODO Documentation
+//TODO creates a GLFW window
 void VulkanContext::createWindow() {
 	glfwInit(); // Initializes the GLFW library
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // Tells GLFW that we don't need an OpenGL Context
@@ -439,7 +439,7 @@ void VulkanContext::createWindow() {
 	glfwSetWindowUserPointer(m_window, m_instance);
 }
 
-
+//returns true if the window is open. Used in a while loop for the program loop
 bool VulkanContext::isWindowOpen() const
 {
 	return !glfwWindowShouldClose(m_window);
@@ -451,6 +451,7 @@ void VulkanContext::manageWindow() {
 #pragma endregion
 
 #pragma region SWAPCHAIN
+//returns Swapchain image views
 const std::vector<vk::ImageView> VulkanContext::getSwapchainImageViews() {
 	if (m_swapchainImageViews.size() == 0)
 	{
@@ -483,14 +484,17 @@ vk::Extent2D VulkanContext::getSwapchainExtent() const
 	}
 }
 
+//Return true if the window framebuffer has been resized
 bool VulkanContext::isFramebufferResized() {
 	return m_framebufferResized;
 }
 
+//Clears flags that manage window framebuffer resizing
 void VulkanContext::clearFramebufferResized() {
 	m_framebufferResized = false;
 }
 
+//Destroys swapchain image views and swapchain
 void VulkanContext::cleanupSwapchain() {
 	for (auto& imageView : m_swapchainImageViews)
 	{
@@ -499,6 +503,7 @@ void VulkanContext::cleanupSwapchain() {
 	m_device.destroySwapchainKHR(m_swapchain);
 }
 
+//recreates the swapchain when the window makes it available. Does not destroy the swapchain or image views
 void VulkanContext::recreateSwapchain() {
 	int width = 0, height = 0;
 	while (width == 0 || height == 0) {
@@ -508,7 +513,7 @@ void VulkanContext::recreateSwapchain() {
 	createSwapchain();
 }
 
-
+//Returns a struct that contains surface capabilities, formats and presentmode supported
 SwapchainSupportDetails VulkanContext::querySwapchainSupport(const vk::PhysicalDevice &physicalDevice) 
 {
 	SwapchainSupportDetails details;
@@ -519,6 +524,7 @@ SwapchainSupportDetails VulkanContext::querySwapchainSupport(const vk::PhysicalD
 	return details;
 }
 
+//returns the best surface format
 vk::SurfaceFormatKHR VulkanContext::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats) 
 {
 	for (const auto& availableFormat : availableFormats) {
@@ -529,25 +535,26 @@ vk::SurfaceFormatKHR VulkanContext::chooseSwapSurfaceFormat(const std::vector<vk
 	return availableFormats[0];
 }
 
+//Returns the best present mode depending on the surface/Swapchain
 vk::PresentModeKHR VulkanContext::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> availablePresentModes) 
 {
 	vk::PresentModeKHR bestMode = vk::PresentModeKHR::eFifo;
 
 	for (const auto& availablePresentMode : availablePresentModes) {
 		if (availablePresentMode == vk::PresentModeKHR::eMailbox) {
-			return availablePresentMode;
+			return availablePresentMode; //Waits for vertical blank
 		}
 		else if (availablePresentMode == vk::PresentModeKHR::eImmediate) {
-			bestMode = availablePresentMode;
+			bestMode = availablePresentMode; //Does not wait for vertical blank (tearing)
 		}
 	}
 
 	return bestMode;
 }
 
+//Computes the extent of the swapchain depending on the surface and screen
 vk::Extent2D VulkanContext::chooseSwapExtent(vk::SurfaceCapabilitiesKHR capabilities)
 {
-
 	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
 		return capabilities.currentExtent;
 	}
@@ -656,7 +663,7 @@ void VulkanContext::createSwapchain()
 	createSwapchainImageViews();
 }
 
-
+//acquireNextImageKHR and result management
 uint32_t VulkanContext::acquireNextSwapchainImage(vk::Semaphore &imageAvailableSemaphore) {
 	uint32_t imageIndex = 0;
 	try {
@@ -750,6 +757,7 @@ void VulkanContext::createLogicalDevice()
 #pragma endregion
 
 #pragma region FEATURES_AND_PROPERTIES
+//Returns the format that has all the requested features
 vk::Format VulkanContext::findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlagBits features)
 {
 	for (vk::Format format : candidates)
@@ -766,6 +774,7 @@ vk::Format VulkanContext::findSupportedFormat(const std::vector<vk::Format>& can
 	}
 
 }
+// Returns the maximum sample count used. Return vk::SamplecountFlagBits::e1 if MSAA is not enabled
 vk::SampleCountFlagBits VulkanContext::getMaxUsableSampleCount() const
 {
 	if (!ENABLE_MSAA)
@@ -806,6 +815,7 @@ vk::SampleCountFlagBits VulkanContext::getMaxUsableSampleCount() const
 #pragma endregion 
 
 #pragma region ALLOCATORS
+//creates the vma allocator
 void VulkanContext::createAllocator() {
 	vma::AllocatorCreateInfo createInfo{
 		.physicalDevice = m_physicalDevice,
@@ -824,6 +834,7 @@ vma::Allocator VulkanContext::getAllocator()
 #pragma endregion
 
 #pragma region BUFFERS
+//Creates and return the buffer and the allocation that matches the input arguments
 std::pair<vk::Buffer, vma::Allocation> VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::MemoryUsage memoryUsage) 
 {
 	vk::BufferCreateInfo bufferInfo{
@@ -844,6 +855,7 @@ std::pair<vk::Buffer, vma::Allocation> VulkanContext::createBuffer(vk::DeviceSiz
 	return m_allocator.createBuffer(bufferInfo, bufferAllocInfo);
 }
 
+//Copies a srcBuffer to a dstBuffer (GPU execution)
 void VulkanContext::copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size) {
 	vk::CommandBuffer commandBuffer = beginSingleTimeCommands(m_commandPool);
 
@@ -854,6 +866,7 @@ void VulkanContext::copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::D
 	endSingleTimeCommands(commandBuffer, m_commandPool);
 }
 
+//Copies buffer data to an imageData
 void VulkanContext::copyBufferToImage(vk::Buffer buffer, vk::Image image, vk::CommandPool commandPool, uint32_t width, uint32_t height) {
 
 	vk::CommandBuffer commandBuffer = beginSingleTimeCommands(commandPool);
@@ -882,6 +895,7 @@ void VulkanContext::copyBufferToImage(vk::Buffer buffer, vk::Image image, vk::Co
 
 }
 
+//Finds a memory type that have the inputed properties
 uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
@@ -897,6 +911,7 @@ uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, Vk
 #pragma endregion
 
 #pragma region COMMAND_BUFFERS
+//Helper function that starts a command buffer made to be used once
 vk::CommandBuffer VulkanContext::beginSingleTimeCommands(vk::CommandPool commandPool) {
 
 	vk::CommandBufferAllocateInfo allocInfo{
@@ -915,6 +930,8 @@ vk::CommandBuffer VulkanContext::beginSingleTimeCommands(vk::CommandPool command
 	return commandBuffer;
 
 }
+
+//Helper function that ends a command buffer made to be used once
 void VulkanContext::endSingleTimeCommands(vk::CommandBuffer commandBuffer, vk::CommandPool commandPool) {
 	commandBuffer.end();
 
@@ -934,11 +951,13 @@ GLFWwindow* VulkanContext::getWindowPtr()
 {
 	return m_window;
 }
+//Gets the physical device properties
 vk::PhysicalDeviceProperties VulkanContext::getProperties() const
 {
 	return m_physicalDevice.getProperties();
 }
 
+//Gets the physical device properties relative to a format
 vk::FormatProperties VulkanContext::getFormatProperties(vk::Format format) const
 {
 	return m_physicalDevice.getFormatProperties(format);
@@ -946,6 +965,7 @@ vk::FormatProperties VulkanContext::getFormatProperties(vk::Format format) const
 #pragma endregion
 
 #pragma region COMMAND_POOL
+//returns a new commandPool
 vk::CommandPool VulkanContext::createCommandPool()
 {
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies();
@@ -964,12 +984,14 @@ vk::CommandPool VulkanContext::createCommandPool()
 	}
 }
 
+//Returns the VulkanContext CommandPool
 vk::CommandPool VulkanContext::getCommandPool() {
 	return m_commandPool;
 }
 #pragma endregion
 
 #pragma region IMGUI
+//IMGUI necessary Vulkan objects creation. Returns populated InitInfo
 ImGui_ImplVulkan_InitInfo VulkanContext::getImGuiInitInfo() {
 	//TODO better sized imgui pool ?
 	vk::DescriptorPoolSize poolSizes[] =
@@ -1025,7 +1047,7 @@ ImGui_ImplVulkan_InitInfo VulkanContext::getImGuiInitInfo() {
 	return initGuiInfo;
 }
 #pragma engregion IMGUI
-
+//Sets the debug name of a Vulkan object
 void VulkanContext::setDebugObjectName(uint64_t object, VkDebugReportObjectTypeEXT objectType, const char* name)
 {
 

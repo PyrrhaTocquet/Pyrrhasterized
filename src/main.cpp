@@ -1,7 +1,9 @@
-/*  Vulkan Base Project
-    Goal: Making a best practice Vulkan project to be used as a starting point for rasterized computer graphics projects
+/*  Pyrrhasterized
+    Goal: Making a porte-folio + learning project 3D rasterized renderer
     Author: Pyrrha Tocquet
-    Date: 24/03/2023
+    Date: 22/05/2023
+
+    Forked from Vulkan Base Project (Private repo) (original file date: 24/03/2023)
 */
 
 
@@ -108,8 +110,6 @@ int main() {
 
     renderer.addPipeline(renderer.createPipeline(pipelineInfo));
     */
-
-    
 
     renderer.mainloop();
 

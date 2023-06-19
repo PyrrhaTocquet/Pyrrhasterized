@@ -1,3 +1,10 @@
+/*
+author: Pyrrha Tocquet
+date: 07/06/23
+desc: Remnants of regular (non cascaded) shadow mapping
+TODO Refactor
+*/
+
 #pragma once
 
 #define VULKAN_HPP_NO_CONSTRUCTORS

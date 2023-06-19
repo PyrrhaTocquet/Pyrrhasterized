@@ -182,7 +182,7 @@ void ShadowCascadeRenderPass::createDefaultPipeline()
         .cullmode = vk::CullModeFlagBits::eNone,
         .renderPassId = RenderPassesId::ShadowMappingPassId,
         .isMultisampled = false,
-        .depthBias = {3.0f, 15.0f}
+        .depthBias = {c_constantDepthBias, c_slopeScaleDepthBias}
     };
 
     m_mainPipeline = new VulkanPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());
@@ -211,7 +211,7 @@ void ShadowCascadeRenderPass::updatePipelineRessources(uint32_t currentFrame)
 
 void ShadowCascadeRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t currentFrame, std::vector<VulkanScene*> scenes)
 {
-
+    //Wait for the end of the previous frame operations on the shadow cascade
     vk::ImageMemoryBarrier2 memoryBarrier{
     .srcStageMask = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
     .srcAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
@@ -237,8 +237,6 @@ void ShadowCascadeRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, ui
 
     commandBuffer.pipelineBarrier2(dependencyInfo);
 
-
-    //RENOMMER currentFrame
     vk::RenderPassBeginInfo renderPassInfo{
         .renderPass = m_renderPass,
         .renderArea = {
@@ -282,6 +280,7 @@ void ShadowCascadeRenderPass::recreateRenderPass()
     m_mainPipeline->recreatePipeline(getRenderPassExtent());
 }
 
+//Wait for the end of shadow cascade drawing to use it in the Main render pass
 void ShadowCascadeRenderPass::recordShadowCascadeMemoryDependency(vk::CommandBuffer commandBuffer) {
 
     vk::ImageMemoryBarrier2 memoryBarrier{
@@ -310,6 +309,7 @@ void ShadowCascadeRenderPass::recordShadowCascadeMemoryDependency(vk::CommandBuf
     commandBuffer.pipelineBarrier2(dependencyInfo);
 }
 
+//returns the current frame Uniform Buffer Object used in the Shadow Cascade Pass
 CascadeUniformObject ShadowCascadeRenderPass::getCurrentUbo(uint32_t currentFrame)
 {
     return m_cascadeUbos[currentFrame];
