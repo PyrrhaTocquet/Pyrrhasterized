@@ -41,25 +41,26 @@ void VulkanScene::addModel(Model* model)
 }
 
 
-static Model* newModel(VulkanContext* context, std::filesystem::path path, Transform transform) {
-	return new Model(context, path, transform);
+static std::mutex modelsMutex;
+static void newModel(VulkanContext* context, std::filesystem::path path, Transform transform, std::vector<Model*>* models) {
+	Model* model = new Model(context, path, transform);
+	std::lock_guard<std::mutex> lock(modelsMutex);
+	models->push_back(model);
+
 };
+
 
 void VulkanScene::loadModels()
 {
-	std::vector<std::future<Model*>> modelLoadingFutures;
+	std::vector<std::future<void>> modelLoadingFutures;
 	modelLoadingFutures.resize(m_modelLoadingInfos.size());
 	for (uint32_t i = 0; i < m_modelLoadingInfos.size(); i++)
 	{
-		modelLoadingFutures[i] = std::async(std::launch::async, newModel, m_context, m_modelLoadingInfos[i].path, m_modelLoadingInfos[i].transform);
-
+		modelLoadingFutures[i] = std::async(std::launch::async, newModel, m_context, m_modelLoadingInfos[i].path, m_modelLoadingInfos[i].transform, &m_models);
 	}
-	for (auto& modelLoadingFuture : modelLoadingFutures)
-	{
-		m_models.push_back(modelLoadingFuture.get());
+	for (auto& future : modelLoadingFutures) {
+		future.wait();
 	}
-	
-
 }
 
 void VulkanScene::addEntity(Entity* entity) {
