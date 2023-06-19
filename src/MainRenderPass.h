@@ -31,6 +31,9 @@ class MainRenderPass : public VulkanRenderPass {
 
 	//acquired at construction
 	ShadowCascadeRenderPass* m_shadowRenderPass = nullptr;
+
+	//IMGUI
+	bool m_hideImGui = false;
 public:
 	MainRenderPass(VulkanContext* context, Camera* camera, ShadowCascadeRenderPass* shadowRenderPass);
 	virtual ~MainRenderPass()override;

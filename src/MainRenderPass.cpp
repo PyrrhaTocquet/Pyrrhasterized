@@ -494,8 +494,7 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
 
     //imgui commands
     double framerate = ImGui::GetIO().Framerate;
-    bool openRendererPerf = true;
-    ImGui::Begin("Renderer Performance", &openRendererPerf);
+    ImGui::Begin("Renderer Performance", &m_hideImGui);
     ImGui::SetWindowSize(ImVec2(300.f, 100.f));
     ImGui::SetWindowPos(ImVec2(10.f, 10.f));
     ImGui::Text("Framerate: %f", framerate);
