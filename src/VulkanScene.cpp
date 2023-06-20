@@ -1,7 +1,7 @@
 #include "VulkanScene.h"
 
 #include <unordered_map>
-#include <future>
+
 
 VulkanScene::VulkanScene(VulkanContext* context) {
 	m_allocator = context->getAllocator();
@@ -55,14 +55,11 @@ static void newModel(VulkanContext* context, std::filesystem::path path, Transfo
 //Loads the models in the model info list (multithreaded)
 void VulkanScene::loadModels()
 {
-	std::vector<std::future<void>> modelLoadingFutures;
-	modelLoadingFutures.resize(m_modelLoadingInfos.size());
+	std::vector<std::jthread> modelLoadingThreads;
+	modelLoadingThreads.resize(m_modelLoadingInfos.size());
 	for (uint32_t i = 0; i < m_modelLoadingInfos.size(); i++)
 	{
-		modelLoadingFutures[i] = std::async(std::launch::async, newModel, m_context, m_modelLoadingInfos[i].path, m_modelLoadingInfos[i].transform, &m_models);
-	}
-	for (auto& future : modelLoadingFutures) {
-		future.wait();
+		modelLoadingThreads[i] = std::jthread(newModel, m_context, m_modelLoadingInfos[i].path, m_modelLoadingInfos[i].transform, &m_models);
 	}
 }
 

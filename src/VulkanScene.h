@@ -9,6 +9,8 @@
 #include <filesystem>
 #include "Model.h"
 #include "Drawable.h"
+#include <future>
+#include <thread>
 
 struct ModelLoadingInfo {
 	std::filesystem::path path;
