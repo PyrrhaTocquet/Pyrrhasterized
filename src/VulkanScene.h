@@ -9,8 +9,10 @@
 #include <filesystem>
 #include "Model.h"
 #include "Drawable.h"
+#include "PointLight.h"
 #include <future>
 #include <thread>
+
 
 struct ModelLoadingInfo {
 	std::filesystem::path path;
@@ -22,6 +24,7 @@ class VulkanScene : Drawable
 public :
 	vk::Buffer m_vertexBuffer, m_indexBuffer = VK_NULL_HANDLE;
 	std::vector<Model*> m_models; //TODO private after drawScene refactoring ??
+	std::vector<Light*> m_lights;
 private:
 	std::vector<VulkanScene*> m_childrenScenes;
 
@@ -41,6 +44,8 @@ public:
 	void addEntity(Entity* entity);
 	void createBuffers();
 	[[nodiscard]]const uint32_t getIndexBufferSize();
+	void addLight(Light* light);
+	[[nodiscard]]std::vector<Light*> getLights();
 
 	void draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant) override;
 private:

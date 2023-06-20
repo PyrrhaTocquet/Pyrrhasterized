@@ -110,7 +110,7 @@ void ShadowCascadeRenderPass::createDescriptorSetLayout()
 
 }
 
-void ShadowCascadeRenderPass::createDescriptorSet(VulkanScene* scene)
+void ShadowCascadeRenderPass::createDescriptorSets(VulkanScene* scene)
 {
     m_mainDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
     std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_mainDescriptorSetLayout);
@@ -203,7 +203,7 @@ void ShadowCascadeRenderPass::createPushConstantsRanges()
     };
 }
 
-void ShadowCascadeRenderPass::updatePipelineRessources(uint32_t currentFrame)
+void ShadowCascadeRenderPass::updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)
 {
     updateUniformBuffer(currentFrame);
 }
@@ -318,7 +318,7 @@ CascadeUniformObject ShadowCascadeRenderPass::getCurrentUbo(uint32_t currentFram
 
 void ShadowCascadeRenderPass::createUniformBuffer()
 {
-    vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+    vk::DeviceSize bufferSize = sizeof(CascadeUniformObject);
 
     m_uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
     m_uniformBuffersAllocations.resize(MAX_FRAMES_IN_FLIGHT);

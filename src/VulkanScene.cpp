@@ -6,6 +6,17 @@
 VulkanScene::VulkanScene(VulkanContext* context) {
 	m_allocator = context->getAllocator();
 	m_context = context;
+	Light* pLight = new PointLight(context, glm::vec4(0.f, 0.f, 0.f, 1.f), 12.f);
+	addLight(pLight);
+	addLight(pLight);
+	addLight(pLight);
+	addLight(pLight);
+	addLight(pLight);
+	addLight(pLight);
+	addLight(pLight);
+	addLight(pLight);
+	addLight(pLight);
+	addLight(pLight);
 }
 
 VulkanScene::~VulkanScene()
@@ -86,6 +97,21 @@ const uint32_t VulkanScene::getIndexBufferSize()
 
 	}
 	return indicesCount;
+}
+
+void VulkanScene::addLight(Light* light)
+{
+	if (m_lights.size() == MAX_LIGHT_COUNT)
+	{
+		std::cout << "Light not added, maximum light count reached" << std::endl;
+		return;
+	}
+	m_lights.push_back(light);
+}
+
+std::vector<Light*> VulkanScene::getLights()
+{
+	return m_lights;
 }
 
 void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant)
