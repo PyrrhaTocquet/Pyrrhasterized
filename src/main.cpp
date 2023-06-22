@@ -90,8 +90,8 @@ int main() {
     pointLightDos->setIntensity(1.5f);
     scene.addLight(pointLightDos);
     
-    Spotlight* spotlight = new Spotlight(&context, glm::vec4(-7.1f, -1.1f, 2.6f, 1.f), glm::vec4(-7.1f, -1.1f, -2.6f, 1.f) - glm::vec4(-7.1f, -1.1f, 2.6f, 1.f), 10.f, 8.f, glm::vec4(1.f, .1f, .1f, 1.f));
-    spotlight->setIntensity(0.8f);
+    Spotlight* spotlight = new Spotlight(&context, glm::vec4(-7.1f, -1.1f, 2.6f, 1.f), glm::vec4(-7.1f, -1.1f, -2.6f, 1.f) - glm::vec4(-7.1f, -1.1f, 2.6f, 1.f), 10.f, 8.f, glm::vec4(1.f, .2f, .2f, 1.f));
+    spotlight->setIntensity(4.0f);
     scene.addLight(spotlight);
     Transform spotlightmodelTransfrom;
     spotlightmodelTransfrom.translate = glm::vec3(-7.1f, -1.1f, 2.8f);

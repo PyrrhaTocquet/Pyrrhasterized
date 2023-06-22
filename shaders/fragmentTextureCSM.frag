@@ -68,7 +68,7 @@ vec3 ambientColor = vec3(1.0, 1.0, 1.0);
 
 float specularPower = 30;
 float ambientIntensity = .4;
-float specularAttenuation = 0.5;
+float specularAttenuation = 0.8;
 
 const mat4 biasMat = mat4( 
 	0.5, 0.0, 0.0, 0.0,
