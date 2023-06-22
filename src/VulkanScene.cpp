@@ -1,11 +1,13 @@
 #include "VulkanScene.h"
 
 #include <unordered_map>
-#include <future>
 
-VulkanScene::VulkanScene(VulkanContext* context) {
+
+VulkanScene::VulkanScene(VulkanContext* context, DirectionalLight* sun) {
 	m_allocator = context->getAllocator();
 	m_context = context;
+	m_sun = sun;
+	addLight(sun);
 }
 
 VulkanScene::~VulkanScene()
@@ -19,13 +21,14 @@ VulkanScene::~VulkanScene()
 
 }
 
+/* Disabled because no support for a scene graph yet.
 //adds the inputed scene to the list of children scenes
 void VulkanScene::addChildren(VulkanScene* childrenScene) {
 	if (childrenScene == nullptr) {
 		throw std::runtime_error("Children scene is nullptr !");
 	}
 	m_childrenScenes.push_back(childrenScene);
-}
+}*/
 
 //Adds the model information to the model information list for further loading
 void VulkanScene::addModel(const std::filesystem::path& path, const Transform& transform)
@@ -55,14 +58,11 @@ static void newModel(VulkanContext* context, std::filesystem::path path, Transfo
 //Loads the models in the model info list (multithreaded)
 void VulkanScene::loadModels()
 {
-	std::vector<std::future<void>> modelLoadingFutures;
-	modelLoadingFutures.resize(m_modelLoadingInfos.size());
+	std::vector<std::jthread> modelLoadingThreads;
+	modelLoadingThreads.resize(m_modelLoadingInfos.size());
 	for (uint32_t i = 0; i < m_modelLoadingInfos.size(); i++)
 	{
-		modelLoadingFutures[i] = std::async(std::launch::async, newModel, m_context, m_modelLoadingInfos[i].path, m_modelLoadingInfos[i].transform, &m_models);
-	}
-	for (auto& future : modelLoadingFutures) {
-		future.wait();
+		modelLoadingThreads[i] = std::jthread(newModel, m_context, m_modelLoadingInfos[i].path, m_modelLoadingInfos[i].transform, &m_models);
 	}
 }
 
@@ -89,6 +89,26 @@ const uint32_t VulkanScene::getIndexBufferSize()
 
 	}
 	return indicesCount;
+}
+
+void VulkanScene::addLight(Light* light)
+{
+	if (m_lights.size() == MAX_LIGHT_COUNT)
+	{
+		std::cout << "Light not added, maximum light count reached" << std::endl;
+		return;
+	}
+	m_lights.push_back(light);
+}
+
+std::vector<Light*> VulkanScene::getLights()
+{
+	return m_lights;
+}
+
+DirectionalLight* VulkanScene::getSun()
+{
+	return m_sun;
 }
 
 void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant)

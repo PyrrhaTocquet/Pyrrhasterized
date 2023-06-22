@@ -39,12 +39,12 @@ public :
 	virtual void recreateRenderPass() = 0;
 	virtual void createDescriptorPool() = 0;
 	virtual void createDescriptorSetLayout() = 0;
-	virtual void createDescriptorSet(VulkanScene* scene) = 0;
+	virtual void createDescriptorSets(VulkanScene* scene) = 0;
 	virtual void createPipelineLayout() = 0;
 	virtual void createDefaultPipeline() = 0;
 	virtual void createPipelineRessources() = 0;
 	virtual void createPushConstantsRanges() = 0;
-	virtual void updatePipelineRessources(uint32_t currentFrame) = 0;
+	virtual void updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes) = 0;
 	virtual vk::Extent2D getRenderPassExtent() = 0;
 	virtual void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) = 0;
 	virtual void updateDescriptorSets() {};

@@ -210,7 +210,7 @@ void VulkanRenderer::drawFrame() {
     
     for (auto& renderPass : m_renderPasses)
     {
-        renderPass->updatePipelineRessources(m_currentFrame);
+        renderPass->updatePipelineRessources(m_currentFrame, m_scenes);
     }
     recordCommandBuffer(m_commandBuffers[imageIndex], imageIndex);
   
@@ -287,10 +287,15 @@ void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
     vulkanScene->createBuffers();
     for (auto& renderPass : m_renderPasses)
     {
-        renderPass->createDescriptorSet(vulkanScene);
+        renderPass->createDescriptorSets(vulkanScene);
     }
     
     m_scenes.push_back(vulkanScene);
+    for (auto& light : vulkanScene->getLights())
+    {
+        light->setCamera(m_camera);
+        registerEntity(light);
+    }
 }
 #pragma endregion
 

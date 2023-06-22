@@ -30,7 +30,7 @@ public:
 	virtual void cleanAttachments() override;
 	virtual void createDescriptorPool()override {}; //TODO
 	virtual void createDescriptorSetLayout()override {};
-	virtual void createDescriptorSet(VulkanScene* scene)override {};
+	virtual void createDescriptorSets(VulkanScene* scene)override {};
 	virtual void createPipelineLayout()override {};
 	virtual void createDefaultPipeline()override {};
 	virtual void recreateRenderPass() override;

@@ -22,7 +22,8 @@ MainRenderPass::~MainRenderPass()
     cleanAttachments();
     
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        m_context->getAllocator().destroyBuffer(m_uniformBuffers[i], m_uniformBuffersAllocations[i]);
+        m_context->getAllocator().destroyBuffer(m_generalUniformBuffers[i], m_generalUniformBuffersAllocations[i]);
+        m_context->getAllocator().destroyBuffer(m_lightUniformBuffers[i], m_lightUniformBuffersAllocations[i]);
     }
     
 }
@@ -174,16 +175,18 @@ void MainRenderPass::createDescriptorPool()
     vk::Device device = m_context->getDevice();
     //MVP UBO + TEXTURES
     {
-        vk::DescriptorPoolSize poolSizes[2];
+        std::array<vk::DescriptorPoolSize, 3> poolSizes;
         poolSizes[0].type = vk::DescriptorType::eUniformBuffer;
         poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-        poolSizes[1].type = vk::DescriptorType::eCombinedImageSampler;
-        poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * MAX_TEXTURE_COUNT; //Dynamic Indexing
+        poolSizes[1].type = vk::DescriptorType::eUniformBuffer;
+        poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        poolSizes[2].type = vk::DescriptorType::eCombinedImageSampler;
+        poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * MAX_TEXTURE_COUNT; //Dynamic Indexing
 
         vk::DescriptorPoolCreateInfo poolInfo{
             .maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
-            .poolSizeCount = static_cast<uint32_t>(2),
-            .pPoolSizes = poolSizes,
+            .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+            .pPoolSizes = poolSizes.data(),
         };
 
         try {
@@ -229,26 +232,33 @@ void MainRenderPass::createDescriptorSetLayout()
         .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
     };
 
-    vk::DescriptorSetLayoutBinding samplerLayoutBinding{
+    vk::DescriptorSetLayoutBinding lightUboLayoutBinding{
         .binding = 1,
+        .descriptorType = vk::DescriptorType::eUniformBuffer,
+        .descriptorCount = 1,
+        .stageFlags = vk::ShaderStageFlagBits::eFragment,
+    };
+
+    vk::DescriptorSetLayoutBinding samplerLayoutBinding{
+        .binding = 2,
         .descriptorType = vk::DescriptorType::eCombinedImageSampler,
         .descriptorCount = MAX_TEXTURE_COUNT,  //Dynamic Indexing
         .stageFlags = vk::ShaderStageFlagBits::eFragment,
     };
 
-    vk::DescriptorSetLayoutBinding bindings[2] = { uboLayoutBinding, samplerLayoutBinding };
+    vk::DescriptorSetLayoutBinding bindings[3] = { uboLayoutBinding, lightUboLayoutBinding, samplerLayoutBinding };
     //Descriptor indexing
-    vk::DescriptorBindingFlags bindingFlags[2];
-    bindingFlags[1] = vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eVariableDescriptorCount; //Necessary for Dynamic indexing (VK_EXT_descriptor_indexing)
+    vk::DescriptorBindingFlags bindingFlags[3];
+    bindingFlags[2] = vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eVariableDescriptorCount; //Necessary for Dynamic indexing (VK_EXT_descriptor_indexing)
 
     vk::DescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreateInfo{
-        .bindingCount = 2,
+        .bindingCount = 3,
         .pBindingFlags = bindingFlags,
     };
 
     vk::DescriptorSetLayoutCreateInfo layoutInfo{
         .pNext = &bindingFlagsCreateInfo,
-        .bindingCount = 2,
+        .bindingCount = 3,
         .pBindings = bindings,
     };
 
@@ -282,67 +292,55 @@ void MainRenderPass::createDescriptorSetLayout()
     }
 }
 
-void MainRenderPass::createDescriptorSet(VulkanScene* scene)
+//adds the texture info to the texture image info and sets the right Id to the mesh
+static void appendImageInfo(std::vector<vk::DescriptorImageInfo>& textureImageInfo, vk::Sampler sampler, VulkanImage* image, uint32_t& id, uint32_t& textureId)
 {
-    //TODO Refactor
-    //Creates a vector of descriptorImageInfo from the scene's textures
+    vk::DescriptorImageInfo imageInfo{
+              .sampler = sampler,
+              .imageView = image->m_imageView,
+              .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+    };
+    textureImageInfo.push_back(imageInfo);
+    id = textureId; //Attributes the texture id to the mesh
+    textureId++;
+}
+
+//returns are vector of DescriptorImageInfo, containing the albedo and normal map texture information from the Models' TexturedMeshes
+std::vector<vk::DescriptorImageInfo> MainRenderPass::generateTextureImageInfo(VulkanScene* scene)
+{
     std::vector<vk::DescriptorImageInfo> textureImageInfo;
     uint32_t textureId = 0;
     for (auto& model : scene->m_models) {
         for (auto& texturedMesh : model->getMeshes()) {
             if (texturedMesh.textureImage != nullptr && !texturedMesh.textureImage->hasLoadingFailed())
             {
-                vk::DescriptorImageInfo imageInfo{
-                .sampler = m_textureSampler,
-                .imageView = texturedMesh.textureImage->m_imageView,
-                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-                };
-                textureImageInfo.push_back(imageInfo);
-                texturedMesh.textureId = textureId; //Attributes the texture id to the mesh
-                textureId++;
-
+                appendImageInfo(textureImageInfo, m_textureSampler, texturedMesh.textureImage, texturedMesh.textureId, textureId);
             }
             else
             {
                 //No texture applies a default texture
-                vk::DescriptorImageInfo imageInfo{
-               .sampler = m_textureSampler,
-               .imageView = m_defaultTexture->m_imageView,
-               .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-                };
-                //Default texture if no texture
-                textureImageInfo.push_back(imageInfo);
-                texturedMesh.textureId = textureId;
-                textureId++;
+                appendImageInfo(textureImageInfo, m_textureSampler, m_defaultTexture, texturedMesh.textureId, textureId);
             }
             if (texturedMesh.normalMapImage != nullptr && !texturedMesh.normalMapImage->hasLoadingFailed())
             {
-                vk::DescriptorImageInfo imageInfo{
-                .sampler = m_textureSampler,
-                .imageView = texturedMesh.normalMapImage->m_imageView,
-                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-                };
-                textureImageInfo.push_back(imageInfo);
-                texturedMesh.normalMapId = textureId; //Attributes the texture id to the mesh
-                textureId++;
-
+                appendImageInfo(textureImageInfo, m_textureSampler, texturedMesh.normalMapImage, texturedMesh.normalMapId, textureId);
             }
             else
             {
                 //No texture applies a default texture
-                vk::DescriptorImageInfo imageInfo{
-               .sampler = m_textureSampler,
-               .imageView = m_defaultNormalMap->m_imageView,
-               .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-                };
-                //Default texture if no texture
-                textureImageInfo.push_back(imageInfo);
-                texturedMesh.normalMapId = textureId;
-                textureId++;
+                appendImageInfo(textureImageInfo, m_textureSampler, m_defaultNormalMap, texturedMesh.normalMapId, textureId);
             }
 
         }
     }
+    return textureImageInfo;
+}
+
+//Creates the descriptor set that has the general/camera ubo, the light ubo array and the texture array
+void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
+{
+    //Creates a vector of descriptorImageInfo from the scene's textures
+    std::vector<vk::DescriptorImageInfo> textureImageInfos = generateTextureImageInfo(scene);
 
     m_mainDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
     std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_mainDescriptorSetLayout);
@@ -355,6 +353,7 @@ void MainRenderPass::createDescriptorSet(VulkanScene* scene)
         .pDescriptorCounts = textureMaxCounts.data(),
     };
 
+    /*Descriptor Sets Allocation*/
     vk::DescriptorSetAllocateInfo allocInfo = {
      .pNext = &setCounts,
      .descriptorPool = m_mainDescriptorPool,
@@ -371,26 +370,41 @@ void MainRenderPass::createDescriptorSet(VulkanScene* scene)
 
     //Updating the descriptor sets with the appropriates references
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vk::DescriptorBufferInfo bufferInfo{
-            .buffer = m_uniformBuffers[i],
+        vk::DescriptorBufferInfo generalUboBufferInfo{
+            .buffer = m_generalUniformBuffers[i],
             .offset = 0,
-            .range = sizeof(UniformBufferObject)
+            .range = sizeof(GeneralUniformBufferObject)
         };
 
-        std::vector<vk::WriteDescriptorSet> descriptorWrites(2);
+        vk::DescriptorBufferInfo lightUboBufferInfo{
+             .buffer = m_lightUniformBuffers[i],
+             .offset = 0,
+             .range = sizeof(LightUBO) * MAX_LIGHT_COUNT
+        };
+
+     
+
+        std::array<vk::WriteDescriptorSet, 3> descriptorWrites;
         descriptorWrites[0].dstSet = m_mainDescriptorSet[i];
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].dstArrayElement = 0;
         descriptorWrites[0].descriptorType = vk::DescriptorType::eUniformBuffer;
         descriptorWrites[0].descriptorCount = 1;
-        descriptorWrites[0].pBufferInfo = &bufferInfo;
+        descriptorWrites[0].pBufferInfo = &generalUboBufferInfo;
 
         descriptorWrites[1].dstSet = m_mainDescriptorSet[i];
         descriptorWrites[1].dstBinding = 1;
-        descriptorWrites[1].descriptorCount = textureImageInfo.size();
         descriptorWrites[1].dstArrayElement = 0;
-        descriptorWrites[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
-        descriptorWrites[1].pImageInfo = textureImageInfo.data();
+        descriptorWrites[1].descriptorType = vk::DescriptorType::eUniformBuffer;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pBufferInfo = &lightUboBufferInfo;
+
+        descriptorWrites[2].dstSet = m_mainDescriptorSet[i];
+        descriptorWrites[2].dstBinding = 2;
+        descriptorWrites[2].descriptorCount = textureImageInfos.size();
+        descriptorWrites[2].dstArrayElement = 0;
+        descriptorWrites[2].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+        descriptorWrites[2].pImageInfo = textureImageInfos.data();
 
 
         try {
@@ -401,51 +415,59 @@ void MainRenderPass::createDescriptorSet(VulkanScene* scene)
             throw std::runtime_error("could not create descriptor sets");
         }
     }
+}
 
-    {
-        m_shadowDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
-        std::vector<vk::DescriptorSetLayout> shadowLayouts(MAX_FRAMES_IN_FLIGHT, m_shadowDescriptorSetLayout);
+//Creates the descriptor set that has the shadow map textures
+void MainRenderPass::createShadowDescriptorSet(VulkanScene* scene)
+{
+    m_shadowDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
+    std::vector<vk::DescriptorSetLayout> shadowLayouts(MAX_FRAMES_IN_FLIGHT, m_shadowDescriptorSetLayout);
 
-        vk::DescriptorSetAllocateInfo allocInfo = {
-             .descriptorPool = m_shadowDescriptorPool,
-             .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
-             .pSetLayouts = shadowLayouts.data()
-        };
+    vk::DescriptorSetAllocateInfo allocInfo = {
+         .descriptorPool = m_shadowDescriptorPool,
+         .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
+         .pSetLayouts = shadowLayouts.data()
+    };
+
+    try {
+        m_shadowDescriptorSet = m_context->getDevice().allocateDescriptorSets(allocInfo);
+    }
+    catch (vk::SystemError err) {
+        throw std::runtime_error("could not allocate descriptor sets");
+    }
+
+    //SHADOW TODO REFACTOR
+    vk::DescriptorImageInfo shadowTextureImageInfo{
+      .sampler = m_shadowMapSampler,
+      .imageView = m_shadowRenderPass->getShadowAttachment(),
+      .imageLayout = vk::ImageLayout::eReadOnlyOptimal,
+    };
+
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+
+
+        vk::WriteDescriptorSet writeDescriptorSet;
+        writeDescriptorSet.dstSet = m_shadowDescriptorSet[i];
+        writeDescriptorSet.dstBinding = 0;
+        writeDescriptorSet.descriptorCount = 1;
+        writeDescriptorSet.dstArrayElement = 0;
+        writeDescriptorSet.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+        writeDescriptorSet.pImageInfo = &shadowTextureImageInfo;
 
         try {
-            m_shadowDescriptorSet = m_context->getDevice().allocateDescriptorSets(allocInfo);
+            m_context->getDevice().updateDescriptorSets(writeDescriptorSet, nullptr);
         }
-        catch (vk::SystemError err) {
-            throw std::runtime_error("could not allocate descriptor sets");
-        }
-
-        //SHADOW TODO REFACTOR
-        vk::DescriptorImageInfo shadowTextureImageInfo{
-          .sampler = m_shadowMapSampler,
-          .imageView = m_shadowRenderPass->getShadowAttachment(),
-          .imageLayout = vk::ImageLayout::eReadOnlyOptimal,
-        };
-
-        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-
-
-            vk::WriteDescriptorSet writeDescriptorSet;
-            writeDescriptorSet.dstSet = m_shadowDescriptorSet[i];
-            writeDescriptorSet.dstBinding = 0;
-            writeDescriptorSet.descriptorCount = 1;
-            writeDescriptorSet.dstArrayElement = 0;
-            writeDescriptorSet.descriptorType = vk::DescriptorType::eCombinedImageSampler;
-            writeDescriptorSet.pImageInfo = &shadowTextureImageInfo;
-
-            try {
-                m_context->getDevice().updateDescriptorSets(writeDescriptorSet, nullptr);
-            }
-            catch (vk::SystemError err)
-            {
-                throw std::runtime_error("could not create descriptor sets");
-            }
+        catch (vk::SystemError err)
+        {
+            throw std::runtime_error("could not create descriptor sets");
         }
     }
+}
+
+void MainRenderPass::createDescriptorSets(VulkanScene* scene)
+{
+    createMainDescriptorSet(scene);
+    createShadowDescriptorSet(scene);
 }
 
 void MainRenderPass::createPipelineLayout()
@@ -577,7 +599,7 @@ void MainRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t sw
 
 void MainRenderPass::createPipelineRessources() {
     createDefaultTextures();
-    createUniformBuffer();
+    createUniformBuffers();
     createTextureSampler();
     createShadowMapSampler();
 }
@@ -592,19 +614,18 @@ void MainRenderPass::createPushConstantsRanges()
 
 }
 
-//Populates the main uniform buffer
-void MainRenderPass::updatePipelineRessources(uint32_t currentFrame)
-{
+//updates uniform buffer for camera/general uniform buffer
+void MainRenderPass::updateGeneralUniformBuffer(uint32_t currentFrame) {
     vk::Extent2D extent = getRenderPassExtent();
 
     //Model View Proj
-    UniformBufferObject ubo{};
+    GeneralUniformBufferObject ubo{};
     ubo.view = m_camera->getViewMatrix();
     ubo.proj = m_camera->getProjMatrix(m_context);
     ubo.cameraPos = m_camera->getCameraPos();
     ubo.time = m_context->getTime().elapsedSinceStart;
     ubo.shadowMapsBlendWidth = m_shadowRenderPass->m_shadowMapsBlendWidth;
-    
+
     //Get the cascade view/proj matrices and frustrum splits previously calculated in the shadowRenderPass
     CascadeUniformObject cascadeUbo = m_shadowRenderPass->getCurrentUbo(currentFrame);
 
@@ -614,10 +635,40 @@ void MainRenderPass::updatePipelineRessources(uint32_t currentFrame)
         ubo.cascadeViewProj[i] = cascadeUbo.cascadeViewProjMat[i];
     }
 
-    void* data = m_context->getAllocator().mapMemory(m_uniformBuffersAllocations[currentFrame]);
-    memcpy(data, &ubo, sizeof(UniformBufferObject));
-    m_context->getAllocator().unmapMemory(m_uniformBuffersAllocations[currentFrame]);
+    void* data = m_context->getAllocator().mapMemory(m_generalUniformBuffersAllocations[currentFrame]);
+    memcpy(data, &ubo, sizeof(GeneralUniformBufferObject));
+    m_context->getAllocator().unmapMemory(m_generalUniformBuffersAllocations[currentFrame]);
+}
 
+//Updates uniform buffer for Light uniform data
+void MainRenderPass::updateLightUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes) {
+    std::vector<Light*> lights = scenes[0]->getLights();
+    std::array<LightUBO, MAX_LIGHT_COUNT> lightsUbo;
+    for (uint32_t i = 0; i < MAX_LIGHT_COUNT; i++)
+    {
+        if (i < lights.size())
+        {
+            LightUBO ubo = lights[i]->getUniformData();
+            lightsUbo[i] = ubo;
+        }
+        else {
+            lightsUbo[i] = LightUBO{};
+        }
+
+    }
+
+    void* data = m_context->getAllocator().mapMemory(m_lightUniformBuffersAllocations[currentFrame]);
+    memcpy(data, lightsUbo.data(), sizeof(LightUBO)*lightsUbo.size());
+    m_context->getAllocator().unmapMemory(m_lightUniformBuffersAllocations[currentFrame]);
+
+}
+
+//Populates the uniform buffers for rendering
+void MainRenderPass::updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)
+{
+    updateGeneralUniformBuffer(currentFrame);
+    updateLightUniformBuffer(currentFrame, scenes);
+    
 }
 
 //Creates the default albedo and normal map textures
@@ -649,15 +700,29 @@ void MainRenderPass::createDefaultTextures() {
     m_defaultNormalMap = new VulkanImage(m_context, imageParams, imageViewParams, c_defaultNormalMapPath);
 }
 
-void MainRenderPass::createUniformBuffer() {
-    vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+void MainRenderPass::createUniformBuffers() {
+    //General UBO
+    { 
+        vk::DeviceSize bufferSize = sizeof(GeneralUniformBufferObject);
 
-    m_uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    m_uniformBuffersAllocations.resize(MAX_FRAMES_IN_FLIGHT);
+        m_generalUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        m_generalUniformBuffersAllocations.resize(MAX_FRAMES_IN_FLIGHT);
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        std::tie(m_uniformBuffers[i], m_uniformBuffersAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu);
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            std::tie(m_generalUniformBuffers[i], m_generalUniformBuffersAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu);
+        }
     }
+    {
+        vk::DeviceSize bufferSize = sizeof(LightUBO)*MAX_LIGHT_COUNT;
+
+        m_lightUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        m_lightUniformBuffersAllocations.resize(MAX_FRAMES_IN_FLIGHT);
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            std::tie(m_lightUniformBuffers[i], m_lightUniformBuffersAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu);
+        }
+    }
+
 }
 
 //creates the sampler used for textures

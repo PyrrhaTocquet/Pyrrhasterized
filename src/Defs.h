@@ -9,6 +9,7 @@
 /* RENDERING CONSTS*/
 const bool ENABLE_MSAA = false;
 const uint32_t SHADOW_CASCADE_COUNT = 4;
+const uint32_t MAX_LIGHT_COUNT = 10;
 const uint32_t MAX_TEXTURE_COUNT = 4096;
 
 /* ENUMS */
@@ -18,7 +19,7 @@ enum RenderPassesId {
 };
 
 /* STRUCTS */
-struct UniformBufferObject {
+struct GeneralUniformBufferObject {
 	glm::mat4 view;
 	glm::mat4 proj;
 	glm::mat4 cascadeViewProj[4];

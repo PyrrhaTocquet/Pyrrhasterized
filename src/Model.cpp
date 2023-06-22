@@ -11,6 +11,7 @@ desc: Manages model loading and drawing
 #define TINYGLTF_IMPLEMENTATION
 #include "tiny_gltf.h"
 #include <future>
+#include <thread>
 
 
 Model::Model(VulkanContext* context, const std::filesystem::path& path, const Transform& transform) {
@@ -330,16 +331,11 @@ static void generateTangentData(TexturedMesh* texturedMesh) {
 }
 //Generates the tangent data in the Vertex struct
 void Model::generateTangents() {
-	std::vector<std::future<void>> generateTangentDataFutures;
-	generateTangentDataFutures.resize(m_texturedMeshes.size());
+	std::vector<std::jthread> generateTangentDataThreads;
+	generateTangentDataThreads.resize(m_texturedMeshes.size());
 	for (uint32_t i = 0; i < m_texturedMeshes.size(); i++)
 	{
-		generateTangentDataFutures[i] = std::async(std::launch::async, generateTangentData, &m_texturedMeshes[i]);
-	}
-
-	for (uint32_t i = 0; i < m_texturedMeshes.size(); i++)
-	{
-		generateTangentDataFutures[i].wait();
+		generateTangentDataThreads[i] = std::jthread(generateTangentData, &m_texturedMeshes[i]);
 	}
 }
 

@@ -22,8 +22,10 @@ class MainRenderPass : public VulkanRenderPass {
 
 	VulkanImage* m_defaultTexture = nullptr;
 	VulkanImage* m_defaultNormalMap = nullptr;
-	std::vector<vk::Buffer> m_uniformBuffers;
-	std::vector<vma::Allocation> m_uniformBuffersAllocations;
+	std::vector<vk::Buffer> m_generalUniformBuffers;
+	std::vector<vma::Allocation> m_generalUniformBuffersAllocations;
+	std::vector<vk::Buffer> m_lightUniformBuffers;
+	std::vector<vma::Allocation> m_lightUniformBuffersAllocations;
 	vk::Sampler m_textureSampler = VK_NULL_HANDLE;
 	vk::Sampler m_shadowMapSampler = VK_NULL_HANDLE;
 
@@ -52,19 +54,25 @@ public:
 	void recreateRenderPass() override;
 	void createDescriptorPool()override;
 	void createDescriptorSetLayout()override;
-	void createDescriptorSet(VulkanScene* scene)override;
+	void createDescriptorSets(VulkanScene* scene)override;
 	void createPipelineLayout()override;
 	void createDefaultPipeline()override;
 	void createPipelineRessources()override;
 	void createPushConstantsRanges()override;
-	void updatePipelineRessources(uint32_t currentFrame)override;
+	void updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)override;
 	[[nodiscard]] vk::Extent2D getRenderPassExtent() override;
 	void renderImGui(vk::CommandBuffer commandBuffer);
 	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) override;
 
 private:
 	void createDefaultTextures();
-	void createUniformBuffer();
+	void createUniformBuffers();
 	void createTextureSampler();
 	void createShadowMapSampler();
+	std::vector<vk::DescriptorImageInfo> generateTextureImageInfo(VulkanScene* scene);
+	void createMainDescriptorSet(VulkanScene* scene);
+	void createShadowDescriptorSet(VulkanScene* scene);
+
+	void updateGeneralUniformBuffer(uint32_t currentFrame);
+	void updateLightUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes);
 };
