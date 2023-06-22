@@ -3,20 +3,11 @@
 #include <unordered_map>
 
 
-VulkanScene::VulkanScene(VulkanContext* context) {
+VulkanScene::VulkanScene(VulkanContext* context, DirectionalLight* sun) {
 	m_allocator = context->getAllocator();
 	m_context = context;
-	Light* pLight = new PointLight(context, glm::vec4(0.f, 0.f, 0.f, 1.f), 12.f);
-	addLight(pLight);
-	addLight(pLight);
-	addLight(pLight);
-	addLight(pLight);
-	addLight(pLight);
-	addLight(pLight);
-	addLight(pLight);
-	addLight(pLight);
-	addLight(pLight);
-	addLight(pLight);
+	m_sun = sun;
+	addLight(sun);
 }
 
 VulkanScene::~VulkanScene()
@@ -30,13 +21,14 @@ VulkanScene::~VulkanScene()
 
 }
 
+/* Disabled because no support for a scene graph yet.
 //adds the inputed scene to the list of children scenes
 void VulkanScene::addChildren(VulkanScene* childrenScene) {
 	if (childrenScene == nullptr) {
 		throw std::runtime_error("Children scene is nullptr !");
 	}
 	m_childrenScenes.push_back(childrenScene);
-}
+}*/
 
 //Adds the model information to the model information list for further loading
 void VulkanScene::addModel(const std::filesystem::path& path, const Transform& transform)
@@ -112,6 +104,11 @@ void VulkanScene::addLight(Light* light)
 std::vector<Light*> VulkanScene::getLights()
 {
 	return m_lights;
+}
+
+DirectionalLight* VulkanScene::getSun()
+{
+	return m_sun;
 }
 
 void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant)

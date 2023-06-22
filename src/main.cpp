@@ -19,13 +19,19 @@
 #include "VulkanContext.h"
 #include "VulkanRenderer.h"
 #include "VulkanScene.h"
+#include "DirectionalLight.h"
+#include "PointLight.h"
+#include "Spotlight.h"
 #include "Peach.h"
 
 int main() {
 
     VulkanContext context;
     VulkanRenderer renderer(&context);
-    VulkanScene scene(&context);
+
+    DirectionalLight sun(&context, -glm::vec4(1.f, 50.f, 10.f, 0.f), glm::vec4(1.f, 1.f, .95f, 1.f));
+    sun.setIntensity(1.7f);
+    VulkanScene scene(&context, &sun);
     
     /* Ganon */
     Transform ganonTransform;
@@ -76,6 +82,23 @@ int main() {
     Transform transform;
     scene.addModel("assets/CubeScene/cubeScene.gltf", transform);
     */
+    PointLight* pointLight = new PointLight(&context, glm::vec4(6.0f, -1.1f, -2.2f, 1.f), 3.f, glm::vec4(.1f, .1f, 1.f, 1.0f));
+    pointLight->setIntensity(3.0f);
+    scene.addLight(pointLight);
+
+    PointLight* pointLightDos = new PointLight(&context, glm::vec4(6.0f, -1.1f, 2.2f, 1.f), 3.f, glm::vec4(.1f, 1.f, .1f, 1.0f));
+    pointLightDos->setIntensity(1.5f);
+    scene.addLight(pointLightDos);
+    
+    Spotlight* spotlight = new Spotlight(&context, glm::vec4(-7.1f, -1.1f, 2.6f, 1.f), glm::vec4(-7.1f, -1.1f, -2.6f, 1.f) - glm::vec4(-7.1f, -1.1f, 2.6f, 1.f), 10.f, 8.f, glm::vec4(1.f, .1f, .1f, 1.f));
+    spotlight->setIntensity(0.8f);
+    scene.addLight(spotlight);
+    Transform spotlightmodelTransfrom;
+    spotlightmodelTransfrom.translate = glm::vec3(-7.1f, -1.1f, 2.8f);
+    spotlightmodelTransfrom.rotate = glm::vec3(0.f, 180.f, 0.f);
+
+    scene.addModel("assets/BadSpotLight/badspotlight.obj", spotlightmodelTransfrom);
+
 
     renderer.addScene(&scene);
 

@@ -291,6 +291,11 @@ void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
     }
     
     m_scenes.push_back(vulkanScene);
+    for (auto& light : vulkanScene->getLights())
+    {
+        light->setCamera(m_camera);
+        registerEntity(light);
+    }
 }
 #pragma endregion
 

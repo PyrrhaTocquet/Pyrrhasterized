@@ -16,4 +16,5 @@ public:
 	DirectionalLight(VulkanContext* context, const glm::vec4& direction, const glm::vec4& lightColor);
 	virtual void update()override;
 	virtual LightUBO getUniformData()override;
+	glm::vec4 getWorldDirection();
 };

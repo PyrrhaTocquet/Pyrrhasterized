@@ -205,6 +205,7 @@ void ShadowCascadeRenderPass::createPushConstantsRanges()
 
 void ShadowCascadeRenderPass::updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)
 {
+    m_sun = scenes[0]->getSun();
     updateUniformBuffer(currentFrame);
 }
 
@@ -334,7 +335,8 @@ void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
     //Model View Proj
     CascadeUniformObject ubo{};
     //glm::vec3 lightPos = glm::vec3(1.f, 50.f, 2.f);
-    glm::vec3 lightPos = glm::vec3(1.f, 50.f, 20.f * cos(m_context->getTime().elapsedSinceStart/8));
+    //glm::vec3 lightPos = glm::vec3(1.f, 50.f, 20.f * cos(m_context->getTime().elapsedSinceStart/8));
+    glm::vec3 lightDirection = m_sun->getWorldDirection();
     float cascadeSplits[SHADOW_CASCADE_COUNT] = { 0.f, 0.f, 0.f, 0.f };
     
     float nearClip = m_camera->nearPlane;
@@ -405,7 +407,7 @@ void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
         glm::vec3 minExtents = -maxExtents;
 
         const float higher = m_camera->farPlane*(1 + m_shadowMapsBlendWidth); //Why does this fix everything :sob:. Added blend width to make sure we don't have the boundary of two shadow maps when blending
-        glm::vec3 lightDir = normalize(-lightPos);
+        glm::vec3 lightDir = normalize(lightDirection);
         glm::mat4 lightViewMatrix = glm::lookAt(frustumCenter - lightDir * (- minExtents.z + higher), frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z + higher);
 

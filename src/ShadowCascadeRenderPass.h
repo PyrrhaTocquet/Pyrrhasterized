@@ -6,6 +6,7 @@ desc: Render pass that renders the multiple shadow cascades
 
 #pragma once
 #include "ShadowRenderPass.h"
+#include "DirectionalLight.h"
 #include "Camera.h"
 
 struct CascadeUniformObject {
@@ -18,6 +19,7 @@ private:
 	std::vector<vk::ImageView> m_shadowDepthLayerViews;
 
 	Camera* m_camera;
+	DirectionalLight* m_sun;
 	std::vector<vk::Buffer> m_uniformBuffers;
 	std::vector<vma::Allocation> m_uniformBuffersAllocations;
 

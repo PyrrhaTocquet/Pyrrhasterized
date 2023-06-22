@@ -20,7 +20,8 @@ struct LightUBO {
 	float intensity;
 	glm::uint32 enabled;
 	glm::uint32 type;
-	glm::vec3 padding;
+	glm::uint32 shadowCaster;
+	glm::vec2 padding;
 };
 
 enum LightType {
@@ -29,7 +30,7 @@ enum LightType {
 	SpotlightType = 2
 };
 
-class Light : Entity {
+class Light : public Entity {
 protected:
 	VulkanContext* m_context;
 	Camera* m_camera;
@@ -43,4 +44,5 @@ public:
 	void setCamera(Camera* camera);
 	virtual void update()override = 0;
 	virtual LightUBO getUniformData() = 0;
+	void setIntensity(float intensity);
 };

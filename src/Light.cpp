@@ -9,6 +9,11 @@ Light::Light(VulkanContext* context) : Entity(context)
 {
 }
 
+void Light::setIntensity(float intensity)
+{
+	m_intensity = intensity;
+}
+
 //Sets the camera reference for later view matrix operations
 void Light::setCamera(Camera* camera)
 {

@@ -27,7 +27,7 @@ layout( push_constant ) uniform constants
 layout(location = 0) out vec2 fragTexCoord;
 layout(location = 1) out vec3 fragNormal;
 layout(location = 2) out vec3 fragPosWorld;
-layout(location = 3) out vec3 viewPosition;
+layout(location = 3) out vec3 fragPosView;
 layout(location = 4) out vec4 fragTangent;
 
 
@@ -43,7 +43,7 @@ void main(){
 	fragTexCoord = inTexCoord;
 	fragNormal = mat3(PushConstants.model) * inNormal;
 	fragPosWorld = positionWorld.xyz;
-	viewPosition = (ubo.view * positionWorld).xyz;
+	fragPosView = (ubo.view * positionWorld).xyz;
 
 	gl_Position = ubo.proj * ubo.view * positionWorld;
 }

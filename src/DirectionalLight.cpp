@@ -3,7 +3,7 @@
 DirectionalLight::DirectionalLight(VulkanContext* context, const glm::vec4& direction, const glm::vec4& lightColor) : Light(context, lightColor)
 {
 	m_lightType = LightType::DirectionalLightType;
-	m_directionWorld = direction;
+	m_directionWorld = glm::normalize(direction);
 }
 
 DirectionalLight::DirectionalLight(VulkanContext* context, const glm::vec4& direction) : DirectionalLight(context, direction, m_lightColor)
@@ -15,7 +15,7 @@ DirectionalLight::DirectionalLight(VulkanContext* context, const glm::vec4& dire
 //Make sure the camera reference is set !
 void DirectionalLight::update()
 {
-	m_directionView = m_camera->getViewMatrix() * m_directionWorld;
+	m_directionView = glm::normalize(m_camera->getViewMatrix() * m_directionWorld);
 }
 
 //Populates the uniform data struct
@@ -29,6 +29,11 @@ LightUBO DirectionalLight::getUniformData()
 		.enabled = m_enabled,
 		.type = static_cast<uint32_t>(m_lightType),
 	};
+}
+
+glm::vec4 DirectionalLight::getWorldDirection()
+{
+	return m_directionWorld;
 }
 
 
