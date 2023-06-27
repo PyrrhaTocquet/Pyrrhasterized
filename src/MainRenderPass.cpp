@@ -8,6 +8,11 @@ MainRenderPass::MainRenderPass(VulkanContext* context, Camera* camera, ShadowCas
 
     m_shadowRenderPass = shadowRenderPass;
     m_camera = camera;
+
+    //TODO Remove
+    material = (new Material(m_context))
+        ->setBaseColor(glm::vec4(1.f, 1.f, 1.f, 1.f))
+        ->setEmissiveFactor(glm::vec3(.2f, .0f, .0f));
 }
 
 MainRenderPass::~MainRenderPass()
@@ -17,15 +22,17 @@ MainRenderPass::~MainRenderPass()
     device.destroyDescriptorSetLayout(m_shadowDescriptorSetLayout);
     delete m_defaultTexture;
     delete m_defaultNormalMap;
-    device.destroySampler(m_textureSampler);
+    delete material;
     device.destroySampler(m_shadowMapSampler);
     cleanAttachments();
     
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         m_context->getAllocator().destroyBuffer(m_generalUniformBuffers[i], m_generalUniformBuffersAllocations[i]);
         m_context->getAllocator().destroyBuffer(m_lightUniformBuffers[i], m_lightUniformBuffersAllocations[i]);
+        m_context->getAllocator().destroyBuffer(m_materialUniformBuffer[i], m_materialUniformBufferAllocations[i]);
     }
     
+
 }
 
 void MainRenderPass::createRenderPass()
@@ -175,13 +182,15 @@ void MainRenderPass::createDescriptorPool()
     vk::Device device = m_context->getDevice();
     //MVP UBO + TEXTURES
     {
-        std::array<vk::DescriptorPoolSize, 3> poolSizes;
+        std::array<vk::DescriptorPoolSize, 4> poolSizes;
         poolSizes[0].type = vk::DescriptorType::eUniformBuffer;
         poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
         poolSizes[1].type = vk::DescriptorType::eUniformBuffer;
         poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-        poolSizes[2].type = vk::DescriptorType::eCombinedImageSampler;
-        poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * MAX_TEXTURE_COUNT; //Dynamic Indexing
+        poolSizes[2].type = vk::DescriptorType::eUniformBuffer;
+        poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        poolSizes[3].type = vk::DescriptorType::eCombinedImageSampler;
+        poolSizes[3].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * MAX_TEXTURE_COUNT; //Dynamic Indexing
 
         vk::DescriptorPoolCreateInfo poolInfo{
             .maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
@@ -239,26 +248,33 @@ void MainRenderPass::createDescriptorSetLayout()
         .stageFlags = vk::ShaderStageFlagBits::eFragment,
     };
 
-    vk::DescriptorSetLayoutBinding samplerLayoutBinding{
+    vk::DescriptorSetLayoutBinding materialUboLayoutBinding{
         .binding = 2,
+        .descriptorType = vk::DescriptorType::eUniformBuffer,
+        .descriptorCount = 1,
+        .stageFlags = vk::ShaderStageFlagBits::eFragment,
+    };
+
+    vk::DescriptorSetLayoutBinding samplerLayoutBinding{
+        .binding = 3,
         .descriptorType = vk::DescriptorType::eCombinedImageSampler,
         .descriptorCount = MAX_TEXTURE_COUNT,  //Dynamic Indexing
         .stageFlags = vk::ShaderStageFlagBits::eFragment,
     };
 
-    vk::DescriptorSetLayoutBinding bindings[3] = { uboLayoutBinding, lightUboLayoutBinding, samplerLayoutBinding };
+    vk::DescriptorSetLayoutBinding bindings[4] = { uboLayoutBinding, lightUboLayoutBinding, materialUboLayoutBinding, samplerLayoutBinding };
     //Descriptor indexing
-    vk::DescriptorBindingFlags bindingFlags[3];
-    bindingFlags[2] = vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eVariableDescriptorCount; //Necessary for Dynamic indexing (VK_EXT_descriptor_indexing)
+    vk::DescriptorBindingFlags bindingFlags[4];
+    bindingFlags[3] = vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eVariableDescriptorCount; //Necessary for Dynamic indexing (VK_EXT_descriptor_indexing)
 
     vk::DescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreateInfo{
-        .bindingCount = 3,
+        .bindingCount = 4,
         .pBindingFlags = bindingFlags,
     };
 
     vk::DescriptorSetLayoutCreateInfo layoutInfo{
         .pNext = &bindingFlagsCreateInfo,
-        .bindingCount = 3,
+        .bindingCount = 4,
         .pBindings = bindings,
     };
 
@@ -314,21 +330,21 @@ std::vector<vk::DescriptorImageInfo> MainRenderPass::generateTextureImageInfo(Vu
         for (auto& texturedMesh : model->getMeshes()) {
             if (texturedMesh.textureImage != nullptr && !texturedMesh.textureImage->hasLoadingFailed())
             {
-                appendImageInfo(textureImageInfo, m_textureSampler, texturedMesh.textureImage, texturedMesh.textureId, textureId);
+                appendImageInfo(textureImageInfo, Material::s_baseColorSampler, texturedMesh.textureImage, texturedMesh.textureId, textureId);
             }
             else
             {
                 //No texture applies a default texture
-                appendImageInfo(textureImageInfo, m_textureSampler, m_defaultTexture, texturedMesh.textureId, textureId);
+                appendImageInfo(textureImageInfo, Material::s_baseColorSampler, m_defaultTexture, texturedMesh.textureId, textureId);
             }
             if (texturedMesh.normalMapImage != nullptr && !texturedMesh.normalMapImage->hasLoadingFailed())
             {
-                appendImageInfo(textureImageInfo, m_textureSampler, texturedMesh.normalMapImage, texturedMesh.normalMapId, textureId);
+                appendImageInfo(textureImageInfo, Material::s_baseColorSampler, texturedMesh.normalMapImage, texturedMesh.normalMapId, textureId);
             }
             else
             {
                 //No texture applies a default texture
-                appendImageInfo(textureImageInfo, m_textureSampler, m_defaultNormalMap, texturedMesh.normalMapId, textureId);
+                appendImageInfo(textureImageInfo, Material::s_baseColorSampler, m_defaultNormalMap, texturedMesh.normalMapId, textureId);
             }
 
         }
@@ -382,9 +398,15 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
              .range = sizeof(LightUBO) * MAX_LIGHT_COUNT
         };
 
+        vk::DescriptorBufferInfo materialUboBufferInfo{
+             .buffer = m_materialUniformBuffer[i],
+             .offset = 0,
+             .range = sizeof(MaterialUBO),
+        };
+
      
 
-        std::array<vk::WriteDescriptorSet, 3> descriptorWrites;
+        std::array<vk::WriteDescriptorSet, 4> descriptorWrites;
         descriptorWrites[0].dstSet = m_mainDescriptorSet[i];
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].dstArrayElement = 0;
@@ -401,10 +423,17 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
 
         descriptorWrites[2].dstSet = m_mainDescriptorSet[i];
         descriptorWrites[2].dstBinding = 2;
-        descriptorWrites[2].descriptorCount = textureImageInfos.size();
         descriptorWrites[2].dstArrayElement = 0;
-        descriptorWrites[2].descriptorType = vk::DescriptorType::eCombinedImageSampler;
-        descriptorWrites[2].pImageInfo = textureImageInfos.data();
+        descriptorWrites[2].descriptorType = vk::DescriptorType::eUniformBuffer;
+        descriptorWrites[2].descriptorCount = 1;
+        descriptorWrites[2].pBufferInfo = &materialUboBufferInfo;
+
+        descriptorWrites[3].dstSet = m_mainDescriptorSet[i];
+        descriptorWrites[3].dstBinding = 3;
+        descriptorWrites[3].descriptorCount = textureImageInfos.size();
+        descriptorWrites[3].dstArrayElement = 0;
+        descriptorWrites[3].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+        descriptorWrites[3].pImageInfo = textureImageInfos.data();
 
 
         try {
@@ -517,11 +546,15 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
     //imgui commands
     double framerate = ImGui::GetIO().Framerate;
     ImGui::Begin("Renderer Performance", &m_hideImGui);
-    ImGui::SetWindowSize(ImVec2(300.f, 100.f));
+    ImGui::SetWindowSize(ImVec2(400.f, 250.f));
     ImGui::SetWindowPos(ImVec2(10.f, 10.f));
     ImGui::Text("Framerate: %f", framerate);
     ImGui::SliderFloat("Cascade Splitting Lambda: ", &m_shadowRenderPass->m_cascadeSplitLambda, 0.f, 1.f, "%.2f", 0);
     ImGui::SliderFloat("Shadowmap Blend Width: ", &m_shadowRenderPass->m_shadowMapsBlendWidth, 0.f, 1.f, "%.2f", 0);
+    ImGui::Separator();
+    ImGui::Text("Material !");
+    ImGui::SliderFloat("Metallic Factor: ", &metallicFactorGui, 0, 1, "%.2f");
+    ImGui::SliderFloat("Roughness Factor: ", &roughnessFactorGui, 0, 1, "%.2f");
     ImGui::End();
 
     ImGui::Render();
@@ -600,7 +633,6 @@ void MainRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t sw
 void MainRenderPass::createPipelineRessources() {
     createDefaultTextures();
     createUniformBuffers();
-    createTextureSampler();
     createShadowMapSampler();
 }
 
@@ -663,11 +695,24 @@ void MainRenderPass::updateLightUniformBuffer(uint32_t currentFrame, std::vector
 
 }
 
+void MainRenderPass::updateMaterialUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes)
+{
+    MaterialUBO materialUbo = material->getUBO();
+    materialUbo.metallicFactor = metallicFactorGui;
+    materialUbo.roughnessFactor = roughnessFactorGui;
+
+    void* data = m_context->getAllocator().mapMemory(m_materialUniformBufferAllocations[currentFrame]);
+    memcpy(data, &materialUbo, sizeof(MaterialUBO));
+    m_context->getAllocator().unmapMemory(m_materialUniformBufferAllocations[currentFrame]);
+}
+
+
 //Populates the uniform buffers for rendering
 void MainRenderPass::updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)
 {
     updateGeneralUniformBuffer(currentFrame);
     updateLightUniformBuffer(currentFrame, scenes);
+    updateMaterialUniformBuffer(currentFrame, scenes);
     
 }
 
@@ -723,39 +768,19 @@ void MainRenderPass::createUniformBuffers() {
         }
     }
 
-}
-
-//creates the sampler used for textures
-void MainRenderPass::createTextureSampler() {
-    vk::PhysicalDeviceProperties properties = m_context->getProperties();
-
-    vk::SamplerCreateInfo samplerInfo{
-        .magFilter = vk::Filter::eLinear, //Linear filtering
-        .minFilter = vk::Filter::eLinear,
-        .mipmapMode = vk::SamplerMipmapMode::eLinear,
-        .addressModeU = vk::SamplerAddressMode::eRepeat,
-        .addressModeV = vk::SamplerAddressMode::eRepeat,
-        .addressModeW = vk::SamplerAddressMode::eRepeat,
-        .mipLodBias = 0.0f,
-        .anisotropyEnable = VK_TRUE, //Anisotropic Filtering
-        .maxAnisotropy = properties.limits.maxSamplerAnisotropy, //Max texels samples to calculate the final color
-        .compareEnable = VK_FALSE, //If enabled, texels will be compared to a value and the result of that compararison is used in filtering operations
-        .compareOp = vk::CompareOp::eAlways,
-        .minLod = 0.0f,
-        .maxLod = VK_LOD_CLAMP_NONE,
-        .borderColor = vk::BorderColor::eIntOpaqueBlack, //only useful when clamping
-        .unnormalizedCoordinates = VK_FALSE, //Normalized coordinates allow to change texture resolution for the same UVs
-    };
-
-    try {
-        m_textureSampler = m_context->getDevice().createSampler(samplerInfo);
-    }
-    catch (vk::SystemError err)
     {
-        throw std::runtime_error("failed to create texture sampler");
+        vk::DeviceSize bufferSize = sizeof(MaterialUBO);
+
+        m_materialUniformBuffer.resize(MAX_FRAMES_IN_FLIGHT);
+        m_materialUniformBufferAllocations.resize(MAX_FRAMES_IN_FLIGHT);
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            std::tie(m_materialUniformBuffer[i], m_materialUniformBufferAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu);
+        }
     }
 
 }
+
 
 //Creates the sampler used for shadow mapping sampling
 void MainRenderPass::createShadowMapSampler() {

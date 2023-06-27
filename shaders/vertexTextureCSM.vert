@@ -30,12 +30,6 @@ layout(location = 2) out vec3 fragPosWorld;
 layout(location = 3) out vec3 fragPosView;
 layout(location = 4) out vec4 fragTangent;
 
-
-
-
-
-
-
 void main(){
 	vec4 positionWorld = PushConstants.model * vec4(inPosition, 1.0);
 

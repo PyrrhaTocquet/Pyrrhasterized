@@ -24,6 +24,7 @@ desc: Manages the rendering flow and logic. "Heart of the Renderer"
 #include "ShadowCascadeRenderPass.h"
 #include "Camera.h"
 #include "VulkanPipeline.h"
+#include "Material.h"
 
 
 

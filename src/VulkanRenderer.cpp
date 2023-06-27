@@ -9,6 +9,7 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     m_allocator = context->getAllocator();
     m_msaaSampleCount = context->getMaxUsableSampleCount();
     
+    Material::createSamplers(m_context);
 
     //CAMERA
     m_camera = new Camera(m_context);
@@ -45,10 +46,8 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
 
     //clear font textures from cpu data
     ImGui_ImplVulkan_DestroyFontUploadObjects();
-
- 
+    
     registerEntity(m_camera);
-
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -63,7 +62,7 @@ VulkanRenderer::~VulkanRenderer()
         m_device.destroyFence(m_inFlightFences[i]);
     }
 
-
+    Material::cleanSamplers(m_context);
     m_device.freeCommandBuffers(m_context->getCommandPool(), m_commandBuffers);
 
     

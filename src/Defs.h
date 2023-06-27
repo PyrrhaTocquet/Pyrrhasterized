@@ -18,6 +18,12 @@ enum RenderPassesId {
 	MainRenderPassId,
 };
 
+enum AlphaMode {
+	OpaqueAlphaMode,
+	MaskAlphaMode,
+	TransparentAlphaMode
+};
+
 /* STRUCTS */
 struct GeneralUniformBufferObject {
 	glm::mat4 view;

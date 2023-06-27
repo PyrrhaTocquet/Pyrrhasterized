@@ -54,8 +54,16 @@ layout(set = 0, binding = 1) uniform LightsUBO {
 }lightsUbo;
 
 
+layout(set = 0, binding = 2) uniform MaterialUBO {
+	vec4 baseColor;
+	vec4 emissiveColor;
+	float metallicFactor;
+	float roughnessFactor;
+}material;
 
-layout(set = 0, binding = 2) uniform sampler2D texSampler[];
+
+
+layout(set = 0, binding = 3) uniform sampler2D texSampler[];
 layout(set = 1, binding = 0) uniform sampler2DArray shadowTexSampler;
 
 layout(location = 0) out vec4 outColor;
@@ -287,7 +295,7 @@ void main(){
 	//TODO view space instead of world space position and cameraPosition
 	LightingResult lightResult = computeLighting(lightsUbo.lights, vec4(generalUbo.cameraPosition, 1.0), vec4(fragPosWorld, 1.f), vec4(normal, 0.f));
 
-	outColor = vec4((lightResult.diffuse + lightResult.specular).xyz * textureColor.xyz * (shadowFactor), textureColor.a);
+	outColor = vec4((lightResult.diffuse + lightResult.specular + material.emissiveColor).xyz * textureColor.xyz * (shadowFactor), textureColor.a);
 
 	/*outColor = mix(vec4(shadowFactor * textureColor.xyz, textureColor.a),
 	vec4((lightResult.diffuse + lightResult.specular).xyz * textureColor.xyz * (shadowFactor), textureColor.a),

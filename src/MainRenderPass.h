@@ -10,6 +10,7 @@ desc: Manages the render pass that draws the final image
 #include "vk_mem_alloc.hpp"
 #include <GLFW/glfw3.h>
 #include "ShadowCascadeRenderPass.h"
+#include "Material.h"
 
 
 
@@ -26,13 +27,18 @@ class MainRenderPass : public VulkanRenderPass {
 	std::vector<vma::Allocation> m_generalUniformBuffersAllocations;
 	std::vector<vk::Buffer> m_lightUniformBuffers;
 	std::vector<vma::Allocation> m_lightUniformBuffersAllocations;
-	vk::Sampler m_textureSampler = VK_NULL_HANDLE;
+	std::vector<vk::Buffer> m_materialUniformBuffer;
+	std::vector<vma::Allocation> m_materialUniformBufferAllocations;
+	
 	vk::Sampler m_shadowMapSampler = VK_NULL_HANDLE;
 
 	vk::DescriptorPool m_shadowDescriptorPool;
 	vk::DescriptorSetLayout m_shadowDescriptorSetLayout;
 	std::vector<vk::DescriptorSet> m_shadowDescriptorSet;
 
+	Material* material = nullptr;
+	float metallicFactorGui = 1.f;
+	float roughnessFactorGui = 1.f;
 
 	Camera* m_camera;
 
@@ -67,7 +73,6 @@ public:
 private:
 	void createDefaultTextures();
 	void createUniformBuffers();
-	void createTextureSampler();
 	void createShadowMapSampler();
 	std::vector<vk::DescriptorImageInfo> generateTextureImageInfo(VulkanScene* scene);
 	void createMainDescriptorSet(VulkanScene* scene);
@@ -75,4 +80,5 @@ private:
 
 	void updateGeneralUniformBuffer(uint32_t currentFrame);
 	void updateLightUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes);
+	void updateMaterialUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes);
 };

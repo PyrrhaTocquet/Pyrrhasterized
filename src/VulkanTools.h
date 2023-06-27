@@ -1,4 +1,5 @@
 #pragma once
+#include <vulkan\vulkan.hpp>
 #include <vector>
 #include <string>
 #include <iostream>
@@ -22,6 +23,7 @@ namespace vkTools {
 		return buffer;
 	}
 
-
+	//creates a vk::sampler with error handling
+	[[nodiscard]] vk::Sampler createSampler(const vk::SamplerCreateInfo& samplerInfo, const vk::Device& device);
 
 }
