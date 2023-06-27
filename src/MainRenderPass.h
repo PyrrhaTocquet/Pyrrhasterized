@@ -38,7 +38,7 @@ class MainRenderPass : public VulkanRenderPass {
 
 	Material* material = nullptr;
 	float metallicFactorGui = 1.f;
-	float roughnessFactorGui = 1.f;
+	float roughnessFactorGui = 0.f;
 
 	Camera* m_camera;
 

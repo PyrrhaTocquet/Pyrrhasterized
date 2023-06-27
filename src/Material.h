@@ -23,10 +23,10 @@ class Material {
 private:
 	VulkanContext* m_context = VK_NULL_HANDLE;
 
-	glm::vec4 m_baseColorFactor = { 1.f, 1.f, 1.f, 1.f };
+	glm::vec4 m_baseColorFactor = { 1.f, .766f, 0.336f, 1.f };
 	glm::vec3 m_emissiveFactor = { 0.f, 0.f, 0.f };
 	float m_metallicFactor = 1.f;
-	float m_roughnessFactor = 1.f;
+	float m_roughnessFactor = 0.f;
 	AlphaMode m_alphaMode = AlphaMode::OpaqueAlphaMode;
 
 

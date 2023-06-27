@@ -11,8 +11,7 @@ MainRenderPass::MainRenderPass(VulkanContext* context, Camera* camera, ShadowCas
 
     //TODO Remove
     material = (new Material(m_context))
-        ->setBaseColor(glm::vec4(1.f, 1.f, 1.f, 1.f))
-        ->setEmissiveFactor(glm::vec3(.2f, .0f, .0f));
+        ->setBaseColor(glm::vec4(1.f, 1.f, 1.f, 1.f));
 }
 
 MainRenderPass::~MainRenderPass()
@@ -521,8 +520,8 @@ void MainRenderPass::createPipelineLayout()
 void MainRenderPass::createDefaultPipeline()
 {
     PipelineInfo pipelineInfo{
-       .vertPath = "shaders/vertexTextureCSM.spv",
-       .fragPath = "shaders/fragmentTextureCSM.spv",
+       .vertPath = "shaders/vertexPBR.spv",
+       .fragPath = "shaders/fragmentPBR.spv",
     };
 
     m_mainPipeline = new VulkanPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());

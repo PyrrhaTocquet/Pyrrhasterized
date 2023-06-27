@@ -335,6 +335,9 @@ void VulkanRenderer::updateEntities() {
     for (auto& entity : m_entities) {
         entity->update();
     }
+    for (auto& scene : m_scenes) {
+        scene->updateLights();
+    }
 }
 
 //Adds the entity pointer to the entity list

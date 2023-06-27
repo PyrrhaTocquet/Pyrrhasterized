@@ -43,6 +43,7 @@ public:
 	[[nodiscard]]const uint32_t getIndexBufferSize();
 	void addLight(Light* light);
 	[[nodiscard]]std::vector<Light*> getLights();
+	void updateLights();
 	[[nodiscard]] DirectionalLight* getSun();
 	void draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant) override;
 private:

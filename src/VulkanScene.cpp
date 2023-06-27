@@ -7,6 +7,7 @@ VulkanScene::VulkanScene(VulkanContext* context, DirectionalLight* sun) {
 	m_allocator = context->getAllocator();
 	m_context = context;
 	m_sun = sun;
+	m_sun->setShadowCaster();
 	addLight(sun);
 }
 
@@ -104,6 +105,14 @@ void VulkanScene::addLight(Light* light)
 std::vector<Light*> VulkanScene::getLights()
 {
 	return m_lights;
+}
+
+void VulkanScene::updateLights()
+{
+	for (auto& light : m_lights)
+	{
+		light->update();
+	}
 }
 
 DirectionalLight* VulkanScene::getSun()
