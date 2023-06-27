@@ -18,6 +18,7 @@ desc: Manages Vulkan device, queues, swapchain, window and useful globals(time)
 #include<iostream>
 #include <optional>
 #include <limits>
+#include <mutex>
 
 
 /* STRUCTS */
