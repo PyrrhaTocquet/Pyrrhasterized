@@ -553,7 +553,7 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
     ImGui::Separator();
     ImGui::Text("Material !");
     ImGui::SliderFloat("Metallic Factor: ", &metallicFactorGui, 0, 1, "%.2f");
-    ImGui::SliderFloat("Roughness Factor: ", &roughnessFactorGui, 0, 1, "%.2f");
+    ImGui::SliderFloat("Roughness Factor: ", &roughnessFactorGui, 0.001f, 1, "%.2f");
     ImGui::End();
 
     ImGui::Render();

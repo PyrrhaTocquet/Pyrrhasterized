@@ -113,7 +113,7 @@ float clampedDot(vec4 x, vec4 y)
 
 vec3 schlickFresnelReflectance(vec3 f0, float VdotH)
 {
-	return f0 - (1 - f0) * pow((1 - abs(VdotH)), 5);
+	return f0 + (1 - f0) * pow((1 - abs(VdotH)), 5);
 }
 
 float computeAttenuation(Light light, float distance)

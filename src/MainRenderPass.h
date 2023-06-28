@@ -37,8 +37,8 @@ class MainRenderPass : public VulkanRenderPass {
 	std::vector<vk::DescriptorSet> m_shadowDescriptorSet;
 
 	Material* material = nullptr;
-	float metallicFactorGui = 1.f;
-	float roughnessFactorGui = 0.f;
+	float metallicFactorGui = 0.f;
+	float roughnessFactorGui = 1.0f;
 
 	Camera* m_camera;
 
