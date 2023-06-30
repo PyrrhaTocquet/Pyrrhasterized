@@ -73,7 +73,7 @@ void VulkanScene::addEntity(Entity* entity) {
 }
 
 //Creates the index and vertex buffer
-void VulkanScene::createBuffers()
+void VulkanScene::createGeometryBuffers()
 {
 	createVertexBuffer();
 	createIndexBuffer();

@@ -28,7 +28,11 @@ MainRenderPass::~MainRenderPass()
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         m_context->getAllocator().destroyBuffer(m_generalUniformBuffers[i], m_generalUniformBuffersAllocations[i]);
         m_context->getAllocator().destroyBuffer(m_lightUniformBuffers[i], m_lightUniformBuffersAllocations[i]);
-        m_context->getAllocator().destroyBuffer(m_materialUniformBuffer[i], m_materialUniformBufferAllocations[i]);
+        
+        for(uint32_t k = 0; k < m_materialUniformBuffers.size();k++)
+        {
+            m_context->getAllocator().destroyBuffer(m_materialUniformBuffers[i][k], m_materialUniformBufferAllocations[i][k]);
+        }
     }
     
 
@@ -187,7 +191,7 @@ void MainRenderPass::createDescriptorPool()
         poolSizes[1].type = vk::DescriptorType::eUniformBuffer;
         poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
         poolSizes[2].type = vk::DescriptorType::eUniformBuffer;
-        poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * MAX_MATERIAL_COUNT;
         poolSizes[3].type = vk::DescriptorType::eCombinedImageSampler;
         poolSizes[3].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * MAX_TEXTURE_COUNT; //Dynamic Indexing
 
@@ -250,7 +254,7 @@ void MainRenderPass::createDescriptorSetLayout()
     vk::DescriptorSetLayoutBinding materialUboLayoutBinding{
         .binding = 2,
         .descriptorType = vk::DescriptorType::eUniformBuffer,
-        .descriptorCount = 1,
+        .descriptorCount = MAX_MATERIAL_COUNT,
         .stageFlags = vk::ShaderStageFlagBits::eFragment,
     };
 
@@ -264,6 +268,7 @@ void MainRenderPass::createDescriptorSetLayout()
     vk::DescriptorSetLayoutBinding bindings[4] = { uboLayoutBinding, lightUboLayoutBinding, materialUboLayoutBinding, samplerLayoutBinding };
     //Descriptor indexing
     vk::DescriptorBindingFlags bindingFlags[4];
+    //bindingFlags[2] = vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eVariableDescriptorCount; //Necessary for Dynamic indexing (VK_EXT_descriptor_indexing)
     bindingFlags[3] = vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eVariableDescriptorCount; //Necessary for Dynamic indexing (VK_EXT_descriptor_indexing)
 
     vk::DescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreateInfo{
@@ -362,7 +367,9 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
 
     /* Dynamic Descriptor Counts */
     uint32_t textureMaxCount = MAX_TEXTURE_COUNT;
+    uint32_t materialMaxCount = MAX_MATERIAL_COUNT;
     std::vector<uint32_t> textureMaxCounts(MAX_FRAMES_IN_FLIGHT, textureMaxCount);
+    //std::vector<uint32_t> textureMaxCounts(MAX_FRAMES_IN_FLIGHT, materialMaxCount);
     vk::DescriptorSetVariableDescriptorCountAllocateInfo setCounts{
         .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
         .pDescriptorCounts = textureMaxCounts.data(),
@@ -384,50 +391,88 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
     }
 
     //Updating the descriptor sets with the appropriates references
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    for (uint32_t currentFrame = 0; currentFrame < MAX_FRAMES_IN_FLIGHT; currentFrame++) {
         vk::DescriptorBufferInfo generalUboBufferInfo{
-            .buffer = m_generalUniformBuffers[i],
+            .buffer = m_generalUniformBuffers[currentFrame],
             .offset = 0,
             .range = sizeof(GeneralUniformBufferObject)
         };
 
         vk::DescriptorBufferInfo lightUboBufferInfo{
-             .buffer = m_lightUniformBuffers[i],
+             .buffer = m_lightUniformBuffers[currentFrame],
              .offset = 0,
              .range = sizeof(LightUBO) * MAX_LIGHT_COUNT
         };
 
-        vk::DescriptorBufferInfo materialUboBufferInfo{
-             .buffer = m_materialUniformBuffer[i],
-             .offset = 0,
-             .range = sizeof(MaterialUBO),
-        };
-
      
+        std::vector<vk::DescriptorBufferInfo> materialBufferInfos;
+        std::vector<MaterialUBO> materialUBOs;
+
+        MaterialUBO defaultMaterial{};
+        materialUBOs.push_back(defaultMaterial);
+        //Retrieving Material UBOs
+        for(auto& model: scene->m_models){
+            for(auto& mesh: model->getMeshes()){
+                if(mesh.material != nullptr)
+                {
+                    mesh.materialId = materialUBOs.size();
+                    materialUBOs.push_back(mesh.material->getUBO());
+                }
+                else{
+                    materialUBOs.push_back(defaultMaterial);
+                    mesh.materialId = 0;
+                }
+                
+            }
+        }
+
+        //Creating and filling the Uniform Buffers for each material
+        vk::DeviceSize bufferSize = sizeof(MaterialUBO);
+
+        m_materialUniformBuffers[currentFrame].resize(materialUBOs.size());
+        m_materialUniformBufferAllocations[currentFrame].resize(materialUBOs.size());
+
+        for (size_t i = 0; i < materialUBOs.size(); i++) {
+            std::tie(m_materialUniformBuffers[currentFrame][i], m_materialUniformBufferAllocations[currentFrame][i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu);
+            
+            //Write the material to the buffer
+            void* data = m_context->getAllocator().mapMemory(m_materialUniformBufferAllocations[currentFrame][i]);
+            memcpy(data, &materialUBOs[i], sizeof(MaterialUBO));
+            m_context->getAllocator().unmapMemory(m_materialUniformBufferAllocations[currentFrame][i]);
+
+
+            //filling the material buffer infos
+            vk::DescriptorBufferInfo bufferInfo{
+                .buffer = m_materialUniformBuffers[currentFrame][i],
+                .offset = 0,
+                .range = bufferSize
+            };
+            materialBufferInfos.push_back(bufferInfo);
+        }
 
         std::array<vk::WriteDescriptorSet, 4> descriptorWrites;
-        descriptorWrites[0].dstSet = m_mainDescriptorSet[i];
+        descriptorWrites[0].dstSet = m_mainDescriptorSet[currentFrame];
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].dstArrayElement = 0;
         descriptorWrites[0].descriptorType = vk::DescriptorType::eUniformBuffer;
         descriptorWrites[0].descriptorCount = 1;
         descriptorWrites[0].pBufferInfo = &generalUboBufferInfo;
 
-        descriptorWrites[1].dstSet = m_mainDescriptorSet[i];
+        descriptorWrites[1].dstSet = m_mainDescriptorSet[currentFrame];
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorType = vk::DescriptorType::eUniformBuffer;
         descriptorWrites[1].descriptorCount = 1;
         descriptorWrites[1].pBufferInfo = &lightUboBufferInfo;
 
-        descriptorWrites[2].dstSet = m_mainDescriptorSet[i];
+        descriptorWrites[2].dstSet = m_mainDescriptorSet[currentFrame];
         descriptorWrites[2].dstBinding = 2;
         descriptorWrites[2].dstArrayElement = 0;
         descriptorWrites[2].descriptorType = vk::DescriptorType::eUniformBuffer;
-        descriptorWrites[2].descriptorCount = 1;
-        descriptorWrites[2].pBufferInfo = &materialUboBufferInfo;
+        descriptorWrites[2].descriptorCount = materialBufferInfos.size();
+        descriptorWrites[2].pBufferInfo = materialBufferInfos.data();
 
-        descriptorWrites[3].dstSet = m_mainDescriptorSet[i];
+        descriptorWrites[3].dstSet = m_mainDescriptorSet[currentFrame];
         descriptorWrites[3].dstBinding = 3;
         descriptorWrites[3].descriptorCount = textureImageInfos.size();
         descriptorWrites[3].dstArrayElement = 0;
@@ -696,14 +741,16 @@ void MainRenderPass::updateLightUniformBuffer(uint32_t currentFrame, std::vector
 
 void MainRenderPass::updateMaterialUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes)
 {
-    MaterialUBO materialUbo = material->getUBO();
+    /*MaterialUBO materialUbo = material->getUBO();
     materialUbo.metallicFactor = metallicFactorGui;
     materialUbo.roughnessFactor = roughnessFactorGui;
 
     void* data = m_context->getAllocator().mapMemory(m_materialUniformBufferAllocations[currentFrame]);
     memcpy(data, &materialUbo, sizeof(MaterialUBO));
     m_context->getAllocator().unmapMemory(m_materialUniformBufferAllocations[currentFrame]);
+    */
 }
+
 
 
 //Populates the uniform buffers for rendering
@@ -711,7 +758,7 @@ void MainRenderPass::updatePipelineRessources(uint32_t currentFrame, std::vector
 {
     updateGeneralUniformBuffer(currentFrame);
     updateLightUniformBuffer(currentFrame, scenes);
-    updateMaterialUniformBuffer(currentFrame, scenes);
+    //updateMaterialUniformBuffer(currentFrame, scenes); //TODO REMOVE
     
 }
 
@@ -767,16 +814,6 @@ void MainRenderPass::createUniformBuffers() {
         }
     }
 
-    {
-        vk::DeviceSize bufferSize = sizeof(MaterialUBO);
-
-        m_materialUniformBuffer.resize(MAX_FRAMES_IN_FLIGHT);
-        m_materialUniformBufferAllocations.resize(MAX_FRAMES_IN_FLIGHT);
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            std::tie(m_materialUniformBuffer[i], m_materialUniformBufferAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu);
-        }
-    }
 
 }
 

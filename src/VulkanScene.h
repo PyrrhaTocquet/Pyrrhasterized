@@ -39,7 +39,7 @@ public:
 	void addModel(Model* model);
 	void loadModels();
 	void addEntity(Entity* entity);
-	void createBuffers();
+	void createGeometryBuffers();
 	[[nodiscard]]const uint32_t getIndexBufferSize();
 	void addLight(Light* light);
 	[[nodiscard]]std::vector<Light*> getLights();

@@ -3,6 +3,7 @@
 #include <filesystem>
 #include "VulkanImage.h"
 #include "VulkanContext.h"
+#include "Material.h"
 
 struct TexturedMesh {
 	std::vector<Vertex> loadingVertices;
@@ -13,6 +14,8 @@ struct TexturedMesh {
 	VulkanImage* normalMapImage = nullptr;
 	uint32_t textureId;
 	uint32_t normalMapId;
+	uint32_t materialId;
+	Material* material;
 };
 
 class Model {

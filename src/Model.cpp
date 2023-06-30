@@ -9,6 +9,7 @@ desc: Manages model loading and drawing
 #include <tiny_obj_loader.h>
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #define TINYGLTF_IMPLEMENTATION
+#define TINYGLTF_USE_CPP14
 #include "tiny_gltf.h"
 #include <future>
 #include <thread>
@@ -29,6 +30,22 @@ Model::~Model() {
 	}
 }
 
+
+//Helper function to load gltf material data into a TexturedMesh material data, if a material already exists, it will not be replaced
+static void createMaterialFromGltf(VulkanContext* context, TexturedMesh& texturedMesh, const tinygltf::Material& materialInfo){
+	if(texturedMesh.material == nullptr)
+	{
+
+		glm::vec4 baseColor = glm::vec4(materialInfo.pbrMetallicRoughness.baseColorFactor[0], materialInfo.pbrMetallicRoughness.baseColorFactor[1], materialInfo.pbrMetallicRoughness.baseColorFactor[2], materialInfo.pbrMetallicRoughness.baseColorFactor[3]);
+		glm::vec4 emissiveFactor = glm::vec4(materialInfo.emissiveFactor[0], materialInfo.emissiveFactor[1], materialInfo.emissiveFactor[2], materialInfo.emissiveFactor[3]);
+		texturedMesh.material = (new Material(context))
+		->setBaseColor(baseColor)
+		->setMetallicFactor(materialInfo.pbrMetallicRoughness.metallicFactor)
+		->setEmissiveFactor(emissiveFactor)
+		->setRoughnessFactor(materialInfo.pbrMetallicRoughness.roughnessFactor);
+	}
+}
+
 //returns the model matrix (world space) of the model computed from transform data
 glm::mat4 Model::getMatrix()
 {
@@ -44,6 +61,7 @@ void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipeli
 		pushConstant.model = m_transform.computeMatrix();
 		pushConstant.textureId = static_cast<glm::int32>(mesh.textureId);
 		pushConstant.normalMapId = static_cast<glm::int32>(mesh.normalMapId);
+		pushConstant.materialId = static_cast<glm::int32>(mesh.materialId);
 
 		commandBuffer.pushConstants<ModelPushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		commandBuffer.drawIndexed(mesh.indicesCount, 1, indexOffset, 0, 0);
@@ -144,6 +162,7 @@ void Model::loadGltf(const std::filesystem::path& path)
 	
 	size_t materialCount = gltfModel.materials.size();
 	m_texturedMeshes.resize(materialCount);
+
 	if (materialCount <= 0)
 	{
 		TexturedMesh texturedMesh;
@@ -198,9 +217,10 @@ void Model::loadGltf(const std::filesystem::path& path)
 				{
 					materialIndex = 0;
 				}
+				createMaterialFromGltf(m_context, m_texturedMeshes[materialIndex], gltfModel.materials[materialIndex]);
 				m_texturedMeshes[materialIndex].loadingVertices.push_back(vertex);
 				m_texturedMeshes[materialIndex].loadingIndices.push_back(m_texturedMeshes[materialIndex].loadingIndices.size());
-			
+
 			}
 
 		}

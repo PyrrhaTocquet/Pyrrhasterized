@@ -27,8 +27,8 @@ class MainRenderPass : public VulkanRenderPass {
 	std::vector<vma::Allocation> m_generalUniformBuffersAllocations;
 	std::vector<vk::Buffer> m_lightUniformBuffers;
 	std::vector<vma::Allocation> m_lightUniformBuffersAllocations;
-	std::vector<vk::Buffer> m_materialUniformBuffer;
-	std::vector<vma::Allocation> m_materialUniformBufferAllocations;
+	std::array<std::vector<vk::Buffer>, MAX_FRAMES_IN_FLIGHT> m_materialUniformBuffers;
+	std::array<std::vector<vma::Allocation>, MAX_FRAMES_IN_FLIGHT> m_materialUniformBufferAllocations;
 	
 	vk::Sampler m_shadowMapSampler = VK_NULL_HANDLE;
 
@@ -48,7 +48,7 @@ class MainRenderPass : public VulkanRenderPass {
 	//IMGUI
 	bool m_hideImGui = false;
 
-	const std::string c_defaultTexturePath = "assets/defaultTexture.png";
+	const std::string c_defaultTexturePath = "assets/defaultTextureWhite.png";
 	const std::string c_defaultNormalMapPath = "assets/defaultNormalMap.png";
 public:
 	MainRenderPass(VulkanContext* context, Camera* camera, ShadowCascadeRenderPass* shadowRenderPass);
@@ -69,7 +69,6 @@ public:
 	[[nodiscard]] vk::Extent2D getRenderPassExtent() override;
 	void renderImGui(vk::CommandBuffer commandBuffer);
 	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) override;
-
 private:
 	void createDefaultTextures();
 	void createUniformBuffers();
@@ -81,4 +80,6 @@ private:
 	void updateGeneralUniformBuffer(uint32_t currentFrame);
 	void updateLightUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes);
 	void updateMaterialUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes);
+	std::vector<vk::DescriptorBufferInfo> createMaterialDescriptorBufferInfos(uint32_t currentFrame, VulkanScene* scene);
+
 };

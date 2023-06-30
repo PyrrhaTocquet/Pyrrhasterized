@@ -17,10 +17,11 @@ mat4 view;
 layout( push_constant ) uniform constants
 {
 	mat4 model;
+	int materialId;
 	int textureId;
 	int normalMapId;
 	uint cascadeId;
-	float[13] padding;
+	float[9] padding;
 } PushConstants;
 
 

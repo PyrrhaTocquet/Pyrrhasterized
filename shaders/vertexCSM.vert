@@ -14,9 +14,11 @@ layout(set = 0, binding = 0) uniform CascadeUniformObject {
 layout( push_constant ) uniform constants
 {
 	mat4 model;
+	int materialId;
 	int textureId;
 	int normalMapId;
 	uint cascadeId;
+	float[9] padding;
 } PushConstants;
 
 void main(){

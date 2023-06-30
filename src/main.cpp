@@ -72,7 +72,7 @@ int main() {
     pikachuTransform.translate.y += 10;
     pikachuTransform.translate.x += 10;
     pikachuTransform.scale *= 0.2;
-    scene.addModel("assets/Sphere/sphere.obj", pikachuTransform);
+    scene.addModel("assets/SphereMaterials/spherematerials.glb", pikachuTransform);
     
     /*
     Transform transform;

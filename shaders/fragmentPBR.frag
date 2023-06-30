@@ -18,6 +18,7 @@ layout(location = 4) in vec4 fragTangent;
 layout( push_constant ) uniform constants
 {
 	mat4 model;
+	int materialId;
 	int textureId;
 	int normalMapId;
 	uint cascadeId;
@@ -63,7 +64,7 @@ struct Material{
 
 layout(set = 0, binding = 2) uniform MaterialUbo {
 	Material material;
-}materialUbo;
+}materialUbo[4096];
 
 
 
@@ -396,9 +397,10 @@ void main(){
 	float shadowFactor = filterPCF(lightViewCoords , cascadeIndex);
 	
 	
-	BRDFResult lightResult = computeLighting(lightsUbo.lights, materialUbo.material, vec4(generalUbo.cameraPosition, 1.0), vec4(fragPosWorld, 1.f), vec4(normal, 0.f), textureColor.xyz);
+	vec3 albedo = materialUbo[PushConstants.materialId].material.baseColor.xyz * textureColor.xyz;
+	BRDFResult lightResult = computeLighting(lightsUbo.lights, materialUbo[PushConstants.materialId].material, vec4(generalUbo.cameraPosition, 1.0), vec4(fragPosWorld, 1.f), vec4(normal, 0.f), albedo);
 
-	vec3 ambientResult = ambientColor * textureColor.xyz * ambientIntensity;
+	vec3 ambientResult = ambientColor * albedo * ambientIntensity;
 
 	outColor = mix(vec4(shadowFactor * (lightResult.diffuse + lightResult.specular + ambientResult), textureColor.a),
 	vec4(lightResult.diffuse + lightResult.diffuseShadowCaster + lightResult.specular + lightResult.specularShadowCaster + ambientResult * (shadowFactor), textureColor.a),

@@ -12,10 +12,10 @@ Constructed with a builder-like pattern
 #include "VulkanTools.h"
 
 struct MaterialUBO {
-	glm::vec4 baseColor;
-	glm::vec4 emissiveColor;
-	float metallicFactor;
-	float roughnessFactor;
+	glm::vec4 baseColor = glm::vec4(1.f, 1.f, 1.f, 1.f);
+	glm::vec4 emissiveColor = glm::vec4(0.f, 0.f, 0.f, 0.f);
+	float metallicFactor = 0.f;
+	float roughnessFactor = 0.5f;
 	float padding[2] = { 0.f, 0.f };
 };
 

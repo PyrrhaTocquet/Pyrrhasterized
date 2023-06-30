@@ -18,10 +18,11 @@ layout(location = 4) in vec4 fragTangent;
 layout( push_constant ) uniform constants
 {
 	mat4 model;
+	int materialId;
 	int textureId;
 	int normalMapId;
 	uint cascadeId;
-	float[13] padding;
+	float[9] padding;
 } PushConstants;
 
 layout(set = 0, binding = 0) uniform CameraGeneralUbo {

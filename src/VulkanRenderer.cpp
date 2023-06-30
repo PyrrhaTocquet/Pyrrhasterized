@@ -283,7 +283,7 @@ bool VulkanRenderer::present(vk::Semaphore *signalSemaphores, uint32_t imageInde
 void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
     //TODO MAKE SURE THERE IS A UNIQUE SCENE !!!!!
     vulkanScene->loadModels();
-    vulkanScene->createBuffers();
+    vulkanScene->createGeometryBuffers();
     for (auto& renderPass : m_renderPasses)
     {
         renderPass->createDescriptorSets(vulkanScene);
