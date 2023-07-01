@@ -157,6 +157,24 @@ VulkanImage* Material::getAlbedoTexture() {
     throw std::runtime_error("Tried to retrieve an albedo texture that doesn't exist");
 }
 
+Material::~Material()
+{
+    if (m_hasAlbedoTexture) {
+        delete m_albedoTexture;
+    }
+    if (m_hasNormalTexture) {
+        delete m_normalTexture;
+    }
+    if (m_hasMetallicRoughnessTexture)
+    {
+        delete m_metallicRoughnessTexture;
+    }
+    if (m_hasEmissiveTexture)
+    {
+        delete m_emissiveTexture;
+    }
+}
+
 VulkanImage* Material::getNormalTexture() {
     if (m_hasNormalTexture) 
     {

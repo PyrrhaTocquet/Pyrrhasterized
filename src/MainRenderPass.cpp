@@ -8,10 +8,6 @@ MainRenderPass::MainRenderPass(VulkanContext* context, Camera* camera, ShadowCas
 
     m_shadowRenderPass = shadowRenderPass;
     m_camera = camera;
-
-    //TODO Remove
-    material = (new Material(m_context))
-        ->setBaseColor(glm::vec4(1.f, 1.f, 1.f, 1.f));
 }
 
 MainRenderPass::~MainRenderPass()

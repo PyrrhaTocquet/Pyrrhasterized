@@ -77,6 +77,6 @@ private:
 	void updateGeneralUniformBuffer(uint32_t currentFrame);
 	void updateLightUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes);
 	void updateMaterialUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes);
-	std::vector<vk::DescriptorBufferInfo> createMaterialDescriptorBufferInfos(uint32_t currentFrame, VulkanScene* scene);
+
 
 };

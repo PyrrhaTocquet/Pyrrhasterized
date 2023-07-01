@@ -60,6 +60,7 @@ public: static vk::Sampler s_baseColorSampler, s_metallicRoughnessSampler, s_nor
 
 public:
 	Material(VulkanContext* context);
+	~Material();
 	Material* setBaseColor(const glm::vec4& color);
 	Material* setEmissiveFactor(const glm::vec3& factor);
 	Material* setMetallicFactor(float factor);

@@ -19,10 +19,7 @@ layout( push_constant ) uniform constants
 {
 	mat4 model;
 	int materialId;
-	int textureId;
-	int normalMapId;
 	uint cascadeId;
-	float[13] padding;
 } PushConstants;
 
 layout(set = 0, binding = 0) uniform CameraGeneralUbo {
@@ -371,23 +368,35 @@ float filterPCF(vec4[2] lightViewCoords, uint[2] index)
 }
 
 void main(){
+	Material material = materialUbo[PushConstants.materialId].material;	
 
-	vec4 textureColor = texture(texSampler[PushConstants.textureId], fragTexCoord);
-	if(textureColor.a < 0.8)
+	/*ALPHA MODE*/
+	//TODO
+
+	/*ALBEDO*/
+	vec4 albedo = material.baseColor;
+	if(material.hasAlbedoTexture == TRUE)
 	{
-		discard;
+		albedo *= texture(texSampler[material.albedoTextureId], fragTexCoord);
 	}
 
-	vec3 tangent = normalize(fragTangent.xyz);
+	/*NORMALS*/
 	vec3 normal = normalize(fragNormal);
-	tangent = (tangent - dot(tangent, normal) * normal); //Gram Schmidt for orthogonal vectors
-	vec3 bitangent = cross(normal, tangent.xyz) * fragTangent.w; //Handedness to make sure it is correct
+	if(material.hasNormalTexture == TRUE)
+	{
+		vec3 tangent = normalize(fragTangent.xyz);	
+		tangent = (tangent - dot(tangent, normal) * normal); //Gram Schmidt for orthogonal vectors
+		vec3 bitangent = cross(normal, tangent.xyz) * fragTangent.w; //Handedness to make sure it is correct
 
-	mat3 TBN = mat3(tangent, bitangent, normal);
-	vec3 localNormal = texture(texSampler[PushConstants.normalMapId], fragTexCoord).rgb;
-	localNormal.y = 1 - localNormal.y;
-	localNormal = 2* localNormal - 1;
-	normal = normalize(TBN * localNormal);
+		mat3 TBN = mat3(tangent, bitangent, normal);
+		vec3 localNormal = texture(texSampler[material.normalTextureId], fragTexCoord).rgb;
+		localNormal.y = 1 - localNormal.y;
+		localNormal = 2* localNormal - 1;
+		normal = normalize(TBN * localNormal);
+	}
+	
+
+	
 
 
 	uint cascadeIndex[2] = uint[2](0, 0);
@@ -407,13 +416,12 @@ void main(){
 	float shadowFactor = filterPCF(lightViewCoords , cascadeIndex);
 	
 	
-	vec3 albedo = materialUbo[PushConstants.materialId].material.baseColor.xyz * textureColor.xyz;
-	BRDFResult lightResult = computeLighting(lightsUbo.lights, materialUbo[PushConstants.materialId].material, vec4(generalUbo.cameraPosition, 1.0), vec4(fragPosWorld, 1.f), vec4(normal, 0.f), albedo);
+	BRDFResult lightResult = computeLighting(lightsUbo.lights, materialUbo[PushConstants.materialId].material, vec4(generalUbo.cameraPosition, 1.0), vec4(fragPosWorld, 1.f), vec4(normal, 0.f), albedo.rgb);
 
-	vec3 ambientResult = ambientColor * albedo * ambientIntensity;
+	vec3 ambientResult = ambientColor * albedo.rgb * ambientIntensity;
 
-	outColor = mix(vec4(shadowFactor * (lightResult.diffuse + lightResult.specular + ambientResult), textureColor.a),
-	vec4(lightResult.diffuse + lightResult.diffuseShadowCaster + lightResult.specular + lightResult.specularShadowCaster + ambientResult * (shadowFactor), textureColor.a),
+	outColor = mix(vec4(shadowFactor * (lightResult.diffuse + lightResult.specular + ambientResult), albedo.a),
+	vec4(lightResult.diffuse + lightResult.diffuseShadowCaster + lightResult.specular + lightResult.specularShadowCaster + ambientResult * (shadowFactor), albedo.a),
 	(shadowFactor-ambientIntensity)/(1-ambientIntensity));
 
 	
