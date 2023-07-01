@@ -41,7 +41,7 @@ private:
 	glm::vec3 m_emissiveFactor = { 0.f, 0.f, 0.f };
 	float m_metallicFactor = 0.f;
 	float m_roughnessFactor = 1.f;
-	AlphaMode m_alphaMode = AlphaMode::OpaqueAlphaMode;
+	AlphaMode m_alphaMode = AlphaMode::MaskAlphaMode;
 	float m_alphaCutoff = 0.5f;
 
 	VulkanImage* m_albedoTexture = nullptr;

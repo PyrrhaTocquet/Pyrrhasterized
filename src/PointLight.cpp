@@ -1,6 +1,6 @@
 #include "PointLight.h"
 
-PointLight::PointLight(VulkanContext* context, const glm::vec4& position, float range) : PointLight(context, position, range, m_lightColor)
+PointLight::PointLight(VulkanContext* context, const glm::vec4& position, float range) : PointLight(context, position, range, glm::vec4(1.f, 1.f, 1.f, 1.f))
 {
 
 }

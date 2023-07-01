@@ -336,7 +336,7 @@ std::vector<vk::DescriptorImageInfo> MainRenderPass::generateTextureImageInfo(Vu
         for (auto& texturedMesh : model->getMeshes()) {
             Material* material = texturedMesh.material;
             if (material == nullptr)
-                return textureImageInfo;
+                continue;
 
             if (material->hasAlbedoTexture())
             {
@@ -369,7 +369,7 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
     std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_mainDescriptorSetLayout);
 
     /* Dynamic Descriptor Counts */
-    uint32_t textureMaxCount = MAX_TEXTURE_COUNT;
+    uint32_t textureMaxCount = textureImageInfos.size();
     std::vector<uint32_t> textureMaxCounts(MAX_FRAMES_IN_FLIGHT, textureMaxCount);
     //std::vector<uint32_t> textureMaxCounts(MAX_FRAMES_IN_FLIGHT, materialMaxCount);
     vk::DescriptorSetVariableDescriptorCountAllocateInfo setCounts{

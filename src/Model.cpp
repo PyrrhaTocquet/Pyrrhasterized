@@ -165,10 +165,19 @@ static void createMaterialFromGltf(VulkanContext* context, Mesh& texturedMesh, c
 		glm::vec4 baseColor = glm::vec4(materialInfo.pbrMetallicRoughness.baseColorFactor[0], materialInfo.pbrMetallicRoughness.baseColorFactor[1], materialInfo.pbrMetallicRoughness.baseColorFactor[2], materialInfo.pbrMetallicRoughness.baseColorFactor[3]);
 		glm::vec4 emissiveFactor = glm::vec4(materialInfo.emissiveFactor[0], materialInfo.emissiveFactor[1], materialInfo.emissiveFactor[2], 1.f);
 		texturedMesh.material = (new Material(context))
-		->setBaseColor(baseColor)
-		->setMetallicFactor(materialInfo.pbrMetallicRoughness.metallicFactor)
-		->setEmissiveFactor(emissiveFactor)
-		->setRoughnessFactor(materialInfo.pbrMetallicRoughness.roughnessFactor);
+			->setBaseColor(baseColor)
+			->setMetallicFactor(materialInfo.pbrMetallicRoughness.metallicFactor)
+			->setEmissiveFactor(emissiveFactor)
+			->setRoughnessFactor(materialInfo.pbrMetallicRoughness.roughnessFactor);
+
+		texturedMesh.material->setAlphaCutoff(materialInfo.alphaCutoff);
+		if (materialInfo.alphaMode == "MASK")
+		{
+			texturedMesh.material->setAlphaMode(MaskAlphaMode);
+		}
+		else if (materialInfo.alphaMode == "BLEND") {
+			texturedMesh.material->setAlphaMode(TransparentAlphaMode);
+		}
 
 		createAlbedoTextureFromGltfMaterial(context, texturedMesh, materialInfo, gltfModel, parentPath);
 		createNormalTextureFromGltfMaterial(context, texturedMesh, materialInfo, gltfModel, parentPath);

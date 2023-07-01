@@ -64,7 +64,7 @@ private:
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
 #else
-	const bool enableValidationLayers = true;
+	const bool enableValidationLayers = false;
 #endif
 
 	vma::Allocator m_allocator;

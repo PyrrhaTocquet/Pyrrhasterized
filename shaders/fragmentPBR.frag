@@ -9,6 +9,10 @@
 #define POINT_LIGHT_TYPE 1
 #define SPOTLIGHT_LIGHT_TYPE 2
 
+#define ALPHA_MODE_OPAQUE 0
+#define ALPHA_MODE_MASK 1
+#define ALPHA_MODE_TRANSPARENT 2
+
 layout(location = 0) in vec2 fragTexCoord;
 layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec3 fragPosWorld;
@@ -268,13 +272,13 @@ BRDFResult computeSpotLight(Light light, float alpha, vec3 f0, vec3 diffuseColor
 	return result;
 }
 
-BRDFResult computeLighting(Light[MAX_LIGHT_COUNT] lights, Material material, vec4 cameraPos, vec4 fragPosWorld, vec4 N, vec3 albedo)
+BRDFResult computeLighting(Light[MAX_LIGHT_COUNT] lights, Material material, vec4 cameraPos, vec4 fragPosWorld, vec4 N, vec3 albedo, float metallic, float roughness)
 {
 	vec4 V = normalize(cameraPos - fragPosWorld);
 	
-	vec3 diffuseColor = mix(albedo, black, material.metallicFactor);
-	vec3 f0 = mix(dielectricF0, albedo, material.metallicFactor);
-	float alpha = material.roughnessFactor * material.roughnessFactor;
+	vec3 diffuseColor = mix(albedo, black, metallic);
+	vec3 f0 = mix(dielectricF0, albedo, metallic);
+	float alpha = roughness * roughness;
 
 	BRDFResult brdfResultSum;
 	brdfResultSum.diffuse = vec3(0.f, 0.f, 0.f);
@@ -370,15 +374,23 @@ float filterPCF(vec4[2] lightViewCoords, uint[2] index)
 void main(){
 	Material material = materialUbo[PushConstants.materialId].material;	
 
-	/*ALPHA MODE*/
-	//TODO
-
 	/*ALBEDO*/
 	vec4 albedo = material.baseColor;
 	if(material.hasAlbedoTexture == TRUE)
 	{
 		albedo *= texture(texSampler[material.albedoTextureId], fragTexCoord);
 	}
+
+	/*ALPHA MODE*/
+	//TODOTRANSPARENT
+	if(material.alphaMode == ALPHA_MODE_MASK)
+	{
+		if(albedo.a < material.alphaCutoff)
+		{
+			discard;
+		}
+	}
+
 
 	/*NORMALS*/
 	vec3 normal = normalize(fragNormal);
@@ -395,9 +407,16 @@ void main(){
 		normal = normalize(TBN * localNormal);
 	}
 	
-
-	
-
+	/*METALLIC ROUGHNESS*/
+	float metallic = material.metallicFactor;
+	float roughness = material.roughnessFactor;
+	if(material.hasMetallicRoughnessTexture == TRUE)
+	{
+		vec4 metallicRoughnessTexture = texture(texSampler[material.metallicRoughnessTextureId], fragTexCoord);
+		metallic *= metallicRoughnessTexture.b;
+		roughness *= metallicRoughnessTexture.g;
+		roughness = max(roughness, 0.001);
+	}
 
 	uint cascadeIndex[2] = uint[2](0, 0);
 	for(uint i = 0; i < SHADOW_CASCADE_COUNT - 1; ++i) {
@@ -416,7 +435,7 @@ void main(){
 	float shadowFactor = filterPCF(lightViewCoords , cascadeIndex);
 	
 	
-	BRDFResult lightResult = computeLighting(lightsUbo.lights, materialUbo[PushConstants.materialId].material, vec4(generalUbo.cameraPosition, 1.0), vec4(fragPosWorld, 1.f), vec4(normal, 0.f), albedo.rgb);
+	BRDFResult lightResult = computeLighting(lightsUbo.lights, materialUbo[PushConstants.materialId].material, vec4(generalUbo.cameraPosition, 1.0), vec4(fragPosWorld, 1.f), vec4(normal, 0.f), albedo.rgb, metallic, roughness);
 
 	vec3 ambientResult = ambientColor * albedo.rgb * ambientIntensity;
 

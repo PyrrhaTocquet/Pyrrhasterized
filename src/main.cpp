@@ -30,7 +30,7 @@ int main() {
     VulkanRenderer renderer(&context);
 
     DirectionalLight sun(&context, -glm::vec4(5.f, 50.f, 0.f, 0.f), glm::vec4(1.f, 1.f, .95f, 1.f));
-    sun.setIntensity(5.0f);
+    sun.setIntensity(1.5f);
     VulkanScene scene(&context, &sun);
     
     /* Ganon */
@@ -82,11 +82,11 @@ int main() {
     Transform transform;
     scene.addModel("assets/CubeScene/cubeScene.gltf", transform);
     */
-    PointLight* pointLight = new PointLight(&context, glm::vec4(6.0f, -1.1f, -2.2f, 1.f), 3.f, glm::vec4(.1f, .1f, 1.f, 1.0f));
+    PointLight* pointLight = new PointLight(&context, glm::vec4(6.0f, -1.1f, -2.2f, 1.f), 2.5f, glm::vec4(.1f, .1f, 1.f, 1.0f));
     pointLight->setIntensity(5.0f);
     scene.addLight(pointLight);
 
-    PointLight* pointLightDos = new PointLight(&context, glm::vec4(6.0f, -1.1f, 2.2f, 1.f), 3.f, glm::vec4(.1f, 1.f, .1f, 1.0f));
+    PointLight* pointLightDos = new PointLight(&context, glm::vec4(6.0f, -1.1f, 2.2f, 1.f), 2.5f, glm::vec4(.1f, 1.f, .1f, 1.0f));
     pointLightDos->setIntensity(5.0f);
     scene.addLight(pointLightDos);
     
@@ -97,9 +97,13 @@ int main() {
     spotlightmodelTransfrom.translate = glm::vec3(-7.1f, -1.1f, 2.8f);
     spotlightmodelTransfrom.rotate = glm::vec3(0.f, 180.f, 0.f);
    
-
     scene.addModel("assets/BadSpotLight/badspotlight.obj", spotlightmodelTransfrom);
     
+    /*
+    Transform helmetTransform;
+    helmetTransform.translate = glm::vec3(5.f, 5.f, 0.f);
+    scene.addModel("assets/Helmet/DamagedHelmet.gltf", helmetTransform);
+    */
 
     renderer.addScene(&scene);
 
