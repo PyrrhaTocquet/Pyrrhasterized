@@ -54,22 +54,32 @@ layout(set = 0, binding = 1) uniform LightsUBO {
 	Light lights[MAX_LIGHT_COUNT];
 }lightsUbo;
 
+layout(set = 0, binding = 2) uniform sampler2DArray shadowTexSampler;
+
+
+layout(set = 0, binding = 3) uniform sampler2D texSampler[];
+
 struct Material{
 	vec4 baseColor;
 	vec4 emissiveColor;
 	float metallicFactor;
 	float roughnessFactor;
+	uint alphaMode;
+	float alphaCutoff;
+	uint hasAlbedoTexture;
+	uint hasNormalTexture;
+	uint hasMetallicRoughnessTexture;
+	uint hasEmissiveTexture;
+	uint albedoTextureId;
+	uint normalTextureId;
+	uint metallicRoughnessTextureId;
+	uint emissiveTextureId;
 };
 
 
-layout(set = 0, binding = 2) uniform MaterialUbo {
+layout(set = 1, binding = 0) uniform MaterialUbo {
 	Material material;
-}materialUbo[4096];
-
-
-
-layout(set = 0, binding = 3) uniform sampler2D texSampler[];
-layout(set = 1, binding = 0) uniform sampler2DArray shadowTexSampler;
+}materialUbo[];
 
 layout(location = 0) out vec4 outColor;
 

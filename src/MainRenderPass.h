@@ -21,8 +21,6 @@ class MainRenderPass : public VulkanRenderPass {
 	VulkanImage* m_colorAttachment = nullptr;
 	VulkanImage* m_depthAttachment = nullptr;
 
-	VulkanImage* m_defaultTexture = nullptr;
-	VulkanImage* m_defaultNormalMap = nullptr;
 	std::vector<vk::Buffer> m_generalUniformBuffers;
 	std::vector<vma::Allocation> m_generalUniformBuffersAllocations;
 	std::vector<vk::Buffer> m_lightUniformBuffers;
@@ -32,9 +30,9 @@ class MainRenderPass : public VulkanRenderPass {
 	
 	vk::Sampler m_shadowMapSampler = VK_NULL_HANDLE;
 
-	vk::DescriptorPool m_shadowDescriptorPool;
-	vk::DescriptorSetLayout m_shadowDescriptorSetLayout;
-	std::vector<vk::DescriptorSet> m_shadowDescriptorSet;
+	vk::DescriptorPool m_materialDescriptorPool;
+	vk::DescriptorSetLayout m_materialDescriptorSetLayout;
+	std::vector<vk::DescriptorSet> m_materialDescriptorSet;
 
 	Material* material = nullptr;
 	float metallicFactorGui = 0.f;
@@ -70,12 +68,11 @@ public:
 	void renderImGui(vk::CommandBuffer commandBuffer);
 	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) override;
 private:
-	void createDefaultTextures();
 	void createUniformBuffers();
 	void createShadowMapSampler();
 	std::vector<vk::DescriptorImageInfo> generateTextureImageInfo(VulkanScene* scene);
 	void createMainDescriptorSet(VulkanScene* scene);
-	void createShadowDescriptorSet(VulkanScene* scene);
+	void createMaterialDescriptorSet(VulkanScene* scene);
 
 	void updateGeneralUniformBuffer(uint32_t currentFrame);
 	void updateLightUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes);

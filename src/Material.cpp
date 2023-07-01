@@ -19,7 +19,6 @@ void Material::cleanSamplers(VulkanContext* context) {
 }
 
 
-
 void Material::createSamplers(VulkanContext* context)
 {
 	//Base Color Sampler
@@ -83,26 +82,101 @@ Material* Material::setAlphaMode(AlphaMode alphaMode) {
     return this;
 }
 
-Material* Material::setBaseColorTexture(VulkanImage* texture)
+Material* Material::setAlbedoTexture(VulkanImage* texture)
 {
-    m_baseColorTexture = texture;
+    if (m_hasAlbedoTexture)
+    {
+        delete m_albedoTexture;
+    }
+    m_albedoTexture = texture;
+    m_hasAlbedoTexture = true;
     return this;
+}
+
+bool Material::hasAlbedoTexture()
+{
+    return m_hasAlbedoTexture;
+}
+
+bool Material::hasNormalTexture()
+{
+    return m_hasNormalTexture;
+}
+
+bool Material::hasMetallicRoughness()
+{
+    return m_hasMetallicRoughnessTexture;
+}
+
+bool Material::hasEmissiveTexture()
+{
+    return m_hasEmissiveTexture;
 }
 
 Material* Material::setMetallicRoughnessTexture(VulkanImage* texture)
 {
+    if (m_hasMetallicRoughnessTexture) {
+        delete m_metallicRoughnessTexture;
+    }
     m_metallicRoughnessTexture = texture;
+    m_hasMetallicRoughnessTexture = true;
     return this;
 }
 
 Material* Material::setNormalTexture(VulkanImage* texture) {
+    if (m_hasNormalTexture)
+    {
+        delete m_normalTexture;
+    }
     m_normalTexture = texture;
+    m_hasNormalTexture = true;
     return this;
 }
 
 Material* Material::setEmissiveTexture(VulkanImage* texture) {
+    if (m_hasEmissiveTexture)
+    {
+        delete m_emissiveTexture;
+    }
     m_emissiveTexture = texture;
+    m_hasEmissiveTexture = true;
     return this;
+}
+
+Material* Material::setAlphaCutoff(float cutoff)
+{
+    m_alphaCutoff = cutoff;
+    return this;
+}
+
+VulkanImage* Material::getAlbedoTexture() {
+    if (m_hasAlbedoTexture)
+    {
+        return m_albedoTexture;
+    }
+    throw std::runtime_error("Tried to retrieve an albedo texture that doesn't exist");
+}
+
+VulkanImage* Material::getNormalTexture() {
+    if (m_hasNormalTexture) 
+    {
+        return m_normalTexture;
+    }
+    throw std::runtime_error("Tried to retrieve a normal texture that doesn't exist");
+}
+
+VulkanImage* Material::getMetallicRoughnessTexture() {
+    if (m_hasMetallicRoughnessTexture) {
+        return m_metallicRoughnessTexture;
+    }
+    throw std::runtime_error("Tried to retrieve a metallic roughness texture that doesn't exist");
+}
+
+VulkanImage* Material::getEmissiveTexture() {
+    if (m_hasEmissiveTexture) {
+        return m_emissiveTexture;
+    }
+    throw std::runtime_error("Tried to retrieve an emissive texture that doesn't exist");
 }
 
 MaterialUBO Material::getUBO() {
@@ -111,5 +185,15 @@ MaterialUBO Material::getUBO() {
         .emissiveColor = glm::vec4(m_emissiveFactor, 1.f),
         .metallicFactor = m_metallicFactor,
         .roughnessFactor = m_roughnessFactor,
+        .alphaMode = static_cast<glm::uint>(m_alphaMode),
+        .alphaCutoff = m_alphaCutoff,
+        .hasAlbedoTexture = m_hasAlbedoTexture,
+        .hasNormalTexture = m_hasNormalTexture,
+        .hasMetallicRoughnessTexture = m_hasMetallicRoughnessTexture,
+        .hasEmissiveTexture = m_hasEmissiveTexture,
+        .albedoTextureId = m_albedoTextureId,
+        .normalTextureId = m_normalTextureId,
+        .metallicRoughnessTextureId = m_metallicRoughnessTextureId,
+        .emissiveTextureId = m_emissiveTextureId,
     };
 }

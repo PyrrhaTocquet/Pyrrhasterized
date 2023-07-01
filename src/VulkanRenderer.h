@@ -33,7 +33,7 @@ const uint32_t DESCRIPTOR_SET_LAYOUT_BINDINGS = 3;
 const uint32_t PUSH_CONSTANTS_COUNT = 1;
 
 
-struct TexturedMesh;
+struct Mesh;
 
 class VulkanScene;
 class VulkanRenderPass;

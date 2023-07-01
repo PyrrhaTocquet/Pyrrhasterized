@@ -39,8 +39,6 @@ struct GeneralUniformBufferObject {
 struct ModelPushConstant {
 	glm::mat4 model;
 	glm::int32 materialId;
-	glm::int32 textureId;
-	glm::int32 normalMapId;
 	glm::uint32 cascadeId;
 	float padding[9];
 };

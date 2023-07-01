@@ -5,15 +5,11 @@
 #include "VulkanContext.h"
 #include "Material.h"
 
-struct TexturedMesh {
+struct Mesh {
 	std::vector<Vertex> loadingVertices;
 	std::vector<uint32_t> loadingIndices;
 	uint32_t verticesCount = 0;
 	uint32_t indicesCount = 0;
-	VulkanImage* textureImage = nullptr;
-	VulkanImage* normalMapImage = nullptr;
-	uint32_t textureId;
-	uint32_t normalMapId;
 	uint32_t materialId;
 	Material* material;
 };
@@ -21,7 +17,7 @@ struct TexturedMesh {
 class Model {
 private:
 	VulkanContext* m_context = nullptr;
-	std::vector<TexturedMesh> m_texturedMeshes;
+	std::vector<Mesh> m_meshes;
 	Transform m_transform;
 
 	void loadModel(const std::filesystem::path& path);
@@ -34,7 +30,7 @@ public:
 	~Model();
 	[[nodiscard]]glm::mat4 getMatrix();
 	void drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, uint32_t& indexOffset, ModelPushConstant& pushConstant);
-	[[nodiscard]]std::vector<TexturedMesh>& getMeshes();
+	[[nodiscard]]std::vector<Mesh>& getMeshes();
 
 	void translateBy(glm::vec3 translation);
 	void rotateBy(glm::vec3 rotation);
