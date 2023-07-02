@@ -610,10 +610,6 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
     ImGui::Text("Framerate: %f", framerate);
     ImGui::SliderFloat("Cascade Splitting Lambda: ", &m_shadowRenderPass->m_cascadeSplitLambda, 0.f, 1.f, "%.2f", 0);
     ImGui::SliderFloat("Shadowmap Blend Width: ", &m_shadowRenderPass->m_shadowMapsBlendWidth, 0.f, 1.f, "%.2f", 0);
-    ImGui::Separator();
-    ImGui::Text("Material !");
-    ImGui::SliderFloat("Metallic Factor: ", &metallicFactorGui, 0, 1, "%.2f");
-    ImGui::SliderFloat("Roughness Factor: ", &roughnessFactorGui, 0.001f, 1, "%.2f");
     ImGui::End();
 
     ImGui::Render();
