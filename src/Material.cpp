@@ -159,20 +159,10 @@ VulkanImage* Material::getAlbedoTexture() {
 
 Material::~Material()
 {
-    if (m_hasAlbedoTexture) {
-        delete m_albedoTexture;
-    }
-    if (m_hasNormalTexture) {
-        delete m_normalTexture;
-    }
-    if (m_hasMetallicRoughnessTexture)
-    {
-        delete m_metallicRoughnessTexture;
-    }
-    if (m_hasEmissiveTexture)
-    {
-        delete m_emissiveTexture;
-    }
+    delete m_albedoTexture;
+    delete m_normalTexture;
+    delete m_metallicRoughnessTexture;
+    delete m_emissiveTexture;
 }
 
 VulkanImage* Material::getNormalTexture() {

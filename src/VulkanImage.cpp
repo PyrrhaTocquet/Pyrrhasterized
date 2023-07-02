@@ -119,6 +119,7 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 
 	//Image View
 	constructVkImageView(context, imageParams, imageViewParams);
+	m_allocator.setAllocationName(m_allocation, path.c_str());
 }
 
 
@@ -221,6 +222,10 @@ bool VulkanImage::hasLoadingFailed()
 	return m_loadingFailed;
 }
 
+void VulkanImage::setVMADebugName(std::string name)
+{
+	m_allocator.setAllocationName(m_allocation, name.c_str());
+}
 
 //Transition the image from the oldLayout to a newLayout
 void VulkanImage::transitionImageLayout(VulkanContext* context, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) 

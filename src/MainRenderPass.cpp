@@ -15,7 +15,6 @@ MainRenderPass::~MainRenderPass()
     vk::Device device = m_context->getDevice();
     device.destroyDescriptorPool(m_materialDescriptorPool);
     device.destroyDescriptorSetLayout(m_materialDescriptorSetLayout);
-    delete material;
     device.destroySampler(m_shadowMapSampler);
     cleanAttachments();
     
@@ -23,7 +22,7 @@ MainRenderPass::~MainRenderPass()
         m_context->getAllocator().destroyBuffer(m_generalUniformBuffers[i], m_generalUniformBuffersAllocations[i]);
         m_context->getAllocator().destroyBuffer(m_lightUniformBuffers[i], m_lightUniformBuffersAllocations[i]);
         
-        for(uint32_t k = 0; k < m_materialUniformBuffers.size();k++)
+        for(uint32_t k = 0; k < m_materialUniformBuffers[i].size();k++)
         {
             m_context->getAllocator().destroyBuffer(m_materialUniformBuffers[i][k], m_materialUniformBufferAllocations[i][k]);
         }

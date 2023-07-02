@@ -19,6 +19,7 @@ VulkanScene::~VulkanScene()
 	for (const auto& model : m_models) {
 		delete model;
 	}
+	//No need to delete lights, they are deleted as entities
 
 }
 
