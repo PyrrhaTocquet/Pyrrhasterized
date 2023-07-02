@@ -143,7 +143,7 @@ static void createEmissiveTexture(VulkanContext* context, Mesh& texturedMesh, co
 		VulkanImageParams imageParams
 		{
 			.numSamples = vk::SampleCountFlagBits::e1,
-			.format = vk::Format::eR8G8B8Srgb,
+			.format = vk::Format::eR8G8B8A8Srgb,
 			.tiling = vk::ImageTiling::eOptimal,
 			.usage = vk::ImageUsageFlagBits::eSampled,
 		};
