@@ -418,6 +418,12 @@ void main(){
 		roughness = max(roughness, 0.001);
 	}
 
+	/*EMISSION*/
+	vec3 emissiveColor = material.emissiveColor.rgb;
+	if(material.hasEmissiveTexture == TRUE){
+		emissiveColor *= texture(texSampler[material.emissiveTextureId], fragTexCoord).rgb;
+	}
+
 	uint cascadeIndex[2] = uint[2](0, 0);
 	for(uint i = 0; i < SHADOW_CASCADE_COUNT - 1; ++i) {
 		if(fragPosView.z + (generalUbo.shadowMapsBlendWidth / 2) < generalUbo.cascadeSplits[i]) {	
@@ -438,9 +444,10 @@ void main(){
 	BRDFResult lightResult = computeLighting(lightsUbo.lights, materialUbo[PushConstants.materialId].material, vec4(generalUbo.cameraPosition, 1.0), vec4(fragPosWorld, 1.f), vec4(normal, 0.f), albedo.rgb, metallic, roughness);
 
 	vec3 ambientResult = ambientColor * albedo.rgb * ambientIntensity;
+	
 
-	outColor = mix(vec4(shadowFactor * (lightResult.diffuse + lightResult.specular + ambientResult), albedo.a),
-	vec4(lightResult.diffuse + lightResult.diffuseShadowCaster + lightResult.specular + lightResult.specularShadowCaster + ambientResult * (shadowFactor), albedo.a),
+	outColor = mix(vec4(shadowFactor * (emissiveColor + lightResult.diffuse + lightResult.specular + ambientResult), albedo.a),
+	vec4(emissiveColor + lightResult.diffuse + lightResult.diffuseShadowCaster + lightResult.specular + lightResult.specularShadowCaster + ambientResult * (shadowFactor), albedo.a),
 	(shadowFactor-ambientIntensity)/(1-ambientIntensity));
 
 	

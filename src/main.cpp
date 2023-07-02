@@ -30,7 +30,7 @@ int main() {
     VulkanRenderer renderer(&context);
 
     DirectionalLight sun(&context, -glm::vec4(5.f, 50.f, 0.f, 0.f), glm::vec4(1.f, 1.f, .95f, 1.f));
-    sun.setIntensity(1.5f);
+    sun.setIntensity(5.0f);
     VulkanScene scene(&context, &sun);
     
     /* Ganon */
@@ -99,11 +99,11 @@ int main() {
    
     scene.addModel("assets/BadSpotLight/badspotlight.obj", spotlightmodelTransfrom);
     
-    /*
+    
     Transform helmetTransform;
-    helmetTransform.translate = glm::vec3(5.f, 5.f, 0.f);
+    helmetTransform.translate = glm::vec3(-6.f, 7.f, 0.f);
+    helmetTransform.rotate = glm::vec3(90.f, 0.f, 0.f);
     scene.addModel("assets/Helmet/DamagedHelmet.gltf", helmetTransform);
-    */
 
     renderer.addScene(&scene);
 
