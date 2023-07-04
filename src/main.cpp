@@ -38,13 +38,13 @@ int main() {
     ganonTransform.translate = glm::vec3(-0.f, 0.f, -.5f);
     ganonTransform.rotate = glm::vec3(0.f, 90.f, 0.f);
 
-    /* Pikachu */
-    Transform pikachuTransform;
-    pikachuTransform.rotate = glm::vec3(0.f, 90.f, 0.f);
+    /* Helmet */
+    Transform helmetTransform;
+    helmetTransform.translate = glm::vec3(0.f, 1.12f, -0.5f);
+    helmetTransform.rotate = glm::vec3(90.f, 0.f, -90.f);
+    helmetTransform.scale = glm::vec3(0.15f, 0.15f, 0.15f);
 
-    /* Mario */
-    
-
+  
     /* Sponza */
     Transform sponzaTransform;
     sponzaTransform.translate = glm::vec3(0.f, -2.f, 0.0f);
@@ -63,16 +63,15 @@ int main() {
     scene.addModel("assets/TreasureChest/model.gltf", chestTransform);
     scene.addModel("assets/SponzaGltf/sponza.glb", sponzaTransform);
     scene.addModel("assets/Ganon/ganon.gltf", ganonTransform);
-    scene.addModel("assets/PikachuObj/model.obj", pikachuTransform);
+    scene.addModel("assets/Helmet/DamagedHelmet.gltf", helmetTransform);
     Peach* peachEntity = new Peach(&context);
     scene.addEntity(peachEntity);
     renderer.registerEntity(peachEntity);
-    scene.addModel("assets/Link/model.obj", linkTransform);
 
-    pikachuTransform.translate.y += 10;
-    pikachuTransform.translate.x += 10;
-    pikachuTransform.scale *= 0.2;
-    scene.addModel("assets/SphereMaterials/spherematerials.glb", pikachuTransform);
+    helmetTransform.translate.y += 10;
+    helmetTransform.translate.x += 10;
+    helmetTransform.scale *= 0.2;
+    scene.addModel("assets/SphereMaterials/spherematerials.glb", helmetTransform);
     
     /*
     Transform transform;
@@ -100,10 +99,8 @@ int main() {
     scene.addModel("assets/BadSpotLight/badspotlight.obj", spotlightmodelTransfrom);
     
     
-    Transform helmetTransform;
-    helmetTransform.translate = glm::vec3(-6.f, 7.f, 0.f);
-    helmetTransform.rotate = glm::vec3(90.f, 0.f, 0.f);
-    scene.addModel("assets/Helmet/DamagedHelmet.gltf", helmetTransform);
+
+
 
     renderer.addScene(&scene);
 
