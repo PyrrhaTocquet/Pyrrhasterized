@@ -93,15 +93,6 @@ int main() {
     Spotlight* spotlight = new Spotlight(&context, glm::vec4(-7.1f, -1.1f, 2.6f, 1.f), glm::vec4(-7.1f, -1.1f, -2.6f, 1.f) - glm::vec4(-7.1f, -1.1f, 2.6f, 1.f), 10.f, 8.f, glm::vec4(1.f, .2f, .2f, 1.f));
     spotlight->setIntensity(3.0f);
     scene.addLight(spotlight);
-    Transform spotlightmodelTransfrom;
-    spotlightmodelTransfrom.translate = glm::vec3(-7.1f, -1.1f, 2.8f);
-    spotlightmodelTransfrom.rotate = glm::vec3(0.f, 180.f, 0.f);
-   
-    scene.addModel("assets/BadSpotLight/badspotlight.obj", spotlightmodelTransfrom);
-    
-    
-
-
 
     renderer.addScene(&scene);
 
