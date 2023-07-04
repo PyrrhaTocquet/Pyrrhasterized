@@ -5,8 +5,6 @@ desc: Manages model loading and drawing
 */
 
 #include "Model.h"
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_USE_CPP14
@@ -419,29 +417,6 @@ void Model::generateTangents() {
 	}
 }
 
-//Abstracts away boilerplate from objloader
-static void objLoaderLoad(const std::filesystem::path& path, tinyobj::ObjReader& reader)
-{
-	tinyobj::ObjReaderConfig reader_config;
-	reader_config.mtl_search_path = ""; // Path to material files
-
-	if (!reader.ParseFromFile(path.string(), reader_config)) {
-		if (!reader.Error().empty()) {
-			std::cerr << "TinyObjReader: " << reader.Error();
-		}
-		exit(1);
-	}
-
-	if (!reader.Warning().empty()) {
-		std::cout << "TinyObjReader: " << reader.Warning();
-	}
-}
-//Loads Obj files
-void Model::loadObj(const std::filesystem::path& path) 
-{
-	tinyobj::ObjReader reader;
-	objLoaderLoad(path, reader);
-
 	auto& attrib = reader.GetAttrib();
 	auto& shapes = reader.GetShapes();
 	auto& materials = reader.GetMaterials();
@@ -450,14 +425,6 @@ void Model::loadObj(const std::filesystem::path& path)
 	if (materialCount == 0) {
 		materialCount = 1;
 	}
-	m_meshes.resize(materialCount);
-
-	// Loop over shapes
-	for (size_t s = 0; s < shapes.size(); s++) {
-		// Loop over faces(polygon)
-		size_t index_offset = 0;
-		for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
-			size_t fv = size_t(shapes[s].mesh.num_face_vertices[f]);
 
 			// Loop over vertices in the face.
 			for (size_t v = 0; v < fv; v++) {
@@ -486,82 +453,3 @@ void Model::loadObj(const std::filesystem::path& path)
 						attrib.texcoords[2 * size_t(idx.texcoord_index) + 0],
 						1 - attrib.texcoords[2 * size_t(idx.texcoord_index) + 1],
 					};
-
-				}
-				
-				int materialIndex = 0;
-				if (materials.size() != 0 && shapes[s].mesh.material_ids[f] != -1)
-				{
-					materialIndex = shapes[s].mesh.material_ids[f];
-				}
-				m_meshes[materialIndex].loadingVertices.push_back(vertex);
-				m_meshes[materialIndex].loadingIndices.push_back(m_meshes[materialIndex].loadingIndices.size());
-			}
-			index_offset += fv;
-
-		}
-	}
-	/* //TODO Obj materials
-	std::vector<std::future<VulkanImage*>> textureLoadFutures;
-	textureLoadFutures.resize(m_meshes.size());
-	std::filesystem::path parentPath = path.parent_path();
-	//Creating Textures
-	VulkanImageParams imageParams
-	{
-		.numSamples = vk::SampleCountFlagBits::e1,
-		.format = vk::Format::eR8G8B8A8Srgb,
-		.tiling = vk::ImageTiling::eOptimal,
-		.usage = vk::ImageUsageFlagBits::eSampled,
-	};
-
-	VulkanImageViewParams imageViewParams{
-		.aspectFlags = vk::ImageAspectFlagBits::eColor,
-	};
-	for (int i = 0; i < m_meshes.size(); i++) {
-		if (materials[i].diffuse_texname != "")
-		{
-			//m_texturedMeshes[i].textureImage = new VulkanImage(m_context, imageParams, imageViewParams, parentPath.string() + "/" + materials[i].diffuse_texname);
-			textureLoadFutures[i] = std::async(std::launch::async, newVulkanImage, m_context, imageParams, imageViewParams, parentPath.string() + "/" + materials[i].diffuse_texname);
-		}
-	}
-
-	for (int i = 0; i < textureLoadFutures.size(); i++) {
-		if (textureLoadFutures[i].valid())
-		{
-			m_meshes[i].textureImage = textureLoadFutures[i].get();
-		}
-	}
-
-	//Creating NormalMaps
-	VulkanImageParams normalImageParams
-	{
-		.numSamples = vk::SampleCountFlagBits::e1,
-		.format = vk::Format::eR8G8B8A8Unorm,
-		.tiling = vk::ImageTiling::eOptimal,
-		.usage = vk::ImageUsageFlagBits::eSampled,
-	};
-
-	VulkanImageViewParams normalImageViewParams{
-		.aspectFlags = vk::ImageAspectFlagBits::eColor,
-	};
-	for (int i = 0; i < m_meshes.size(); i++) {
-		if (materials[i].diffuse_texname != "")
-		{
-			if (materials[i].displacement_texname != "")
-			{
-				//m_texturedMeshes[i].normalMapImage = new VulkanImage(m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + materials[i].displacement_texname);
-				textureLoadFutures[i] = std::async(std::launch::async, newVulkanImage, m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + materials[i].displacement_texname);
-			}
-
-		}
-	}
-
-	for (int i = 0; i < textureLoadFutures.size(); i++) {
-		if (textureLoadFutures[i].valid())
-		{
-			m_meshes[i].normalMapImage = textureLoadFutures[i].get();
-		}
-	}
-	*/
-	generateTangents();
-}
