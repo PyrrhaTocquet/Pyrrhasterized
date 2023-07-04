@@ -499,7 +499,6 @@ void MainRenderPass::createMaterialDescriptorSet(VulkanScene* scene)
                 materialUBOs.push_back(mesh.material->getUBO());
             }
             else {
-                materialUBOs.push_back(defaultMaterial);
                 mesh.materialId = 0;
             }
 
@@ -515,7 +514,7 @@ void MainRenderPass::createMaterialDescriptorSet(VulkanScene* scene)
 
         m_materialUniformBuffers[currentFrame].resize(materialUBOs.size());
         m_materialUniformBufferAllocations[currentFrame].resize(materialUBOs.size());
-
+        materialBufferInfos.resize(materialUBOs.size());
         for (size_t i = 0; i < materialUBOs.size(); i++) {
             std::tie(m_materialUniformBuffers[currentFrame][i], m_materialUniformBufferAllocations[currentFrame][i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu);
 
@@ -531,7 +530,7 @@ void MainRenderPass::createMaterialDescriptorSet(VulkanScene* scene)
                 .offset = 0,
                 .range = bufferSize
             };
-            materialBufferInfos.push_back(bufferInfo);
+            materialBufferInfos[i] = bufferInfo;
         }
 
         vk::WriteDescriptorSet descriptorWriteInfo{
