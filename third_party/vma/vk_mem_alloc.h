@@ -2853,13 +2853,14 @@ static void vma_aligned_free(void* VMA_NULLABLE ptr)
    #define VMA_SORT(beg, end, cmp)  std::sort(beg, end, cmp)
 #endif
 
-#ifndef NDEBUG
-   //#define VMA_DEBUG_LOG_FORMAT(format, ...)
+#ifdef VMA_VERBOSE_ALLOC_DEALLOC
+   
    #define VMA_DEBUG_LOG_FORMAT(format, ...) do { \
        printf((format), __VA_ARGS__); \
        printf("\n"); \
    } while(false)
-   
+#else
+    #define VMA_DEBUG_LOG_FORMAT(format, ...)
 #endif
 
 #ifndef VMA_DEBUG_LOG

@@ -1,6 +1,16 @@
 #include "VulkanRenderer.h"
 
 #pragma region CONSTRUCTORS_DESTRUCTORS
+static void initRenderPass(VulkanRenderPass* renderPass) {
+    renderPass->createPushConstantsRanges();
+    renderPass->createDescriptorSetLayout();
+    renderPass->createDescriptorPool();
+    renderPass->createPipelineRessources();
+
+    renderPass->createPipelineLayout();
+    renderPass->createDefaultPipeline();
+}
+
 VulkanRenderer::VulkanRenderer(VulkanContext* context)
 {
      //Retrieving important values and references from VulkanContext
@@ -15,17 +25,13 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     m_camera = new Camera(m_context);
     createRenderPasses();
 
-    for (auto& renderPass : m_renderPasses)
-    {
-        renderPass->createPushConstantsRanges();
-        renderPass->createDescriptorSetLayout();
-        renderPass->createDescriptorPool();
-        renderPass->createPipelineRessources();
-
-        renderPass->createPipelineLayout();
-        renderPass->createDefaultPipeline();
+    { 
+    std::vector<std::jthread> renderPassCreationThreads(m_renderPasses.size());
+        for (size_t i = 0; i < m_renderPasses.size(); i++)
+        {
+            renderPassCreationThreads[i] = std::jthread(initRenderPass, m_renderPasses[i]);
+        }
     }
-
     //Rendering pipeline creation
     createFramebuffers();
    
