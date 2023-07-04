@@ -358,10 +358,11 @@ void Model::loadGltf(const std::filesystem::path& path)
 
 		}
 	}
-
+	std::vector<std::jthread> materialsFromGltfThread;
+	materialsFromGltfThread.resize(materialCount);
 	for (uint32_t materialIndex = 0; materialIndex < materialCount; materialIndex++)
 	{
-		createMaterialFromGltf(m_context, m_meshes[materialIndex], gltfModel.materials[materialIndex], gltfModel, path);
+		materialsFromGltfThread[materialIndex] = std::jthread(createMaterialFromGltf, m_context, std::ref(m_meshes[materialIndex]), std::ref(gltfModel.materials[materialIndex]), std::ref(gltfModel), std::ref(path));
 	}
 
 	generateTangents();
