@@ -34,10 +34,6 @@ class MainRenderPass : public VulkanRenderPass {
 	vk::DescriptorSetLayout m_materialDescriptorSetLayout;
 	std::vector<vk::DescriptorSet> m_materialDescriptorSet;
 
-	Material* material = nullptr;
-	float metallicFactorGui = 0.f;
-	float roughnessFactorGui = 1.0f;
-
 	Camera* m_camera;
 
 	//acquired at construction
@@ -45,9 +41,6 @@ class MainRenderPass : public VulkanRenderPass {
 
 	//IMGUI
 	bool m_hideImGui = false;
-
-	const std::string c_defaultTexturePath = "assets/defaultTextureWhite.png";
-	const std::string c_defaultNormalMapPath = "assets/defaultNormalMap.png";
 public:
 	MainRenderPass(VulkanContext* context, Camera* camera, ShadowCascadeRenderPass* shadowRenderPass);
 	virtual ~MainRenderPass()override;

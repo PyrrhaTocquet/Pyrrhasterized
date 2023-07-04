@@ -58,5 +58,6 @@ public:
 	void transitionImageLayout(VulkanContext* context, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels);
 	void generateMipmaps(VulkanContext* context, vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 	[[nodiscard]]bool hasLoadingFailed();
+	void setVMADebugName(std::string name);
 };
 

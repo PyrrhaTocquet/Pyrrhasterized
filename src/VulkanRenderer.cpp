@@ -52,7 +52,6 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
 
 VulkanRenderer::~VulkanRenderer()
 {
-    delete m_camera;
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         
@@ -64,12 +63,13 @@ VulkanRenderer::~VulkanRenderer()
 
     Material::cleanSamplers(m_context);
     m_device.freeCommandBuffers(m_context->getCommandPool(), m_commandBuffers);
-
+    delete m_camera;
     
     for (auto& renderPass : m_renderPasses)
     {
         delete renderPass;
     }
+
 }
 #pragma endregion
 
