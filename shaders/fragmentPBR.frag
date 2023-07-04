@@ -93,7 +93,7 @@ const vec3 black = vec3(0, 0, 0);
 const vec3 dielectricF0 = vec3(0.04);
 
 float specularPower = 30;
-float ambientIntensity = .4;
+float ambientIntensity = .45;
 float specularAttenuation = 0.8;
 
 const mat4 biasMat = mat4( 

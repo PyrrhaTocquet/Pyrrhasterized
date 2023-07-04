@@ -68,10 +68,11 @@ int main() {
     scene.addEntity(peachEntity);
     renderer.registerEntity(peachEntity);
 
-    helmetTransform.translate.y += 10;
-    helmetTransform.translate.x += 10;
-    helmetTransform.scale *= 0.2;
-    scene.addModel("assets/SphereMaterials/spherematerials.glb", helmetTransform);
+    Transform sphereMaterialsTransform;
+    sphereMaterialsTransform.translate.y = 10;
+    sphereMaterialsTransform.translate.x = 10;
+    sphereMaterialsTransform.scale *= 0.1;
+    scene.addModel("assets/SphereMaterials/spherematerials.glb", sphereMaterialsTransform);
     
     /*
     Transform transform;
