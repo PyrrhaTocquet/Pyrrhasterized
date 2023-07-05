@@ -7,6 +7,7 @@ VulkanScene::VulkanScene(VulkanContext* context, DirectionalLight* sun) {
 	m_allocator = context->getAllocator();
 	m_context = context;
 	m_sun = sun;
+	m_sun->setShadowCaster();
 	addLight(sun);
 }
 
@@ -18,6 +19,7 @@ VulkanScene::~VulkanScene()
 	for (const auto& model : m_models) {
 		delete model;
 	}
+	//No need to delete lights, they are deleted as entities
 
 }
 
@@ -72,7 +74,7 @@ void VulkanScene::addEntity(Entity* entity) {
 }
 
 //Creates the index and vertex buffer
-void VulkanScene::createBuffers()
+void VulkanScene::createGeometryBuffers()
 {
 	createVertexBuffer();
 	createIndexBuffer();
@@ -104,6 +106,14 @@ void VulkanScene::addLight(Light* light)
 std::vector<Light*> VulkanScene::getLights()
 {
 	return m_lights;
+}
+
+void VulkanScene::updateLights()
+{
+	for (auto& light : m_lights)
+	{
+		light->update();
+	}
 }
 
 DirectionalLight* VulkanScene::getSun()

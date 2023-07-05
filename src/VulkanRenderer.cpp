@@ -1,6 +1,16 @@
 #include "VulkanRenderer.h"
 
 #pragma region CONSTRUCTORS_DESTRUCTORS
+static void initRenderPass(VulkanRenderPass* renderPass) {
+    renderPass->createPushConstantsRanges();
+    renderPass->createDescriptorSetLayout();
+    renderPass->createDescriptorPool();
+    renderPass->createPipelineRessources();
+
+    renderPass->createPipelineLayout();
+    renderPass->createDefaultPipeline();
+}
+
 VulkanRenderer::VulkanRenderer(VulkanContext* context)
 {
      //Retrieving important values and references from VulkanContext
@@ -9,22 +19,19 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     m_allocator = context->getAllocator();
     m_msaaSampleCount = context->getMaxUsableSampleCount();
     
+    Material::createSamplers(m_context);
 
     //CAMERA
     m_camera = new Camera(m_context);
     createRenderPasses();
 
-    for (auto& renderPass : m_renderPasses)
-    {
-        renderPass->createPushConstantsRanges();
-        renderPass->createDescriptorSetLayout();
-        renderPass->createDescriptorPool();
-        renderPass->createPipelineRessources();
-
-        renderPass->createPipelineLayout();
-        renderPass->createDefaultPipeline();
+    { 
+    std::vector<std::jthread> renderPassCreationThreads(m_renderPasses.size());
+        for (size_t i = 0; i < m_renderPasses.size(); i++)
+        {
+            renderPassCreationThreads[i] = std::jthread(initRenderPass, m_renderPasses[i]);
+        }
     }
-
     //Rendering pipeline creation
     createFramebuffers();
    
@@ -45,15 +52,12 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
 
     //clear font textures from cpu data
     ImGui_ImplVulkan_DestroyFontUploadObjects();
-
- 
+    
     registerEntity(m_camera);
-
 }
 
 VulkanRenderer::~VulkanRenderer()
 {
-    delete m_camera;
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         
@@ -63,14 +67,15 @@ VulkanRenderer::~VulkanRenderer()
         m_device.destroyFence(m_inFlightFences[i]);
     }
 
-
+    Material::cleanSamplers(m_context);
     m_device.freeCommandBuffers(m_context->getCommandPool(), m_commandBuffers);
-
+    delete m_camera;
     
     for (auto& renderPass : m_renderPasses)
     {
         delete renderPass;
     }
+
 }
 #pragma endregion
 
@@ -284,7 +289,7 @@ bool VulkanRenderer::present(vk::Semaphore *signalSemaphores, uint32_t imageInde
 void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
     //TODO MAKE SURE THERE IS A UNIQUE SCENE !!!!!
     vulkanScene->loadModels();
-    vulkanScene->createBuffers();
+    vulkanScene->createGeometryBuffers();
     for (auto& renderPass : m_renderPasses)
     {
         renderPass->createDescriptorSets(vulkanScene);
@@ -335,6 +340,9 @@ void VulkanRenderer::manageInput() {
 void VulkanRenderer::updateEntities() {
     for (auto& entity : m_entities) {
         entity->update();
+    }
+    for (auto& scene : m_scenes) {
+        scene->updateLights();
     }
 }
 

@@ -11,11 +11,18 @@ const bool ENABLE_MSAA = false;
 const uint32_t SHADOW_CASCADE_COUNT = 4;
 const uint32_t MAX_LIGHT_COUNT = 10;
 const uint32_t MAX_TEXTURE_COUNT = 4096;
+const uint32_t MAX_MATERIAL_COUNT = 4096;
 
 /* ENUMS */
 enum RenderPassesId {
 	ShadowMappingPassId = 0,
 	MainRenderPassId,
+};
+
+enum AlphaMode {
+	OpaqueAlphaMode,
+	MaskAlphaMode,
+	TransparentAlphaMode
 };
 
 /* STRUCTS */
@@ -31,10 +38,9 @@ struct GeneralUniformBufferObject {
 
 struct ModelPushConstant {
 	glm::mat4 model;
-	glm::int32 textureId;
-	glm::int32 normalMapId;
+	glm::int32 materialId;
 	glm::uint32 cascadeId;
-	float padding[13];
+	float padding[9];
 };
 
 struct Time {

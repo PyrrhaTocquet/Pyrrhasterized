@@ -39,10 +39,11 @@ public:
 	void addModel(Model* model);
 	void loadModels();
 	void addEntity(Entity* entity);
-	void createBuffers();
+	void createGeometryBuffers();
 	[[nodiscard]]const uint32_t getIndexBufferSize();
 	void addLight(Light* light);
 	[[nodiscard]]std::vector<Light*> getLights();
+	void updateLights();
 	[[nodiscard]] DirectionalLight* getSun();
 	void draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant) override;
 private:

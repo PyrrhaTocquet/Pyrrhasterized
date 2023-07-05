@@ -75,7 +75,6 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 {
 	m_allocator = context->getAllocator();
 	m_device = context->getDevice();
-	m_commandPool = context->createCommandPool();
 	//Texture file read
 	int texWidth, texHeight, texChannels;
 	stbi_uc* pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha); //Forces the image to be loaded with an alpha channel for consistency
@@ -84,7 +83,7 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 		m_loadingFailed = true;
 		return;
 	}
-
+	m_commandPool = context->createCommandPool();
 	//Highest number possible of miplevels
 	uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 
@@ -120,15 +119,18 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 
 	//Image View
 	constructVkImageView(context, imageParams, imageViewParams);
+	m_allocator.setAllocationName(m_allocation, path.c_str());
 }
 
 
 VulkanImage::~VulkanImage()
 {
-	m_device.destroyCommandPool(m_commandPool);
-	m_allocator.destroyImage(m_image, m_allocation);
-	m_device.destroyImageView(m_imageView);
-
+	if (!m_loadingFailed)
+	{
+		m_device.destroyCommandPool(m_commandPool);
+		m_allocator.destroyImage(m_image, m_allocation);
+		m_device.destroyImageView(m_imageView);
+	}
 }
 
 
@@ -220,6 +222,10 @@ bool VulkanImage::hasLoadingFailed()
 	return m_loadingFailed;
 }
 
+void VulkanImage::setVMADebugName(std::string name)
+{
+	m_allocator.setAllocationName(m_allocation, name.c_str());
+}
 
 //Transition the image from the oldLayout to a newLayout
 void VulkanImage::transitionImageLayout(VulkanContext* context, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) 

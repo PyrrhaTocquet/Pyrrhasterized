@@ -5,10 +5,9 @@ desc: Manages model loading and drawing
 */
 
 #include "Model.h"
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #define TINYGLTF_IMPLEMENTATION
+#define TINYGLTF_USE_CPP14
 #include "tiny_gltf.h"
 #include <future>
 #include <thread>
@@ -22,11 +21,168 @@ Model::Model(VulkanContext* context, const std::filesystem::path& path, const Tr
 }
 
 Model::~Model() {
-	for (auto& textureMesh : m_texturedMeshes)
+	for (auto& textureMesh : m_meshes)
 	{
-		delete textureMesh.textureImage;
-		delete textureMesh.normalMapImage;
+		delete textureMesh.material;
 	}
+}
+
+
+//Proxy function used for multithreading
+static VulkanImage* newVulkanImage(VulkanContext* context, VulkanImageParams imageParams, VulkanImageViewParams imageViewParams, std::string path)
+{
+	return new VulkanImage(context, imageParams, imageViewParams, path);
+}
+
+static void createAlbedoTextureFromGltfMaterial(VulkanContext* context, Mesh& texturedMesh, const tinygltf::Material& materialInfo, const tinygltf::Model& gltfModel, const std::filesystem::path& path)
+{
+	int gltfTextureId = materialInfo.pbrMetallicRoughness.baseColorTexture.index;
+	if (gltfTextureId == -1)
+		return;
+
+	std::string texturePath = gltfModel.images[gltfModel.textures[gltfTextureId].source].uri;
+	if (texturePath == "")texturePath = gltfModel.images[gltfModel.textures[gltfTextureId].source].name + ".png";
+	if (texturePath == "")
+		return;
+
+	if (texturePath != "")
+	{
+		VulkanImageParams imageParams
+		{
+			.numSamples = vk::SampleCountFlagBits::e1,
+			.format = vk::Format::eR8G8B8A8Srgb,
+			.tiling = vk::ImageTiling::eOptimal,
+			.usage = vk::ImageUsageFlagBits::eSampled,
+		};
+		VulkanImageViewParams imageViewParams{
+			.aspectFlags = vk::ImageAspectFlagBits::eColor,
+		};
+
+		VulkanImage* image = newVulkanImage(context, imageParams, imageViewParams, path.string() + "/" + texturePath);
+		if (image->hasLoadingFailed())
+		{
+			delete image;
+			return;
+		}
+		texturedMesh.material->setAlbedoTexture(image);
+	}
+
+}
+
+static void createNormalTextureFromGltfMaterial(VulkanContext* context, Mesh& texturedMesh, const tinygltf::Material& materialInfo, const tinygltf::Model& gltfModel, const std::filesystem::path& path)
+{
+	int gltfTextureId = materialInfo.normalTexture.index;
+	if (gltfTextureId == -1)
+		return;
+
+	std::string texturePath = gltfModel.images[gltfModel.textures[gltfTextureId].source].uri;
+	if (texturePath == "")texturePath = gltfModel.images[gltfModel.textures[gltfTextureId].source].name + ".png";
+	if (texturePath == "")
+		return;
+
+	if (texturePath != "")
+	{
+		VulkanImageParams imageParams
+		{
+			.numSamples = vk::SampleCountFlagBits::e1,
+			.format = vk::Format::eR8G8B8A8Unorm,
+			.tiling = vk::ImageTiling::eOptimal,
+			.usage = vk::ImageUsageFlagBits::eSampled,
+		};
+		VulkanImageViewParams imageViewParams{
+			.aspectFlags = vk::ImageAspectFlagBits::eColor,
+		};
+		
+		texturedMesh.material->setNormalTexture(newVulkanImage(context, imageParams, imageViewParams, path.string() + "/" + texturePath));
+	}
+}
+
+static void createMetallicRoughnessTexture(VulkanContext* context, Mesh& texturedMesh, const tinygltf::Material& materialInfo, const tinygltf::Model& gltfModel, const std::filesystem::path& path)
+{
+	int gltfTextureId = materialInfo.pbrMetallicRoughness.metallicRoughnessTexture.index;
+	if (gltfTextureId == -1)
+		return;
+
+	std::string texturePath = gltfModel.images[gltfModel.textures[gltfTextureId].source].uri;
+	if (texturePath == "")texturePath = gltfModel.images[gltfModel.textures[gltfTextureId].source].name + ".png";
+	if (texturePath == "")
+		return;
+
+	if (texturePath != "")
+	{
+		VulkanImageParams imageParams
+		{
+			.numSamples = vk::SampleCountFlagBits::e1,
+			.format = vk::Format::eR8G8B8A8Unorm,
+			.tiling = vk::ImageTiling::eOptimal,
+			.usage = vk::ImageUsageFlagBits::eSampled,
+		};
+		VulkanImageViewParams imageViewParams{
+			.aspectFlags = vk::ImageAspectFlagBits::eColor,
+		};
+		texturedMesh.material->setMetallicRoughnessTexture(newVulkanImage(context, imageParams, imageViewParams, path.string() + "/" + texturePath));
+	}
+
+}
+
+static void createEmissiveTexture(VulkanContext* context, Mesh& texturedMesh, const tinygltf::Material& materialInfo, const tinygltf::Model& gltfModel, const std::filesystem::path& path)
+{
+	int gltfTextureId = materialInfo.emissiveTexture.index;
+	if (gltfTextureId == -1)
+		return;
+
+	std::string texturePath = gltfModel.images[gltfModel.textures[gltfTextureId].source].uri;
+	if (texturePath == "")texturePath = gltfModel.images[gltfModel.textures[gltfTextureId].source].name + ".png";
+	if (texturePath == "")
+		return;
+
+	if (texturePath != "")
+	{
+		VulkanImageParams imageParams
+		{
+			.numSamples = vk::SampleCountFlagBits::e1,
+			.format = vk::Format::eR8G8B8A8Srgb,
+			.tiling = vk::ImageTiling::eOptimal,
+			.usage = vk::ImageUsageFlagBits::eSampled,
+		};
+		VulkanImageViewParams imageViewParams{
+			.aspectFlags = vk::ImageAspectFlagBits::eColor,
+		};
+		texturedMesh.material->setEmissiveTexture(newVulkanImage(context, imageParams, imageViewParams, path.string() + "/" + texturePath));
+	}
+
+}
+
+//Helper function to load gltf material data into a TexturedMesh material data, if a material already exists, it will not be replaced
+static void createMaterialFromGltf(VulkanContext* context, Mesh& texturedMesh, const tinygltf::Material& materialInfo, const tinygltf::Model& gltfModel, const std::filesystem::path& path){
+	if(texturedMesh.material == nullptr)
+	{
+		std::filesystem::path parentPath = path.parent_path();
+		std::vector<std::future<VulkanImage*>> textureLoadFutures;
+
+		glm::vec4 baseColor = glm::vec4(materialInfo.pbrMetallicRoughness.baseColorFactor[0], materialInfo.pbrMetallicRoughness.baseColorFactor[1], materialInfo.pbrMetallicRoughness.baseColorFactor[2], materialInfo.pbrMetallicRoughness.baseColorFactor[3]);
+		glm::vec4 emissiveFactor = glm::vec4(materialInfo.emissiveFactor[0], materialInfo.emissiveFactor[1], materialInfo.emissiveFactor[2], 1.f);
+		texturedMesh.material = (new Material(context))
+			->setBaseColor(baseColor)
+			->setMetallicFactor(materialInfo.pbrMetallicRoughness.metallicFactor)
+			->setEmissiveFactor(emissiveFactor)
+			->setRoughnessFactor(materialInfo.pbrMetallicRoughness.roughnessFactor);
+
+		texturedMesh.material->setAlphaCutoff(materialInfo.alphaCutoff);
+		if (materialInfo.alphaMode == "MASK")
+		{
+			texturedMesh.material->setAlphaMode(MaskAlphaMode);
+		}
+		else if (materialInfo.alphaMode == "BLEND") {
+			texturedMesh.material->setAlphaMode(TransparentAlphaMode);
+		}
+
+		createAlbedoTextureFromGltfMaterial(context, texturedMesh, materialInfo, gltfModel, parentPath);
+		createNormalTextureFromGltfMaterial(context, texturedMesh, materialInfo, gltfModel, parentPath);
+		createMetallicRoughnessTexture(context, texturedMesh, materialInfo, gltfModel, parentPath);
+		createEmissiveTexture(context, texturedMesh, materialInfo, gltfModel, parentPath);
+	}
+
 }
 
 //returns the model matrix (world space) of the model computed from transform data
@@ -39,11 +195,10 @@ glm::mat4 Model::getMatrix()
 void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, uint32_t &indexOffset, ModelPushConstant& pushConstant)
 {
 
-	for (auto& mesh : m_texturedMeshes)
+	for (auto& mesh : m_meshes)
 	{
 		pushConstant.model = m_transform.computeMatrix();
-		pushConstant.textureId = static_cast<glm::int32>(mesh.textureId);
-		pushConstant.normalMapId = static_cast<glm::int32>(mesh.normalMapId);
+		pushConstant.materialId = static_cast<glm::int32>(mesh.materialId);
 
 		commandBuffer.pushConstants<ModelPushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		commandBuffer.drawIndexed(mesh.indicesCount, 1, indexOffset, 0, 0);
@@ -52,9 +207,9 @@ void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipeli
 }
 
 //returns textured meshes dividing the model
-std::vector<TexturedMesh>& Model::getMeshes()
+std::vector<Mesh>& Model::getMeshes()
 {
-	return m_texturedMeshes;
+	return m_meshes;
 }
 
 //Translates the model by the inputed vector (do before computing model matrix)
@@ -81,7 +236,7 @@ void Model::scaleBy(glm::vec3 scale)
 //Releases vertices memory
 void Model::clearLoadingVertexData()
 {
-	for (auto& mesh : m_texturedMeshes)
+	for (auto& mesh : m_meshes)
 	{
 		mesh.verticesCount = mesh.loadingVertices.size();
 		std::vector<Vertex>().swap(mesh.loadingVertices);
@@ -92,18 +247,13 @@ void Model::clearLoadingVertexData()
 //Releases indices memory
 void Model::clearLoadingIndexData()
 {
-	for (auto& mesh : m_texturedMeshes)
+	for (auto& mesh : m_meshes)
 	{
 		mesh.indicesCount = mesh.loadingIndices.size();
 		std::vector<uint32_t>().swap(mesh.loadingIndices);
 	}
 }
 
-//Proxy function used for multithreading
-static VulkanImage* newVulkanImage(VulkanContext* context, VulkanImageParams imageParams, VulkanImageViewParams imageViewParams, std::string path)
-{
-	return new VulkanImage(context, imageParams, imageViewParams, path);
-}
 
 
 //Picks the right tinygltf function depending on the file format and manages errors
@@ -143,11 +293,12 @@ void Model::loadGltf(const std::filesystem::path& path)
 	loadGltfData(path, gltfModel);
 	
 	size_t materialCount = gltfModel.materials.size();
-	m_texturedMeshes.resize(materialCount);
+	m_meshes.resize(materialCount);
+
 	if (materialCount <= 0)
 	{
-		TexturedMesh texturedMesh;
-		m_texturedMeshes.push_back(texturedMesh);
+		Mesh texturedMesh;
+		m_meshes.push_back(texturedMesh);
 	}
 	for (const auto& mesh : gltfModel.meshes) {
 		for (const auto& attribute : mesh.primitives) {
@@ -198,113 +349,36 @@ void Model::loadGltf(const std::filesystem::path& path)
 				{
 					materialIndex = 0;
 				}
-				m_texturedMeshes[materialIndex].loadingVertices.push_back(vertex);
-				m_texturedMeshes[materialIndex].loadingIndices.push_back(m_texturedMeshes[materialIndex].loadingIndices.size());
-			
+				m_meshes[materialIndex].loadingVertices.push_back(vertex);
+				m_meshes[materialIndex].loadingIndices.push_back(m_meshes[materialIndex].loadingIndices.size());
+
 			}
 
 		}
 	}
-	//TODO Refactor
-	//Creating Textures
-	std::filesystem::path parentPath = path.parent_path();
-	VulkanImageParams imageParams
+	std::vector<std::jthread> materialsFromGltfThread;
+	materialsFromGltfThread.resize(materialCount + 1);
+	for (uint32_t materialIndex = 0; materialIndex < materialCount; materialIndex++)
 	{
-		.numSamples = vk::SampleCountFlagBits::e1,
-		.format = vk::Format::eR8G8B8A8Srgb,
-		.tiling = vk::ImageTiling::eOptimal,
-		.usage = vk::ImageUsageFlagBits::eSampled,
-	};
-	VulkanImageViewParams imageViewParams{
-		.aspectFlags = vk::ImageAspectFlagBits::eColor,
-	};
-	
-
-	std::vector<std::future<VulkanImage*>> textureLoadFutures;
-
-	textureLoadFutures.resize(m_texturedMeshes.size());
-	for (int i = 0; i < m_texturedMeshes.size(); i++) {
-		int textureId = -1;
-		if (gltfModel.materials.size() > 0)
-		{
-			textureId = gltfModel.materials[i].pbrMetallicRoughness.baseColorTexture.index;
-		}
-		if (textureId != -1)
-		{
-			std::string texturePath = gltfModel.images[gltfModel.textures[textureId].source].uri;
-			if (texturePath == "")texturePath = gltfModel.images[gltfModel.textures[textureId].source].name + ".png";
-			if (texturePath != "")
-			{
-				textureLoadFutures[i] = std::async(std::launch::async, newVulkanImage, m_context, imageParams, imageViewParams, parentPath.string() + "/" + texturePath);
-			}
-
-		}
+		materialsFromGltfThread[materialIndex] = std::jthread(createMaterialFromGltf, m_context, std::ref(m_meshes[materialIndex]), std::ref(gltfModel.materials[materialIndex]), std::ref(gltfModel), std::ref(path));
 	}
 
-	for (int i = 0; i < textureLoadFutures.size(); i++) {
-		if (textureLoadFutures[i].valid())
-		{
-			m_texturedMeshes[i].textureImage = textureLoadFutures[i].get();
-		}
-	}
-
-
-	//Creating NormalMaps
-	VulkanImageParams normalImageParams
-	{
-		.numSamples = vk::SampleCountFlagBits::e1,
-		.format = vk::Format::eR8G8B8A8Unorm,
-		.tiling = vk::ImageTiling::eOptimal,
-		.usage = vk::ImageUsageFlagBits::eSampled,
-	};
-
-	VulkanImageViewParams normalImageViewParams{
-		.aspectFlags = vk::ImageAspectFlagBits::eColor,
-	};
-	for (int i = 0; i < m_texturedMeshes.size(); i++) {
-		int textureId = -1;
-		if (gltfModel.materials.size() > 0) {
-			textureId = gltfModel.materials[i].normalTexture.index;
-		}
-
-		if (textureId != -1)
-		{
-			std::string texturePath = gltfModel.images[gltfModel.textures[textureId].source].uri;
-			if(texturePath == "")texturePath = gltfModel.images[gltfModel.textures[textureId].source].name + ".png";
-			if (texturePath != "")
-			{
-				//m_texturedMeshes[i].normalMapImage = new VulkanImage(m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + texturePath);
-				textureLoadFutures[i] = std::async(std::launch::async, newVulkanImage, m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + texturePath);
-			}
-		}
-	}
-	for (int i = 0; i < textureLoadFutures.size(); i++) {
-		if (textureLoadFutures[i].valid())
-		{
-			m_texturedMeshes[i].normalMapImage = textureLoadFutures[i].get();
-		}
-	}
-
-	generateTangents();
+	materialsFromGltfThread[materialCount] = std::jthread(&Model::generateTangents, this);
 };
 
 //Calls the appropriate loading function depending on the file extension
 void Model::loadModel(const std::filesystem::path& path) {
 	std::filesystem::path extension = path.extension();
-	if (extension == ".obj")
-	{
-		loadObj(path);
-	}
-	else if (extension == ".gltf" || extension == ".glb") {
+	if (extension == ".gltf" || extension == ".glb") {
 		loadGltf(path);
 	}
 	else {
-		std::runtime_error("Only .obj, .gltf and .glb files are supported for 3D model loading");
+		std::runtime_error("Only .gltf and .glb files are supported for 3D model loading");
 	}
 }
 
 //Used in a new thread by generateTangents to compute tangent data
-static void generateTangentData(TexturedMesh* texturedMesh) {
+static void generateTangentData(Mesh* texturedMesh) {
 	for (uint32_t i = 0; i < texturedMesh->loadingIndices.size(); i += 3)
 	{
 		uint32_t i0 = texturedMesh->loadingIndices[i + 0];
@@ -332,155 +406,10 @@ static void generateTangentData(TexturedMesh* texturedMesh) {
 //Generates the tangent data in the Vertex struct
 void Model::generateTangents() {
 	std::vector<std::jthread> generateTangentDataThreads;
-	generateTangentDataThreads.resize(m_texturedMeshes.size());
-	for (uint32_t i = 0; i < m_texturedMeshes.size(); i++)
+	generateTangentDataThreads.resize(m_meshes.size());
+	for (uint32_t i = 0; i < m_meshes.size(); i++)
 	{
-		generateTangentDataThreads[i] = std::jthread(generateTangentData, &m_texturedMeshes[i]);
+		generateTangentDataThreads[i] = std::jthread(generateTangentData, &m_meshes[i]);
 	}
 }
 
-//Abstracts away boilerplate from objloader
-static void objLoaderLoad(const std::filesystem::path& path, tinyobj::ObjReader& reader)
-{
-	tinyobj::ObjReaderConfig reader_config;
-	reader_config.mtl_search_path = ""; // Path to material files
-
-	if (!reader.ParseFromFile(path.string(), reader_config)) {
-		if (!reader.Error().empty()) {
-			std::cerr << "TinyObjReader: " << reader.Error();
-		}
-		exit(1);
-	}
-
-	if (!reader.Warning().empty()) {
-		std::cout << "TinyObjReader: " << reader.Warning();
-	}
-}
-//Loads Obj files
-void Model::loadObj(const std::filesystem::path& path) 
-{
-	tinyobj::ObjReader reader;
-	objLoaderLoad(path, reader);
-
-	auto& attrib = reader.GetAttrib();
-	auto& shapes = reader.GetShapes();
-	auto& materials = reader.GetMaterials();
-
-	uint32_t materialCount = materials.size();
-	if (materialCount == 0) {
-		materialCount = 1;
-	}
-	m_texturedMeshes.resize(materialCount);
-
-	// Loop over shapes
-	for (size_t s = 0; s < shapes.size(); s++) {
-		// Loop over faces(polygon)
-		size_t index_offset = 0;
-		for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
-			size_t fv = size_t(shapes[s].mesh.num_face_vertices[f]);
-
-			// Loop over vertices in the face.
-			for (size_t v = 0; v < fv; v++) {
-				Vertex vertex;
-				// access to vertex
-				tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
-
-				vertex.pos = {
-					attrib.vertices[3 * size_t(idx.vertex_index) + 0],
-					attrib.vertices[3 * size_t(idx.vertex_index) + 1],
-					attrib.vertices[3 * size_t(idx.vertex_index) + 2],
-				};
-
-				// Check if `normal_index` is zero or positive. negative = no normal data
-				if (idx.normal_index >= 0) {
-					vertex.normal = {
-						attrib.normals[3 * size_t(idx.normal_index) + 0],
-						attrib.normals[3 * size_t(idx.normal_index) + 1],
-						attrib.normals[3 * size_t(idx.normal_index) + 2],
-					};
-				}
-				// Check if `texcoord_index` is zero or positive. negative = no texcoord data
-				if (idx.texcoord_index >= 0) {
-					vertex.texCoord =
-					{
-						attrib.texcoords[2 * size_t(idx.texcoord_index) + 0],
-						1 - attrib.texcoords[2 * size_t(idx.texcoord_index) + 1],
-					};
-
-				}
-				
-				int materialIndex = 0;
-				if (materials.size() != 0 && shapes[s].mesh.material_ids[f] != -1)
-				{
-					materialIndex = shapes[s].mesh.material_ids[f];
-				}
-				m_texturedMeshes[materialIndex].loadingVertices.push_back(vertex);
-				m_texturedMeshes[materialIndex].loadingIndices.push_back(m_texturedMeshes[materialIndex].loadingIndices.size());
-			}
-			index_offset += fv;
-
-		}
-	}
-
-	std::vector<std::future<VulkanImage*>> textureLoadFutures;
-	textureLoadFutures.resize(m_texturedMeshes.size());
-	std::filesystem::path parentPath = path.parent_path();
-	//Creating Textures
-	VulkanImageParams imageParams
-	{
-		.numSamples = vk::SampleCountFlagBits::e1,
-		.format = vk::Format::eR8G8B8A8Srgb,
-		.tiling = vk::ImageTiling::eOptimal,
-		.usage = vk::ImageUsageFlagBits::eSampled,
-	};
-
-	VulkanImageViewParams imageViewParams{
-		.aspectFlags = vk::ImageAspectFlagBits::eColor,
-	};
-	for (int i = 0; i < m_texturedMeshes.size(); i++) {
-		if (materials[i].diffuse_texname != "")
-		{
-			//m_texturedMeshes[i].textureImage = new VulkanImage(m_context, imageParams, imageViewParams, parentPath.string() + "/" + materials[i].diffuse_texname);
-			textureLoadFutures[i] = std::async(std::launch::async, newVulkanImage, m_context, imageParams, imageViewParams, parentPath.string() + "/" + materials[i].diffuse_texname);
-		}
-	}
-
-	for (int i = 0; i < textureLoadFutures.size(); i++) {
-		if (textureLoadFutures[i].valid())
-		{
-			m_texturedMeshes[i].textureImage = textureLoadFutures[i].get();
-		}
-	}
-
-	//Creating NormalMaps
-	VulkanImageParams normalImageParams
-	{
-		.numSamples = vk::SampleCountFlagBits::e1,
-		.format = vk::Format::eR8G8B8A8Unorm,
-		.tiling = vk::ImageTiling::eOptimal,
-		.usage = vk::ImageUsageFlagBits::eSampled,
-	};
-
-	VulkanImageViewParams normalImageViewParams{
-		.aspectFlags = vk::ImageAspectFlagBits::eColor,
-	};
-	for (int i = 0; i < m_texturedMeshes.size(); i++) {
-		if (materials[i].diffuse_texname != "")
-		{
-			if (materials[i].displacement_texname != "")
-			{
-				//m_texturedMeshes[i].normalMapImage = new VulkanImage(m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + materials[i].displacement_texname);
-				textureLoadFutures[i] = std::async(std::launch::async, newVulkanImage, m_context, normalImageParams, normalImageViewParams, parentPath.string() + "/" + materials[i].displacement_texname);
-			}
-
-		}
-	}
-
-	for (int i = 0; i < textureLoadFutures.size(); i++) {
-		if (textureLoadFutures[i].valid())
-		{
-			m_texturedMeshes[i].normalMapImage = textureLoadFutures[i].get();
-		}
-	}
-	generateTangents();
-}

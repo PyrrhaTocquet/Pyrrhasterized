@@ -29,8 +29,8 @@ int main() {
     VulkanContext context;
     VulkanRenderer renderer(&context);
 
-    DirectionalLight sun(&context, -glm::vec4(1.f, 50.f, 10.f, 0.f), glm::vec4(1.f, 1.f, .95f, 1.f));
-    sun.setIntensity(1.7f);
+    DirectionalLight sun(&context, -glm::vec4(5.f, 50.f, 0.f, 0.f), glm::vec4(1.f, 1.f, .95f, 1.f));
+    sun.setIntensity(5.0f);
     VulkanScene scene(&context, &sun);
     
     /* Ganon */
@@ -38,13 +38,13 @@ int main() {
     ganonTransform.translate = glm::vec3(-0.f, 0.f, -.5f);
     ganonTransform.rotate = glm::vec3(0.f, 90.f, 0.f);
 
-    /* Pikachu */
-    Transform pikachuTransform;
-    pikachuTransform.rotate = glm::vec3(0.f, 90.f, 0.f);
+    /* Helmet */
+    Transform helmetTransform;
+    helmetTransform.translate = glm::vec3(0.f, 1.12f, -0.5f);
+    helmetTransform.rotate = glm::vec3(90.f, 0.f, -90.f);
+    helmetTransform.scale = glm::vec3(0.15f, 0.15f, 0.15f);
 
-    /* Mario */
-    
-
+  
     /* Sponza */
     Transform sponzaTransform;
     sponzaTransform.translate = glm::vec3(0.f, -2.f, 0.0f);
@@ -63,16 +63,16 @@ int main() {
     scene.addModel("assets/TreasureChest/model.gltf", chestTransform);
     scene.addModel("assets/SponzaGltf/sponza.glb", sponzaTransform);
     scene.addModel("assets/Ganon/ganon.gltf", ganonTransform);
-    scene.addModel("assets/PikachuObj/model.obj", pikachuTransform);
+    scene.addModel("assets/Helmet/DamagedHelmet.gltf", helmetTransform);
     Peach* peachEntity = new Peach(&context);
     scene.addEntity(peachEntity);
     renderer.registerEntity(peachEntity);
-    scene.addModel("assets/Link/model.obj", linkTransform);
 
-    pikachuTransform.translate.y += 10;
-    pikachuTransform.translate.x += 10;
-    pikachuTransform.scale *= 0.2;
-    scene.addModel("assets/Sphere/sphere.obj", pikachuTransform);
+    Transform sphereMaterialsTransform;
+    sphereMaterialsTransform.translate.y = 10;
+    sphereMaterialsTransform.translate.x = 10;
+    sphereMaterialsTransform.scale *= 0.1;
+    scene.addModel("assets/SphereMaterials/spherematerials.glb", sphereMaterialsTransform);
     
     /*
     Transform transform;
@@ -82,23 +82,17 @@ int main() {
     Transform transform;
     scene.addModel("assets/CubeScene/cubeScene.gltf", transform);
     */
-    PointLight* pointLight = new PointLight(&context, glm::vec4(6.0f, -1.1f, -2.2f, 1.f), 3.f, glm::vec4(.1f, .1f, 1.f, 1.0f));
-    pointLight->setIntensity(3.0f);
+    PointLight* pointLight = new PointLight(&context, glm::vec4(6.0f, -1.1f, -2.2f, 1.f), 2.5f, glm::vec4(.1f, .1f, 1.f, 1.0f));
+    pointLight->setIntensity(5.0f);
     scene.addLight(pointLight);
 
-    PointLight* pointLightDos = new PointLight(&context, glm::vec4(6.0f, -1.1f, 2.2f, 1.f), 3.f, glm::vec4(.1f, 1.f, .1f, 1.0f));
-    pointLightDos->setIntensity(1.5f);
+    PointLight* pointLightDos = new PointLight(&context, glm::vec4(6.0f, -1.1f, 2.2f, 1.f), 2.5f, glm::vec4(.1f, 1.f, .1f, 1.0f));
+    pointLightDos->setIntensity(5.0f);
     scene.addLight(pointLightDos);
     
     Spotlight* spotlight = new Spotlight(&context, glm::vec4(-7.1f, -1.1f, 2.6f, 1.f), glm::vec4(-7.1f, -1.1f, -2.6f, 1.f) - glm::vec4(-7.1f, -1.1f, 2.6f, 1.f), 10.f, 8.f, glm::vec4(1.f, .2f, .2f, 1.f));
-    spotlight->setIntensity(4.0f);
+    spotlight->setIntensity(3.0f);
     scene.addLight(spotlight);
-    Transform spotlightmodelTransfrom;
-    spotlightmodelTransfrom.translate = glm::vec3(-7.1f, -1.1f, 2.8f);
-    spotlightmodelTransfrom.rotate = glm::vec3(0.f, 180.f, 0.f);
-
-    scene.addModel("assets/BadSpotLight/badspotlight.obj", spotlightmodelTransfrom);
-
 
     renderer.addScene(&scene);
 

@@ -8,6 +8,7 @@ desc: Manages Vulkan device, queues, swapchain, window and useful globals(time)
 #pragma once
 #define VULKAN_HPP_NO_CONSTRUCTORS
 #include <vulkan/vulkan.hpp>
+//#define VMA_VERBOSE_ALLOC_DEALLOC
 #include "vk_mem_alloc.hpp"
 #include <GLFW/glfw3.h>
 #include "imgui.h"
@@ -15,9 +16,10 @@ desc: Manages Vulkan device, queues, swapchain, window and useful globals(time)
 #include "imgui_impl_glfw.h"
 #include "Defs.h"
 
-#include<iostream>
+#include <iostream>
 #include <optional>
 #include <limits>
+#include <mutex>
 
 
 /* STRUCTS */
@@ -60,7 +62,6 @@ const uint32_t applicationVersion = 0;
 class VulkanContext
 {
 private:
-#define NDEBUG
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
 #else
