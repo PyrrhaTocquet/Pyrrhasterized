@@ -62,7 +62,6 @@ const uint32_t applicationVersion = 0;
 class VulkanContext
 {
 private:
-#define NDEBUG
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
 #else
