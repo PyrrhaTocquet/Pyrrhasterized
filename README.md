@@ -8,8 +8,7 @@ Pyrrhasterized is a cross-platform rasterized Vulkan renderer which is both a po
 - [x] 3D Models file support
   - [x] Basic .obj support
   - [x] Basic .gltf/.glb support
-- [ ] Material System
-- [ ] PBR Materials  
+- [x] PBR Materials  
 - [ ] Forward+ Lighting
 - [ ] Global Illumination (Voxel GI)
 - [ ] Decals
