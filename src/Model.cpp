@@ -363,7 +363,7 @@ void Model::loadGltf(const std::filesystem::path& path)
 		materialsFromGltfThread[materialIndex] = std::jthread(createMaterialFromGltf, m_context, std::ref(m_meshes[materialIndex]), std::ref(gltfModel.materials[materialIndex]), std::ref(gltfModel), std::ref(path));
 	}
 
-	std::jthread(&Model::generateTangents, this);
+	materialsFromGltfThread[materialCount] = std::jthread(&Model::generateTangents, this);
 };
 
 //Calls the appropriate loading function depending on the file extension
