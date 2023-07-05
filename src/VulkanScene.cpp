@@ -76,8 +76,8 @@ void VulkanScene::addEntity(Entity* entity) {
 //Creates the index and vertex buffer
 void VulkanScene::createGeometryBuffers()
 {
-	std::jthread vertexBufferThread(&VulkanScene::createVertexBuffer, this);
-	std::jthread indexBufferThread(&VulkanScene::createIndexBuffer, this);
+	createVertexBuffer();
+	createIndexBuffer();
 }
 
 //Computes the index buffer size from indices count
