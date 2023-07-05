@@ -22,7 +22,6 @@ private:
 
 	void loadModel(const std::filesystem::path& path);
 	void loadGltf(const std::filesystem::path& path);
-	void loadObj(const std::filesystem::path& path);
 	void generateTangents();
 public:
 	Model(VulkanContext* context, const std::filesystem::path& path, const Transform& transform);
