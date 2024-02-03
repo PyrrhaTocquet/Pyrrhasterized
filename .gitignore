@@ -6,6 +6,10 @@
 build/
 generated/
 
+Makefile
+
+*.spv
+
 # User-specific files
 *.rsuser
 *.suo
