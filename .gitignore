@@ -9,6 +9,8 @@ generated/
 Makefile
 
 *.spv
+*.sln
+*.vcxproj
 
 # User-specific files
 *.rsuser
