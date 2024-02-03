@@ -29,7 +29,7 @@ int main() {
     VulkanContext context;
     VulkanRenderer renderer(&context);
 
-    DirectionalLight sun(&context, -glm::vec4(5.f, 50.f, 0.f, 0.f), glm::vec4(1.f, 1.f, .95f, 1.f));
+    DirectionalLight sun(&context, -glm::vec4(5.f, 50.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f));
     sun.setIntensity(5.0f);
     VulkanScene scene(&context, &sun);
     
