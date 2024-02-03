@@ -1,6 +1,9 @@
 # Pyrrhasterized
 Pyrrhasterized is a cross-platform rasterized Vulkan renderer which is both a porte-folio project to get hired as a graphics programmer and a project to learn techniques in the vast world of graphics programming. It is available for Windows and Linux.
-![renderer screenshot](https://github.com/PyrrhaTocquet/Pyrrhasterized/blob/master/pictures/readmepic.png)
+![renderer screenshot](https://github.com/PyrrhaTocquet/Pyrrhasterized/blob/master/pictures/renderer3.png)
+![renderer screenshot](https://github.com/PyrrhaTocquet/Pyrrhasterized/blob/master/pictures/renderer2.png)
+![renderer screenshot](https://github.com/PyrrhaTocquet/Pyrrhasterized/blob/master/pictures/renderer.png)
+
 ## Features
 *Unchecked Features are planned features*
 - [x] Cascaded Shadow Maps
