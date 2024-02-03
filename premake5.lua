@@ -3,18 +3,18 @@ LIB_PATH = "third_party/"
 function useVulkan()
     includedirs { LIB_PATH .. "Vulkan-Headers/include" }
 
-    filter "system:Windows"
-        local sdk_path = os.getenv("VULKAN_SDK")
-        if sdk_path == "" then
-            print("Could not find Vulkan Sdk, please make sure the Vulkan SDK is installed and that the environment variable VULKAN_SDK is defined.")
-            return
-        end
-        libdirs { sdk_path .. "/Lib" }
+    local sdk_path = os.getenv("VULKAN_SDK")
+    if sdk_path == "" then
+        print("Could not find Vulkan Sdk, please make sure the Vulkan SDK is installed and that the environment variable VULKAN_SDK is defined.")
+        return
+    end
+    libdirs { sdk_path .. "/Lib" }
+        
+    filter "system:windows"
         links "vulkan-1"
     
-    filter "system:Unix"
+    filter "system:linux"
         links "vulkan"
-
     filter {}
 end
 
@@ -23,12 +23,12 @@ function useVMA()
 end
 
 function useGLFW()
-    filter "system:Windows"
-        includedirs {  LIB_PATH .. "glfw/include" }
+    includedirs {  LIB_PATH .. "glfw/include" }
+    filter "system:windows"
         libdirs { LIB_PATH .. "glfw/lib" }
         links "glfw3"
 
-    filter "system:Unix"
+    filter "system:linux"
         links "glfw"
     filter {}
 end
@@ -56,18 +56,17 @@ function userHeaderOnlyLibs()
 end
 
 function compileShaders()
-    filter "system:Windows"
-    buildcommands {
-        "{ECHO} \"Compiling Shaders\"",
-        ".\\shaders\\compile.bat"
-    }
+    filter "system:windows"
+	    buildcommands {
+		"{ECHO} \"Compiling Shaders\"",
+		".\\shaders\\compile.bat"
+	    }
 
-    filter "system:Unix"
-    buildcommands {
-        "{ECHO} \"Compiling Shaders\"",
-        "./shaders/compile.sh"
-    }
-    filter {}
+    filter "system:linux"
+	    buildcommands {
+		"{ECHO} \"Compiling Shaders\"",
+		"./shaders/compile.sh"
+	    }
 end
 
 workspace "Pyrrhasterized"
@@ -90,6 +89,8 @@ project "Pyrrhasterized"
     targetdir ("build/bin/%{prj.name}/%{cfg.longname}")
     objdir ("build/obj/%{prj.name}/%{cfg.longname}")
     debugdir ""
+    
+    libdirs{}
 
     useVulkan()
     useVMA()
@@ -101,12 +102,11 @@ project "Pyrrhasterized"
 
     files { "src/**.h", "src/**.hpp", "src/**.cpp"}
 
-    compileShaders();
     postbuildcommands {
-        "{RMDIR} %{cfg.targetdir}/assets",
+    	"{RMDIR} %{cfg.targetdir}/assets",
         "{RMDIR} %{cfg.targetdir}/shaders",
-        "{COPYDIR} ../assets %{cfg.targetdir}/assets",
-        "{COPYDIR} ../shaders %{cfg.targetdir}/shaders"
+     	"{COPYDIR} ../assets %{cfg.targetdir}/assets",
+   	"{COPYDIR} ../shaders %{cfg.targetdir}/shaders"
     }
 
 
