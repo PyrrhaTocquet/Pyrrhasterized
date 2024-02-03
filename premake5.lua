@@ -8,7 +8,7 @@ function useVulkan()
         return
     end
     libdirs { sdk_path .. "/Lib" }
-    links "vulkan-1"
+    links "vulkan"
 end
 
 function useVMA()
@@ -18,7 +18,7 @@ end
 function useGLFW()
     includedirs {  LIB_PATH .. "glfw/include" }
     libdirs { LIB_PATH .. "glfw/lib" }
-    links "glfw3"
+    links "glfw"
 end
 
 function useGLM()
