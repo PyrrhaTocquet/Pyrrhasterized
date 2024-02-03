@@ -1,0 +1,135 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+struct Vertex {
+  vec3 pos;
+	vec2 texCoord;
+	vec3 normal;
+	vec4 tangent; //w: handles handedness
+};
+
+struct MeshletInfo {
+  vec4 boundingSphere;
+  uint vertexCount;
+  uint vertexOffset;
+  uint primitiveCount;
+  uint primitiveOffset;
+  uint meshletId;
+};
+
+struct Triangle {
+  uint i0;
+  uint i1;
+  uint i2;
+};
+
+
+layout(local_size_x = 128) in;
+layout(triangles, max_vertices = 128, max_primitives = 128) out;
+
+layout(location = 0) out vec2 fragTexCoord[];
+layout(location = 1) out vec3 fragNormal[];
+layout(location = 2) out vec3 fragPosWorld[];
+layout(location = 3) out vec3 fragPosView[];
+layout(location = 4) out vec4 fragTangent[];
+layout(location = 5) out uint meshletId[];
+layout(location = 6) out uint fragShellId[];
+layout(location = 7) out uint fragShellCount[];
+
+layout( push_constant ) uniform constants
+{
+	mat4 model;
+	int materialId;
+	uint cascadeId;
+	uint meshletId;
+  uint meshletCount;
+} PushConstants;
+
+layout(set = 0, binding = 0) buffer MeshletInfosBuffer {
+  MeshletInfo meshletInfos[];
+}meshletInfosBuffer;
+
+
+layout(set = 0, binding = 1) buffer PrimitivesBuffer {
+  Triangle triangles[];
+}primitivesBuffer;
+
+layout(set = 0, binding = 2) buffer IndexBuffer {
+  uint indices[];
+}indexBuffer;
+
+layout(set = 0, binding = 3) buffer VertexBuffer {
+  Vertex vertices[];
+}vertexBuffer;
+
+layout(set = 1, binding = 0) uniform UniformBufferObject {
+mat4 view;
+	mat4 proj;
+	mat4[4] cascadeViewProj;
+	vec4 cascadeSplits;
+	vec3 cameraPosition;
+	float shadowMapsBlendWidth;
+	float time;
+  float hairLength;
+  float gravityFactor;
+  float hairDensity;
+}ubo;
+
+
+struct TaskData
+{
+    uint shellId;
+    uint shellCount;
+    uint meshletOffset;
+};
+taskPayloadSharedEXT TaskData taskData;
+
+void main()
+{
+
+  MeshletInfo currentMeshlet = meshletInfosBuffer.meshletInfos[PushConstants.meshletId + taskData.meshletOffset];
+  meshletId[gl_LocalInvocationID.x] = PushConstants.meshletId + taskData.meshletOffset;
+  SetMeshOutputsEXT(currentMeshlet.vertexCount, currentMeshlet.primitiveCount);
+
+  if(gl_LocalInvocationID.x < currentMeshlet.vertexCount)
+  {
+
+    uint vertexIndex = currentMeshlet.vertexOffset + gl_LocalInvocationID.x;//indexBuffer.indices[currentMeshlet.vertexOffset + gl_LocalInvocationID.x];
+    Vertex vertex = vertexBuffer.vertices[vertexIndex];
+
+    uint shellId = taskData.shellId;
+
+    
+    vec4 positionWorld =  PushConstants.model * vec4(ubo.hairLength*(taskData.shellCount - shellId - 1) /taskData.shellCount * normalize(vertex.normal) + vertex.pos, 1.0);
+    positionWorld -= ubo.gravityFactor*vec4(0.0, 1.0, 0.0, 0.0) * max(0, 0.5 + dot(vec3(0.0, 1.0, 0.0), mat3(PushConstants.model) * normalize(vertex.normal))) * (taskData.shellCount - shellId - 1)* (taskData.shellCount - shellId - 1)/(taskData.shellCount* taskData.shellCount);
+
+
+    fragTexCoord[gl_LocalInvocationID.x] = vertex.texCoord;
+    fragNormal[gl_LocalInvocationID.x] =  mat3(PushConstants.model) * normalize(vertex.normal);
+    fragPosWorld[gl_LocalInvocationID.x] = positionWorld.xyz;
+    fragPosView[gl_LocalInvocationID.x] = (ubo.view * positionWorld).xyz;
+    fragTangent[gl_LocalInvocationID.x] = vec4(normalize(mat3(PushConstants.model) * vertex.tangent.xyz), vertex.tangent.w);  
+    fragShellId[gl_LocalInvocationID.x] = taskData.shellCount - shellId - 1;
+    fragShellCount[gl_LocalInvocationID.x] = taskData.shellCount;
+    //gl_MeshVerticesEXT[gl_LocalInvocationID.x].gl_Position = ubo.proj * ubo.view * positionWorld + 3*cos(0.3*ubo.time) *vec4(1.0, 0.0, 0.0, 0.0);
+    gl_MeshVerticesEXT[gl_LocalInvocationID.x].gl_Position = ubo.proj * ubo.view * positionWorld;
+
+
+
+  }
+
+  if(gl_LocalInvocationID.x < currentMeshlet.primitiveCount)
+  {
+    Triangle tri = primitivesBuffer.triangles[currentMeshlet.primitiveOffset + gl_LocalInvocationID.x];
+
+    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationID.x] =  uvec3(tri.i0, tri.i1, tri.i2);
+
+  }
+
+
+ 
+
+}
+  
+  

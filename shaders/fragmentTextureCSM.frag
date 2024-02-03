@@ -15,6 +15,7 @@ layout(location = 2) in vec3 fragPosWorld;
 layout(location = 3) in vec3 fragPosView;
 layout(location = 4) in vec4 fragTangent;
 
+
 layout( push_constant ) uniform constants
 {
 	mat4 model;
@@ -25,7 +26,7 @@ layout( push_constant ) uniform constants
 	float[9] padding;
 } PushConstants;
 
-layout(set = 0, binding = 0) uniform CameraGeneralUbo {
+layout(set = 1, binding = 0) uniform CameraGeneralUbo {
 	mat4 view;
 	mat4 proj;
 	mat4[SHADOW_CASCADE_COUNT] cascadeViewProj;
@@ -50,12 +51,12 @@ struct Light{
 	uint shadowCaster;
 };
 
-layout(set = 0, binding = 1) uniform LightsUBO {
+layout(set = 1, binding = 1) uniform LightsUBO {
 	Light lights[MAX_LIGHT_COUNT];
 }lightsUbo;
 
 
-layout(set = 0, binding = 2) uniform MaterialUBO {
+layout(set = 1, binding = 2) uniform MaterialUBO {
 	vec4 baseColor;
 	vec4 emissiveColor;
 	float metallicFactor;
@@ -64,8 +65,8 @@ layout(set = 0, binding = 2) uniform MaterialUBO {
 
 
 
-layout(set = 0, binding = 3) uniform sampler2D texSampler[];
-layout(set = 1, binding = 0) uniform sampler2DArray shadowTexSampler;
+layout(set = 1, binding = 3) uniform sampler2D texSampler[];
+layout(set = 2, binding = 0) uniform sampler2DArray shadowTexSampler;
 
 layout(location = 0) out vec4 outColor;
 

@@ -14,29 +14,31 @@
 #include <thread>
 
 
-struct ModelLoadingInfo {
-	std::filesystem::path path;
-	Transform transform;
-};
-
 class VulkanScene : Drawable
 {
 public :
-	vk::Buffer m_vertexBuffer, m_indexBuffer = VK_NULL_HANDLE;
+	vk::Buffer m_meshletInfoBuffer, m_primitiveBuffer, m_indexBuffer, m_vertexBuffer = VK_NULL_HANDLE;
 	std::vector<Model*> m_models; //TODO private after drawScene refactoring ??
 	std::vector<Light*> m_lights;
 private:
 	VulkanContext* m_context;
 
-	vma::Allocation m_vertexBufferAllocation, m_indexBufferAllocation;
+	vma::Allocation m_meshletInfoBufferAllocation, m_primitiveBufferAllocation, m_indexBufferAllocation, m_vertexBufferAllocation;
+	uint32_t m_meshletCount = 0, m_primitiveCount = 0, m_indexCount = 0, m_vertexCount = 0;
 	vma::Allocator m_allocator;
 	DirectionalLight* m_sun;
 	std::vector<ModelLoadingInfo> m_modelLoadingInfos;
+
+
+	vk::DescriptorPool m_geometryDescriptorPool;
+	vk::DescriptorSet m_geometryDescriptorSet;
 public:
 	VulkanScene(VulkanContext* context, DirectionalLight* sun);
 	~VulkanScene();
 	void addModel(const std::filesystem::path& path, const Transform& transform);
 	void addModel(Model* model);
+	void createGeometryDescriptorSet(vk::DescriptorSetLayout geometryDescriptorSetLayout);
+	[[nodiscard]] vk::DescriptorSet getGeometryDescriptorSet();
 	void loadModels();
 	void addEntity(Entity* entity);
 	void createGeometryBuffers();
@@ -49,6 +51,8 @@ public:
 private:
 	void createVertexBuffer();
 	void createIndexBuffer();
+	void createMeshletInfoBuffer();
+	void createPrimitivesBuffer();
 
 };
 

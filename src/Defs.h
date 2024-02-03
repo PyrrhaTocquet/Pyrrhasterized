@@ -2,9 +2,10 @@
 #define VULKAN_HPP_NO_CONSTRUCTORS
 #include <vulkan/vulkan.hpp>
 #include "vk_mem_alloc.hpp"
-#include <glm/glm.hpp>
+#include "glm/glm.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
+#include <filesystem>
 
 /* RENDERING CONSTS*/
 const bool ENABLE_MSAA = false;
@@ -12,6 +13,8 @@ const uint32_t SHADOW_CASCADE_COUNT = 4;
 const uint32_t MAX_LIGHT_COUNT = 10;
 const uint32_t MAX_TEXTURE_COUNT = 4096;
 const uint32_t MAX_MATERIAL_COUNT = 4096;
+
+const std::filesystem::path BAKED_ASSETS_PATH = "baked_assets/";
 
 /* ENUMS */
 enum RenderPassesId {
@@ -34,18 +37,34 @@ struct GeneralUniformBufferObject {
 	glm::vec3 cameraPos;
 	float shadowMapsBlendWidth;
 	float time;
+	float hairLength;
+	float gravityFactor;
+	float hairDensity;
 };
 
 struct ModelPushConstant {
 	glm::mat4 model;
 	glm::int32 materialId;
 	glm::uint32 cascadeId;
-	float padding[9];
+	uint32_t meshlet;
+	uint32_t meshletCount;
+	uint32_t shellCount = 8;
+	//float padding[5];
 };
 
 struct Time {
 	float elapsedSinceStart;
 	float deltaTime;
+};
+
+struct MeshletIndexingInfo{
+	glm::vec4 boundingSphere = glm::vec4();
+	uint32_t vertexCount = 0;
+	uint32_t vertexOffset = 0;
+	uint32_t primitiveCount = 0;
+	uint32_t primitiveOffset = 0;
+	uint32_t meshletId = 0;
+	uint64_t padding = 0;
 };
 
 
@@ -76,8 +95,11 @@ struct Transform {
 
 struct Vertex {
 	glm::vec3 pos;
+	float padding;
 	glm::vec2 texCoord;
+	float padding2[2];
 	glm::vec3 normal;
+	float padding3;
 	glm::vec4 tangent; //w: handles handedness
 
 
@@ -114,6 +136,22 @@ struct Vertex {
 
 		return attributeDescriptions;
 	}
+};
+
+struct Meshlet{
+	struct Triangle{
+		uint32_t i0;
+		uint32_t i1;
+		uint32_t i2;
+	};
+	std::vector<uint32_t> uniqueVertexIndices;
+	std::vector<Triangle> primitiveIndices;
+	MeshletIndexingInfo meshletInfo;
+};
+
+struct Mesh {
+	std::vector<Meshlet> meshlets;
+	std::vector<Vertex> vertices;
 };
 
 /* CLEAR COLORS */

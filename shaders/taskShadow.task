@@ -1,0 +1,27 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+layout( push_constant ) uniform constants
+{
+	mat4 model;
+	int materialId;
+	uint cascadeId;
+	uint meshletId;
+    uint meshletCount;
+    uint shellCount;
+} PushConstants;
+
+struct TaskData
+{
+    uint meshletOffset;
+};
+taskPayloadSharedEXT TaskData taskData;
+
+void main()
+{
+
+	taskData.meshletOffset = gl_GlobalInvocationID.x;
+    EmitMeshTasksEXT(1, 1, 1); 
+
+}

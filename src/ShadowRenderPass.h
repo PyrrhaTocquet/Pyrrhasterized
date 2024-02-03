@@ -31,7 +31,7 @@ public:
 	virtual void createDescriptorPool()override {}; //TODO
 	virtual void createDescriptorSetLayout()override {};
 	virtual void createDescriptorSets(VulkanScene* scene)override {};
-	virtual void createPipelineLayout()override {};
+	virtual void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout)override {};
 	virtual void createDefaultPipeline()override {};
 	virtual void recreateRenderPass() override;
 	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) override {};

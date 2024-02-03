@@ -709,6 +709,9 @@ void VulkanContext::createLogicalDevice()
 
 
 	//TODO Better Device Features management
+
+	vk::PhysicalDeviceMeshShaderFeaturesEXT meshShaderFeature{.taskShader = VK_TRUE, .meshShader = VK_TRUE, };
+
 	vk::PhysicalDeviceFeatures deviceFeatures{
 		.sampleRateShading = VK_TRUE,
 		.fillModeNonSolid = VK_TRUE,
@@ -716,6 +719,7 @@ void VulkanContext::createLogicalDevice()
 	};
 
 	vk::PhysicalDeviceSynchronization2Features synchronization2Feature{
+		.pNext = &meshShaderFeature,
 	.synchronization2 = VK_TRUE,
 	};
 
@@ -727,6 +731,8 @@ void VulkanContext::createLogicalDevice()
 		.runtimeDescriptorArray = VK_TRUE,
 	}
 ;
+
+
 
 	vk::DeviceCreateInfo createInfo{
 	.pNext = &descriptorIndexingFeatures,

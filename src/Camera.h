@@ -32,7 +32,8 @@ private:
 public:
 	const float nearPlane = 0.1f;
 	const float farPlane = 150.f;
-	const float c_cameraSpeed = 10.f;
+	const float cameraSpeed = 3.f;
+	const float fastCameraSpeed = 20.f;
 
 	Camera(VulkanContext* context);
 	void update() override;

@@ -41,6 +41,12 @@ class MainRenderPass : public VulkanRenderPass {
 
 	//IMGUI
 	bool m_hideImGui = false;
+
+	int selectedId = 0;
+	int shellCount = 128;
+	float hairLength = 0.03;
+	float gravityFactor = 0.02;
+	float hairDensity = 1000.f;
 public:
 	MainRenderPass(VulkanContext* context, Camera* camera, ShadowCascadeRenderPass* shadowRenderPass);
 	virtual ~MainRenderPass()override;
@@ -52,7 +58,7 @@ public:
 	void createDescriptorPool()override;
 	void createDescriptorSetLayout()override;
 	void createDescriptorSets(VulkanScene* scene)override;
-	void createPipelineLayout()override;
+	void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout)override;
 	void createDefaultPipeline()override;
 	void createPipelineRessources()override;
 	void createPushConstantsRanges()override;

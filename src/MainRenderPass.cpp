@@ -234,7 +234,7 @@ void MainRenderPass::createDescriptorSetLayout()
         .binding = 0,
         .descriptorType = vk::DescriptorType::eUniformBuffer,
         .descriptorCount = 1,
-        .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+        .stageFlags = vk::ShaderStageFlagBits::eTaskEXT | vk::ShaderStageFlagBits::eMeshEXT | vk::ShaderStageFlagBits::eFragment,
     };
 
     vk::DescriptorSetLayoutBinding lightUboLayoutBinding{
@@ -332,7 +332,7 @@ std::vector<vk::DescriptorImageInfo> MainRenderPass::generateTextureImageInfo(Vu
     std::vector<vk::DescriptorImageInfo> textureImageInfo;
     uint32_t textureId = 0;
     for (auto& model : scene->m_models) {
-        for (auto& texturedMesh : model->getMeshes()) {
+        for (auto& texturedMesh : model->getRawMeshes()) {
             Material* material = texturedMesh.material;
             if (material == nullptr)
                 continue;
@@ -491,7 +491,7 @@ void MainRenderPass::createMaterialDescriptorSet(VulkanScene* scene)
     materialUBOs.push_back(defaultMaterial);
     //Retrieving Material UBOs
     for (auto& model : scene->m_models) {
-        for (auto& mesh : model->getMeshes()) {
+        for (auto& mesh : model->getRawMeshes()) {
             if (mesh.material != nullptr)
             {
                 mesh.materialId = materialUBOs.size();
@@ -556,9 +556,9 @@ void MainRenderPass::createDescriptorSets(VulkanScene* scene)
     createMaterialDescriptorSet(scene);
 }
 
-void MainRenderPass::createPipelineLayout()
+void MainRenderPass::createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout)
 {
-    std::array<vk::DescriptorSetLayout, 2> layouts = { m_mainDescriptorSetLayout, m_materialDescriptorSetLayout };
+    std::array<vk::DescriptorSetLayout, 3> layouts = { geometryDescriptorSetLayout, m_mainDescriptorSetLayout, m_materialDescriptorSetLayout };
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo = {
        .setLayoutCount = layouts.size(),
@@ -578,8 +578,9 @@ void MainRenderPass::createPipelineLayout()
 void MainRenderPass::createDefaultPipeline()
 {
     PipelineInfo pipelineInfo{
-       .vertPath = "shaders/vertexPBR.spv",
-       .fragPath = "shaders/fragmentPBR.spv",
+        .taskShaderPath = "shaders/taskShell.spv",
+       .meshShaderPath = "shaders/meshPBR.spv",
+       .fragShaderPath = "shaders/fragmentPBR.spv",
     };
 
     m_mainPipeline = new VulkanPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());
@@ -603,11 +604,42 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
     //imgui commands
     double framerate = ImGui::GetIO().Framerate;
     ImGui::Begin("Renderer Performance", &m_hideImGui);
-    ImGui::SetWindowSize(ImVec2(400.f, 250.f));
+    ImGui::SetWindowSize(ImVec2(400.f, 500.f));
     ImGui::SetWindowPos(ImVec2(10.f, 10.f));
+    
+    ImGui::Text("Statistics:");
     ImGui::Text("Framerate: %f", framerate);
-    ImGui::SliderFloat("Cascade Splitting Lambda: ", &m_shadowRenderPass->m_cascadeSplitLambda, 0.f, 1.f, "%.2f", 0);
-    ImGui::SliderFloat("Shadowmap Blend Width: ", &m_shadowRenderPass->m_shadowMapsBlendWidth, 0.f, 1.f, "%.2f", 0);
+    ImGui::Text("----------");
+
+
+    ImGui::Text("Shadows:");
+    ImGui::SliderFloat("Cascade Splitting Lambda: ", &m_shadowRenderPass->m_cascadeSplitLambda, 0.001f, .999f, "%.2f", 0);
+    ImGui::SliderFloat("Shadowmap Blend Width: ", &m_shadowRenderPass->m_shadowMapsBlendWidth, 0.001f, 0.999f, "%.2f", 0);
+    ImGui::Text("----------");
+    
+    ImGui::Text("Shell Texturing");
+    int currentChoice = 0;
+    std::array<std::string, 11> shellCountList = {"1", "2", "4", "8", "16", "32", "64", "128", "256", "512", "1024"};
+    int k = 0;
+    if (ImGui::ListBoxHeader("Shell Count"))
+    {
+        for (auto shellCountStr : shellCountList)
+        {
+            if (ImGui::Selectable(shellCountStr.c_str(), selectedId == k ? true : false))
+            {
+                selectedId = k;
+                shellCount = pow(2, selectedId);
+            }
+            k++;
+        }
+        ImGui::ListBoxFooter();
+    }
+   
+    
+    ImGui::SliderFloat("Hair Length: ", &hairLength, 0.001f, .1f, "%.5f", 0);
+    ImGui::SliderFloat("Hair Gravity: ", &gravityFactor, 0.001f, 0.1f, "%.5f", 0);
+    ImGui::SliderFloat("Hair Density: ", &hairDensity, 50.f, 3000.f, "%.5f", 0);
+    
     ImGui::End();
 
     ImGui::Render();
@@ -669,13 +701,14 @@ void MainRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t sw
        .pClearValues = MAIN_CLEAR_VALUES.data(),
     };
     ModelPushConstant pushConstant;
+    pushConstant.shellCount = shellCount;
     commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_mainPipeline->getPipeline()); //Only one main draw pipeline per frame in this renderer
     //Draws each scene
     for (auto& scene : scenes)
     {
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { m_mainDescriptorSet[m_currentFrame], m_materialDescriptorSet[m_currentFrame]}, nullptr);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scene->getGeometryDescriptorSet() , m_mainDescriptorSet[m_currentFrame], m_materialDescriptorSet[m_currentFrame]}, nullptr);
         scene->draw(commandBuffer, m_currentFrame, m_pipelineLayout, pushConstant);
     }
     
@@ -691,7 +724,7 @@ void MainRenderPass::createPipelineRessources() {
 void MainRenderPass::createPushConstantsRanges()
 {
     m_pushConstant = vk::PushConstantRange{
-        .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+        .stageFlags = vk::ShaderStageFlagBits::eTaskEXT | vk::ShaderStageFlagBits::eMeshEXT | vk::ShaderStageFlagBits::eFragment,
         .offset = 0,
         .size = 128,
     };
@@ -709,6 +742,9 @@ void MainRenderPass::updateGeneralUniformBuffer(uint32_t currentFrame) {
     ubo.cameraPos = m_camera->getCameraPos();
     ubo.time = m_context->getTime().elapsedSinceStart;
     ubo.shadowMapsBlendWidth = m_shadowRenderPass->m_shadowMapsBlendWidth;
+    ubo.hairLength = hairLength;
+    ubo.gravityFactor = gravityFactor;
+    ubo.hairDensity = hairDensity;
 
     //Get the cascade view/proj matrices and frustrum splits previously calculated in the shadowRenderPass
     CascadeUniformObject cascadeUbo = m_shadowRenderPass->getCurrentUbo(currentFrame);

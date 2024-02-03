@@ -91,7 +91,7 @@ void ShadowCascadeRenderPass::createDescriptorSetLayout()
         .binding = 0,
         .descriptorType = vk::DescriptorType::eUniformBuffer,
         .descriptorCount = 1,
-        .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+        .stageFlags = vk::ShaderStageFlagBits::eMeshEXT | vk::ShaderStageFlagBits::eFragment,
     };
 
 
@@ -155,12 +155,13 @@ void ShadowCascadeRenderPass::createDescriptorSets(VulkanScene* scene)
 
 }
 
-void ShadowCascadeRenderPass::createPipelineLayout()
+void ShadowCascadeRenderPass::createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout)
 {
 
+    std::array<vk::DescriptorSetLayout, 2> layouts {geometryDescriptorSetLayout, m_mainDescriptorSetLayout};
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo = {
-       .setLayoutCount = 1,
-       .pSetLayouts = &m_mainDescriptorSetLayout,
+       .setLayoutCount = 2,
+       .pSetLayouts = layouts.data(),
        .pushConstantRangeCount = 1,
        .pPushConstantRanges = &m_pushConstant,
     };
@@ -177,8 +178,9 @@ void ShadowCascadeRenderPass::createDefaultPipeline()
 {
 
     PipelineInfo pipelineInfo{
-        .vertPath = "shaders/vertexCSM.spv",
-        .fragPath = "shaders/fragmentCSM.spv",
+        .taskShaderPath = "shaders/taskShadow.spv",
+        .meshShaderPath = "shaders/meshCSM.spv",
+        .fragShaderPath = "shaders/fragmentCSM.spv",
         .cullmode = vk::CullModeFlagBits::eNone,
         .renderPassId = RenderPassesId::ShadowMappingPassId,
         .isMultisampled = false,
@@ -197,7 +199,7 @@ void ShadowCascadeRenderPass::createPipelineRessources()
 void ShadowCascadeRenderPass::createPushConstantsRanges()
 {
     m_pushConstant = vk::PushConstantRange{
-        .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+        .stageFlags = vk::ShaderStageFlagBits::eMeshEXT | vk::ShaderStageFlagBits::eTaskEXT| vk::ShaderStageFlagBits::eFragment,
         .offset = 0,
         .size = 128,
     };
@@ -258,7 +260,7 @@ void ShadowCascadeRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, ui
 
         commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_mainPipeline->getPipeline());
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, m_mainDescriptorSet[currentFrame], nullptr);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scenes[0]->getGeometryDescriptorSet(), m_mainDescriptorSet[currentFrame]}, nullptr);
         VkDeviceSize offset = 0;
         //Draws each scene
         for (auto& scene : scenes)

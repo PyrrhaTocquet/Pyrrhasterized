@@ -57,6 +57,7 @@ private:
 	std::vector<VulkanRenderPass*> m_renderPasses;
 	ShadowCascadeRenderPass* m_shadowPass;
 	MainRenderPass* m_mainPass;
+	vk::DescriptorSetLayout m_geometryDescriptorSetLayout;
 
 	//RENDERING FLOW
 	uint32_t m_currentFrame = 0;
@@ -91,6 +92,7 @@ public:
 private:
 
 	//RENDER PASS
+	void createGeometryDescriptorSetLayout();
 	void createRenderPasses();
 
 	//FRAMEBUFFERS

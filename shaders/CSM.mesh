@@ -1,0 +1,103 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+struct Vertex {
+  vec3 pos;
+	vec2 texCoord;
+	vec3 normal;
+	vec4 tangent; //w: handles handedness
+};
+
+struct MeshletInfo {
+  vec4 boundingSphere;
+  uint vertexCount;
+  uint vertexOffset;
+  uint primitiveCount;
+  uint primitiveOffset;
+  uint meshletId;
+};
+
+struct Triangle {
+  uint i0;
+  uint i1;
+  uint i2;
+};
+
+
+layout(local_size_x = 128) in;
+layout(triangles, max_vertices = 128, max_primitives = 128) out;
+
+
+layout( push_constant ) uniform constants
+{
+	mat4 model;
+	int materialId;
+	uint cascadeId;
+	uint meshletId;
+} PushConstants;
+
+layout(set = 0, binding = 0) buffer MeshletInfosBuffer {
+  MeshletInfo meshletInfos[];
+}meshletInfosBuffer;
+
+
+layout(set = 0, binding = 1) buffer PrimitivesBuffer {
+  Triangle triangles[];
+}primitivesBuffer;
+
+layout(set = 0, binding = 2) buffer IndexBuffer {
+  uint indices[];
+}indexBuffer;
+
+layout(set = 0, binding = 3) buffer VertexBuffer {
+  Vertex vertices[];
+}vertexBuffer;
+
+#define SHADOW_CASCADE_COUNT 4
+
+layout(set = 1, binding = 0) uniform CascadeUniformObject {
+	mat4[SHADOW_CASCADE_COUNT] cascadeViewProj;
+	vec4 cascadeSplits;
+}ubo;
+
+
+struct TaskData
+{
+    uint meshletOffset;
+};
+taskPayloadSharedEXT TaskData taskData;
+
+
+void main()
+{
+
+  MeshletInfo currentMeshlet = meshletInfosBuffer.meshletInfos[PushConstants.meshletId + taskData.meshletOffset];
+  SetMeshOutputsEXT(currentMeshlet.vertexCount, currentMeshlet.primitiveCount);
+
+  if(gl_LocalInvocationID.x < currentMeshlet.vertexCount)
+  {
+
+    uint vertexIndex = currentMeshlet.vertexOffset + gl_LocalInvocationID.x;//indexBuffer.indices[currentMeshlet.vertexOffset + gl_LocalInvocationID.x];
+    Vertex vertex = vertexBuffer.vertices[vertexIndex];
+
+    vec4 positionWorld = PushConstants.model * vec4(vertex.pos, 1.0);
+    gl_MeshVerticesEXT[gl_LocalInvocationID.x].gl_Position = ubo.cascadeViewProj[PushConstants.cascadeId] * positionWorld;
+
+
+  }
+
+  if(gl_LocalInvocationID.x < currentMeshlet.primitiveCount)
+  {
+    Triangle tri = primitivesBuffer.triangles[currentMeshlet.primitiveOffset + gl_LocalInvocationID.x];
+
+    gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationID.x] =  uvec3(tri.i0, tri.i1, tri.i2);
+
+  }
+
+
+ 
+
+}
+  
+  

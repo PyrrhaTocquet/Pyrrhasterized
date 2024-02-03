@@ -1,0 +1,81 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+struct MeshletInfo {
+  vec4 boundingSphere;
+  uint vertexCount;
+  uint vertexOffset;
+  uint primitiveCount;
+  uint primitiveOffset;
+  uint meshletId;
+};
+
+layout( push_constant ) uniform constants
+{
+	mat4 model;
+	int materialId;
+	uint cascadeId;
+	uint meshletId;
+    uint meshletCount;
+    uint shellCount;
+} PushConstants;
+
+layout(set = 0, binding = 0) buffer MeshletInfosBuffer {
+  MeshletInfo meshletInfos[];
+}meshletInfosBuffer;
+
+
+layout(set = 1, binding = 0) uniform UniformBufferObject {
+mat4 view;
+	mat4 proj;
+	mat4[4] cascadeViewProj;
+	vec4 cascadeSplits;
+	vec3 cameraPosition;
+	float shadowMapsBlendWidth;
+	float time;
+  float hairLength;
+  float gravityFactor;
+  float hairDensity;
+}ubo;
+
+struct TaskData
+{
+    uint shellId;
+    uint shellCount;
+    uint meshletOffset;
+};
+taskPayloadSharedEXT TaskData taskData;
+
+void main()
+{
+
+    taskData.shellId = gl_WorkGroupID.z;
+    taskData.shellCount = gl_NumWorkGroups.z;
+    taskData.meshletOffset = gl_GlobalInvocationID.x;
+
+    //MeshletInfo meshlet = meshletInfosBuffer.meshletInfos[PushConstants.meshletId + gl_GlobalInvocationID.x];
+
+    /*vec3 viewSpaceCenter = vec3(ubo.view * PushConstants.model * vec4(meshlet.boundingSphere.xyz, 1.0));
+    
+    float viewSpaceRadius = meshlet.boundingSphere.w * max(max(abs(PushConstants.model[0][0]), abs(PushConstants.model[1][1])), abs(PushConstants.model[2][2])) * max(max(abs(ubo.view[0][0]), abs(ubo.view[1][1])), abs(ubo.view[2][2]));
+    
+    float fovy = 3.14/4.0;
+    float fovx = 3.14/2.0;
+
+    float xf = tan(fovx) * (-viewSpaceCenter.z);
+
+
+    if(viewSpaceCenter.x - viewSpaceRadius <= xf)
+    {
+        EmitMeshTasksEXT(1, 1, 1);
+    }*/
+
+    EmitMeshTasksEXT(1, 1, 1);
+
+
+
+    
+    
+
+}

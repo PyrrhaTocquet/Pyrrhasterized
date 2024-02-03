@@ -3,7 +3,7 @@
 Peach::Peach(VulkanContext* context) : Entity(context)
 {
     Transform peachTransform;
-    peachTransform.translate = glm::vec3(-0.5f, 0.f, 0.6f);
+    peachTransform.translate = glm::vec3(-0.5f, 10.f, 0.6f);
     peachTransform.rotate = glm::vec3(0.f, 90.f, 0);
 
 	m_model = new Model(context, "assets/PeachHD/Peach.gltf", peachTransform);

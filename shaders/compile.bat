@@ -1,6 +1,10 @@
-glslc shaders/vertexTextureCSM.vert -o shaders/vertexTextureCSM.spv
-glslc shaders/fragmentTextureCSM.frag -o shaders/fragmentTextureCSM.spv
-glslc shaders/vertexCSM.vert -o shaders/vertexCSM.spv
-glslc shaders/fragmentCSM.frag -o shaders/fragmentCSM.spv
-glslc shaders/vertexPBR.vert -o shaders/vertexPBR.spv
-glslc shaders/fragmentPBR.frag -o shaders/fragmentPBR.spv
+glslc vertexTextureCSM.vert -o vertexTextureCSM.spv
+glslc fragmentTextureCSM.frag -o fragmentTextureCSM.spv
+glslc vertexCSM.vert -o vertexCSM.spv
+glslc fragmentCSM.frag -o fragmentCSM.spv
+glslc vertexPBR.vert -o vertexPBR.spv
+glslc fragmentPBR.frag -o fragmentPBR.spv
+glslc --target-spv=spv1.5 mesh_shaders/meshPBR.mesh -o meshPBR.spv
+glslc --target-spv=spv1.5 mesh_shaders/taskShell.task -o taskShell.spv
+glslc --target-spv=spv1.5 mesh_shaders/CSM.mesh -o meshCSM.spv
+glslc --target-spv=spv1.5 mesh_shaders/taskShadow.task -o taskShadow.spv

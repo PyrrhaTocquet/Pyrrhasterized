@@ -1,13 +1,13 @@
 #include "VulkanRenderer.h"
 
 #pragma region CONSTRUCTORS_DESTRUCTORS
-static void initRenderPass(VulkanRenderPass* renderPass) {
+static void initRenderPass(VulkanRenderPass* renderPass, vk::DescriptorSetLayout geometryDescriptorSetLayout) {
     renderPass->createPushConstantsRanges();
     renderPass->createDescriptorSetLayout();
     renderPass->createDescriptorPool();
     renderPass->createPipelineRessources();
 
-    renderPass->createPipelineLayout();
+    renderPass->createPipelineLayout(geometryDescriptorSetLayout);
     renderPass->createDefaultPipeline();
 }
 
@@ -23,13 +23,15 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
 
     //CAMERA
     m_camera = new Camera(m_context);
+    
+    createGeometryDescriptorSetLayout();
     createRenderPasses();
 
     { 
     std::vector<std::jthread> renderPassCreationThreads(m_renderPasses.size());
         for (size_t i = 0; i < m_renderPasses.size(); i++)
         {
-            renderPassCreationThreads[i] = std::jthread(initRenderPass, m_renderPasses[i]);
+            renderPassCreationThreads[i] = std::jthread(initRenderPass, m_renderPasses[i], m_geometryDescriptorSetLayout);
         }
     }
     //Rendering pipeline creation
@@ -290,6 +292,7 @@ void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
     //TODO MAKE SURE THERE IS A UNIQUE SCENE !!!!!
     vulkanScene->loadModels();
     vulkanScene->createGeometryBuffers();
+    vulkanScene->createGeometryDescriptorSet(m_geometryDescriptorSetLayout);
     for (auto& renderPass : m_renderPasses)
     {
         renderPass->createDescriptorSets(vulkanScene);
@@ -317,6 +320,49 @@ void VulkanRenderer::createRenderPasses() {
     mainRenderPass->createRenderPass();
     m_mainPass = mainRenderPass;
     m_renderPasses.push_back(mainRenderPass);
+
+}
+
+void VulkanRenderer::createGeometryDescriptorSetLayout()
+{
+    //Creates the VkDescriptorSetLayout for the mesh shader's geometry buffers
+	vk::Device device = m_context->getDevice();
+
+    /*
+	0: Meshlet Info
+	1: Primitives
+	2: Indices
+	3: Vertices
+	*/
+    vk::DescriptorSetLayoutBinding meshletInfoBinding{
+        .binding = 0,
+        .descriptorType = vk::DescriptorType::eStorageBuffer,
+        .descriptorCount = 1,
+        .stageFlags = vk::ShaderStageFlagBits::eTaskEXT | vk::ShaderStageFlagBits::eMeshEXT,
+    };
+
+	vk::DescriptorSetLayoutBinding primitivesBinding = meshletInfoBinding;
+	vk::DescriptorSetLayoutBinding indicesBinding = meshletInfoBinding;
+	vk::DescriptorSetLayoutBinding verticesBinding = meshletInfoBinding;
+
+	primitivesBinding.binding = 1;
+	indicesBinding.binding = 2;
+	verticesBinding.binding = 3;
+
+    vk::DescriptorSetLayoutBinding bindings[4] = { meshletInfoBinding, primitivesBinding, indicesBinding, verticesBinding };
+
+    vk::DescriptorSetLayoutCreateInfo layoutInfo{
+        .bindingCount = 4,
+        .pBindings = bindings,
+    };
+
+    try {
+        m_geometryDescriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
+    }
+    catch (vk::SystemError err)
+    {
+        throw std::runtime_error("could not create descriptor set layout");
+    }
 
 }
 #pragma endregion RENDER_PASSES

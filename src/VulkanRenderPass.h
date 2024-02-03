@@ -40,7 +40,7 @@ public :
 	virtual void createDescriptorPool() = 0;
 	virtual void createDescriptorSetLayout() = 0;
 	virtual void createDescriptorSets(VulkanScene* scene) = 0;
-	virtual void createPipelineLayout() = 0;
+	virtual void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout) = 0;
 	virtual void createDefaultPipeline() = 0;
 	virtual void createPipelineRessources() = 0;
 	virtual void createPushConstantsRanges() = 0;

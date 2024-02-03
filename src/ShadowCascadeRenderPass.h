@@ -39,7 +39,7 @@ public:
 	void createDescriptorPool()override;
 	void createDescriptorSetLayout()override;
 	void createDescriptorSets(VulkanScene* scene)override;
-	void createPipelineLayout()override;
+	void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout)override;
 	void createDefaultPipeline()override;
 	void createPipelineRessources()override;
 	void createPushConstantsRanges()override;
