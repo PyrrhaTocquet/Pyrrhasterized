@@ -13,10 +13,10 @@ VulkanScene::VulkanScene(VulkanContext* context, DirectionalLight* sun) {
 
 VulkanScene::~VulkanScene()
 {
-	m_allocator.destroyBuffer(m_indexBuffer, m_indexBufferAllocation);
-	m_allocator.destroyBuffer(m_vertexBuffer, m_vertexBufferAllocation);
-	m_allocator.destroyBuffer(m_primitiveBuffer, m_indexBufferAllocation);
-	m_allocator.destroyBuffer(m_meshletInfoBuffer, m_vertexBufferAllocation);
+	m_allocator->destroyBuffer(m_indexBuffer, m_indexBufferAllocation);
+	m_allocator->destroyBuffer(m_vertexBuffer, m_vertexBufferAllocation);
+	m_allocator->destroyBuffer(m_primitiveBuffer, m_primitiveBufferAllocation);
+	m_allocator->destroyBuffer(m_meshletInfoBuffer, m_meshletInfoBufferAllocation);
 
 	for (const auto& model : m_models) {
 		delete model;
@@ -183,7 +183,7 @@ void copyStdVectorToGPUBuffer(VulkanContext* context, vma::Allocator* allocator,
 	vk::Buffer stagingBuffer;
 	vma::Allocation stagingAllocation;
 
-	std::tie(stagingBuffer, stagingAllocation) = context->createBuffer(size, vk::BufferUsageFlagBits::eTransferSrc, vma::MemoryUsage::eCpuToGpu);
+	std::tie(stagingBuffer, stagingAllocation) = context->createBuffer(size, vk::BufferUsageFlagBits::eTransferSrc, vma::MemoryUsage::eCpuToGpu, "std::vector to GPU buffer staging buffer");
 
 	char* data = static_cast<char*>(allocator->mapMemory(stagingAllocation));
 	memcpy(data, inputStdVector.data(), size);
@@ -217,10 +217,10 @@ void VulkanScene::createGeometryBuffers()
 	vk::DeviceSize vertexBufferSize = sizeof(Vertex) * m_vertexCount;
 
 	/* Buffers Creation */
-	std::tie(m_meshletInfoBuffer, m_meshletInfoBufferAllocation) = m_context->createBuffer(meshletBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly);
-	std::tie(m_primitiveBuffer, m_primitiveBufferAllocation) = m_context->createBuffer(primitiveBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly);
-	std::tie(m_indexBuffer, m_indexBufferAllocation) = m_context->createBuffer(indexBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly);
-	std::tie(m_vertexBuffer, m_vertexBufferAllocation) = m_context->createBuffer(vertexBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly);
+	std::tie(m_meshletInfoBuffer, m_meshletInfoBufferAllocation) = m_context->createBuffer(meshletBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly, "Meshlet Info Buffer");
+	std::tie(m_primitiveBuffer, m_primitiveBufferAllocation) = m_context->createBuffer(primitiveBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly, "Primitive Buffer");
+	std::tie(m_indexBuffer, m_indexBufferAllocation) = m_context->createBuffer(indexBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly, "Index Buffer");
+	std::tie(m_vertexBuffer, m_vertexBufferAllocation) = m_context->createBuffer(vertexBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly, "Vertex Buffer");
 
 	/* Filling the buffer */
 	MeshletIndexingInfo meshletInfo{};
@@ -269,10 +269,10 @@ void VulkanScene::createGeometryBuffers()
 	} 
 
 	/* Sending to GPU buffers */
-	copyStdVectorToGPUBuffer<MeshletIndexingInfo>(m_context, &m_allocator, meshletInfos, m_meshletInfoBuffer, meshletBufferSize);
-	copyStdVectorToGPUBuffer<Meshlet::Triangle>(m_context, &m_allocator, triangles, m_primitiveBuffer,  primitiveBufferSize);
-	copyStdVectorToGPUBuffer<uint32_t>(m_context, &m_allocator, indices, m_indexBuffer,  indexBufferSize);
-	copyStdVectorToGPUBuffer<Vertex>(m_context, &m_allocator, vertices, m_vertexBuffer,  vertexBufferSize);
+	copyStdVectorToGPUBuffer<MeshletIndexingInfo>(m_context, m_allocator, meshletInfos, m_meshletInfoBuffer, meshletBufferSize);
+	copyStdVectorToGPUBuffer<Meshlet::Triangle>(m_context, m_allocator, triangles, m_primitiveBuffer,  primitiveBufferSize);
+	copyStdVectorToGPUBuffer<uint32_t>(m_context, m_allocator, indices, m_indexBuffer,  indexBufferSize);
+	copyStdVectorToGPUBuffer<Vertex>(m_context, m_allocator, vertices, m_vertexBuffer,  vertexBufferSize);
 
 }
 
@@ -338,9 +338,9 @@ void VulkanScene::createIndexBuffer()
 	vk::Buffer stagingBuffer;
 	vma::Allocation stagingAllocation;
 	std::tie(stagingBuffer, stagingAllocation) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
-		vma::MemoryUsage::eCpuToGpu);
+		vma::MemoryUsage::eCpuToGpu, "Index Staging Buffer");
 
-	char* data = static_cast<char*>(m_allocator.mapMemory(stagingAllocation));
+	char* data = static_cast<char*>(m_allocator->mapMemory(stagingAllocation));
 
 	int indexOffset = 0;
 	for (int modelIndex = 0; modelIndex < m_models.size(); modelIndex++) {
@@ -357,14 +357,14 @@ void VulkanScene::createIndexBuffer()
 		}
 		//m_models[modelIndex]->clearLoadingIndexData();
 	}
-	m_allocator.unmapMemory(stagingAllocation);
+	m_allocator->unmapMemory(stagingAllocation);
 
 	std::tie(m_indexBuffer, m_indexBufferAllocation) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-		vma::MemoryUsage::eGpuOnly);
+		vma::MemoryUsage::eGpuOnly, "Index Buffer");
 
 	m_context->copyBuffer(stagingBuffer, m_indexBuffer, bufferSize);
 
-	m_allocator.destroyBuffer(stagingBuffer, stagingAllocation);
+	m_allocator->destroyBuffer(stagingBuffer, stagingAllocation);
 }
 
 
@@ -384,9 +384,9 @@ void VulkanScene::createVertexBuffer()
 	vk::Buffer stagingBuffer;
 	vma::Allocation stagingAllocation;
 	std::tie(stagingBuffer, stagingAllocation) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
-		vma::MemoryUsage::eCpuToGpu);
+		vma::MemoryUsage::eCpuToGpu, "Vertex Staging Buffer");
 
-	char* data = static_cast<char*>(m_allocator.mapMemory(stagingAllocation));
+	char* data = static_cast<char*>(m_allocator->mapMemory(stagingAllocation));
 
 	for (const auto& model : m_models) {
 		for (const auto& texturedMesh : model->getRawMeshes()) {
@@ -395,13 +395,13 @@ void VulkanScene::createVertexBuffer()
 		}
 		//model->clearLoadingVertexData();
 	}
-	m_allocator.unmapMemory(stagingAllocation);
+	m_allocator->unmapMemory(stagingAllocation);
 
 	std::tie(m_vertexBuffer, m_vertexBufferAllocation) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
-		vma::MemoryUsage::eGpuOnly);
+		vma::MemoryUsage::eGpuOnly, "Vertex Buffer");
 
 	m_context->copyBuffer(stagingBuffer, m_vertexBuffer, bufferSize);
 
-	m_allocator.destroyBuffer(stagingBuffer, stagingAllocation);
+	m_allocator->destroyBuffer(stagingBuffer, stagingAllocation);
 }
 

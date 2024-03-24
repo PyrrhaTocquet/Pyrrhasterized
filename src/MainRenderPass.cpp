@@ -19,12 +19,12 @@ MainRenderPass::~MainRenderPass()
     cleanAttachments();
     
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        m_context->getAllocator().destroyBuffer(m_generalUniformBuffers[i], m_generalUniformBuffersAllocations[i]);
-        m_context->getAllocator().destroyBuffer(m_lightUniformBuffers[i], m_lightUniformBuffersAllocations[i]);
+        m_context->getAllocator()->destroyBuffer(m_generalUniformBuffers[i], m_generalUniformBuffersAllocations[i]);
+        m_context->getAllocator()->destroyBuffer(m_lightUniformBuffers[i], m_lightUniformBuffersAllocations[i]);
         
         for(uint32_t k = 0; k < m_materialUniformBuffers[i].size();k++)
         {
-            m_context->getAllocator().destroyBuffer(m_materialUniformBuffers[i][k], m_materialUniformBufferAllocations[i][k]);
+            m_context->getAllocator()->destroyBuffer(m_materialUniformBuffers[i][k], m_materialUniformBufferAllocations[i][k]);
         }
     }
     
@@ -515,12 +515,12 @@ void MainRenderPass::createMaterialDescriptorSet(VulkanScene* scene)
         m_materialUniformBufferAllocations[currentFrame].resize(materialUBOs.size());
         materialBufferInfos.resize(materialUBOs.size());
         for (size_t i = 0; i < materialUBOs.size(); i++) {
-            std::tie(m_materialUniformBuffers[currentFrame][i], m_materialUniformBufferAllocations[currentFrame][i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu);
+            std::tie(m_materialUniformBuffers[currentFrame][i], m_materialUniformBufferAllocations[currentFrame][i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu, "Material Uniform Buffer");
 
             //Write the material to the buffer
-            void* data = m_context->getAllocator().mapMemory(m_materialUniformBufferAllocations[currentFrame][i]);
+            void* data = m_context->getAllocator()->mapMemory(m_materialUniformBufferAllocations[currentFrame][i]);
             memcpy(data, &materialUBOs[i], sizeof(MaterialUBO));
-            m_context->getAllocator().unmapMemory(m_materialUniformBufferAllocations[currentFrame][i]);
+            m_context->getAllocator()->unmapMemory(m_materialUniformBufferAllocations[currentFrame][i]);
 
 
             //filling the material buffer infos
@@ -755,9 +755,9 @@ void MainRenderPass::updateGeneralUniformBuffer(uint32_t currentFrame) {
         ubo.cascadeViewProj[i] = cascadeUbo.cascadeViewProjMat[i];
     }
 
-    void* data = m_context->getAllocator().mapMemory(m_generalUniformBuffersAllocations[currentFrame]);
+    void* data = m_context->getAllocator()->mapMemory(m_generalUniformBuffersAllocations[currentFrame]);
     memcpy(data, &ubo, sizeof(GeneralUniformBufferObject));
-    m_context->getAllocator().unmapMemory(m_generalUniformBuffersAllocations[currentFrame]);
+    m_context->getAllocator()->unmapMemory(m_generalUniformBuffersAllocations[currentFrame]);
 }
 
 //Updates uniform buffer for Light uniform data
@@ -777,9 +777,9 @@ void MainRenderPass::updateLightUniformBuffer(uint32_t currentFrame, std::vector
 
     }
 
-    void* data = m_context->getAllocator().mapMemory(m_lightUniformBuffersAllocations[currentFrame]);
+    void* data = m_context->getAllocator()->mapMemory(m_lightUniformBuffersAllocations[currentFrame]);
     memcpy(data, lightsUbo.data(), sizeof(LightUBO)*lightsUbo.size());
-    m_context->getAllocator().unmapMemory(m_lightUniformBuffersAllocations[currentFrame]);
+    m_context->getAllocator()->unmapMemory(m_lightUniformBuffersAllocations[currentFrame]);
 
 }
 
@@ -789,9 +789,9 @@ void MainRenderPass::updateMaterialUniformBuffer(uint32_t currentFrame, std::vec
     materialUbo.metallicFactor = metallicFactorGui;
     materialUbo.roughnessFactor = roughnessFactorGui;
 
-    void* data = m_context->getAllocator().mapMemory(m_materialUniformBufferAllocations[currentFrame]);
+    void* data = m_context->getAllocator()->mapMemory(m_materialUniformBufferAllocations[currentFrame]);
     memcpy(data, &materialUbo, sizeof(MaterialUBO));
-    m_context->getAllocator().unmapMemory(m_materialUniformBufferAllocations[currentFrame]);
+    m_context->getAllocator()->unmapMemory(m_materialUniformBufferAllocations[currentFrame]);
     */
 }
 
@@ -816,7 +816,7 @@ void MainRenderPass::createUniformBuffers() {
         m_generalUniformBuffersAllocations.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            std::tie(m_generalUniformBuffers[i], m_generalUniformBuffersAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu);
+            std::tie(m_generalUniformBuffers[i], m_generalUniformBuffersAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu, "General Uniform Buffer");
         }
     }
     {
@@ -826,7 +826,7 @@ void MainRenderPass::createUniformBuffers() {
         m_lightUniformBuffersAllocations.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            std::tie(m_lightUniformBuffers[i], m_lightUniformBuffersAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu);
+            std::tie(m_lightUniformBuffers[i], m_lightUniformBuffersAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu, "Light Uniform Buffer");
         }
     }
 

@@ -6,15 +6,14 @@
     Forked from Vulkan Base Project (Private repo) (original file date: 24/03/2023)
 */
 
-
-#define VULKAN_HPP_NO_CONSTRUCTORS
-#include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_raii.hpp>
-
 #define VMA_IMPLEMENTATION
+#ifndef NDEBUG
+#define VMA_VERBOSE_ALLOC_DEALLOC
+#define VMA_DEBUG_LOG(str) VMA_DEBUG_LOG_FORMAT("%s\n", str)
+#endif
 #include "vk_mem_alloc.hpp"
 
-
+#include "Defs.h"
 #include <iostream>
 #include "VulkanContext.h"
 #include "VulkanRenderer.h"
@@ -102,5 +101,6 @@ int main() {
 
     renderer.mainloop();
 
+    delete peachEntity;
     return 0;
 }

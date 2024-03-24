@@ -832,23 +832,23 @@ void VulkanContext::createAllocator() {
 	m_allocator = vma::createAllocator(createInfo);
 }
 
-vma::Allocator VulkanContext::getAllocator()
+vma::Allocator* VulkanContext::getAllocator()
 {
-	return m_allocator;
+	return &m_allocator;
 }
 
 #pragma endregion
 
 #pragma region BUFFERS
 //Creates and return the buffer and the allocation that matches the input arguments
-std::pair<vk::Buffer, vma::Allocation> VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::MemoryUsage memoryUsage) 
+std::pair<vk::Buffer, vma::Allocation> VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::MemoryUsage memoryUsage, std::string name)
 {
 	vk::BufferCreateInfo bufferInfo{
 		.size = size,
-		.usage = usage, 
+		.usage = usage,
 		.sharingMode = vk::SharingMode::eExclusive,
 	};
-	
+
 	vma::AllocationCreateInfo bufferAllocInfo{
 		.usage = memoryUsage,
 	};
@@ -858,7 +858,12 @@ std::pair<vk::Buffer, vma::Allocation> VulkanContext::createBuffer(vk::DeviceSiz
 		bufferAllocInfo.flags = vma::AllocationCreateFlagBits::eHostAccessSequentialWrite;
 	}
 
-	return m_allocator.createBuffer(bufferInfo, bufferAllocInfo);
+	std::pair<vk::Buffer, vma::Allocation> ret = m_allocator.createBuffer(bufferInfo, bufferAllocInfo);
+#ifndef NDEBUG
+	vma::Allocation& alloc = ret.second;
+	m_allocator.setAllocationName(alloc, name.c_str());
+#endif
+	return ret;
 }
 
 //Copies a srcBuffer to a dstBuffer (GPU execution)

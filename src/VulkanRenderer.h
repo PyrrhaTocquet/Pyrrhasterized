@@ -43,10 +43,10 @@ class ShadowRenderPass;
 class VulkanRenderer
 {
 private:
-	VulkanContext* m_context = nullptr;
+	VulkanContext *m_context = nullptr;
 
 	vk::Device m_device = VK_NULL_HANDLE;
-	vma::Allocator m_allocator;
+	vma::Allocator *m_allocator;
 
 	//COMMAND BUFFER
 	std::vector<vk::CommandBuffer> m_commandBuffers;
@@ -55,8 +55,8 @@ private:
 	
 	//RENDER PASS
 	std::vector<VulkanRenderPass*> m_renderPasses;
-	ShadowCascadeRenderPass* m_shadowPass;
-	MainRenderPass* m_mainPass;
+	ShadowCascadeRenderPass *m_shadowPass;
+	MainRenderPass *m_mainPass;
 	vk::DescriptorSetLayout m_geometryDescriptorSetLayout;
 
 	//RENDERING FLOW

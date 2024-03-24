@@ -25,7 +25,7 @@ private:
 
 	vma::Allocation m_meshletInfoBufferAllocation, m_primitiveBufferAllocation, m_indexBufferAllocation, m_vertexBufferAllocation;
 	uint32_t m_meshletCount = 0, m_primitiveCount = 0, m_indexCount = 0, m_vertexCount = 0;
-	vma::Allocator m_allocator;
+	vma::Allocator* m_allocator;
 	DirectionalLight* m_sun;
 	std::vector<ModelLoadingInfo> m_modelLoadingInfos;
 

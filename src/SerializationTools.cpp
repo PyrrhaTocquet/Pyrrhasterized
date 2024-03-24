@@ -151,12 +151,6 @@ namespace SerializationTools{
             }
         }
     }
-
         file.close();
-
-
-      
-    }
-
-    
+    }    
 }

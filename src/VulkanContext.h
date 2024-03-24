@@ -107,7 +107,7 @@ public:
 
 	//ACCESSORS
 	[[nodiscard]] vk::Device getDevice();
-	[[nodiscard]] vma::Allocator getAllocator();
+	[[nodiscard]] vma::Allocator* getAllocator();
 
 	//SWAPCHAIN
 	[[nodiscard]] vk::Extent2D getSwapchainExtent() const;
@@ -141,7 +141,7 @@ public:
 	GLFWwindow* getWindowPtr();
 
 	//BUFFERS
-	[[nodiscard("Release the allocation when the buffer is no longer used")]] std::pair<vk::Buffer, vma::Allocation> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::MemoryUsage memoryUsage);
+	[[nodiscard("Release the allocation when the buffer is no longer used")]] std::pair<vk::Buffer, vma::Allocation> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::MemoryUsage memoryUsage, std::string name);
 	void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
 	void copyBufferToImage(vk::Buffer buffer, vk::Image image, vk::CommandPool commandPool, uint32_t width, uint32_t height);
 

@@ -30,7 +30,7 @@ void VulkanImage::constructVkImage(VulkanContext* context, VulkanImageParams ima
 		allocInfo.flags = vma::AllocationCreateFlagBits::eDedicatedMemory;
 	}
 
-	std::tie(m_image, m_allocation) = m_allocator.createImage(imageInfo, allocInfo); 
+	std::tie(m_image, m_allocation) = m_allocator->createImage(imageInfo, allocInfo); 
 
 }
 
@@ -91,12 +91,12 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 	vk::Buffer stagingBuffer;
 	vma::Allocation stagingBufferAllocation;
 	vk::DeviceSize imageSize = texWidth * texHeight * 4;
-	std::tie(stagingBuffer, stagingBufferAllocation) = context->createBuffer(imageSize, vk::BufferUsageFlagBits::eTransferSrc, vma::MemoryUsage::eCpuToGpu);
+	std::tie(stagingBuffer, stagingBufferAllocation) = context->createBuffer(imageSize, vk::BufferUsageFlagBits::eTransferSrc, vma::MemoryUsage::eCpuToGpu, "Vulkan Image Staging Buffer");
 
 	//Copy the pixel values to the buffer
-	void* data = context->getAllocator().mapMemory(stagingBufferAllocation);
+	void* data = context->getAllocator()->mapMemory(stagingBufferAllocation);
 	memcpy(data, pixels, static_cast<size_t>(imageSize));
-	context->getAllocator().unmapMemory(stagingBufferAllocation);
+	context->getAllocator()->unmapMemory(stagingBufferAllocation);
 
 	//Remember to free !
 	stbi_image_free(pixels);
@@ -111,7 +111,7 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 	//Copy the staging buffer to the texture image
 	transitionImageLayout( context, imageParams.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, imageParams.mipLevels); 
 	context->copyBufferToImage(stagingBuffer, m_image, m_commandPool, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-	m_allocator.destroyBuffer(stagingBuffer, stagingBufferAllocation);
+	m_allocator->destroyBuffer(stagingBuffer, stagingBufferAllocation);
 
 
 	//Generating the mip maps transitions the image to shader reading layout
@@ -119,7 +119,7 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 
 	//Image View
 	constructVkImageView(context, imageParams, imageViewParams);
-	m_allocator.setAllocationName(m_allocation, path.c_str());
+	m_allocator->setAllocationName(m_allocation, path.c_str());
 }
 
 
@@ -128,7 +128,7 @@ VulkanImage::~VulkanImage()
 	if (!m_loadingFailed)
 	{
 		m_device.destroyCommandPool(m_commandPool);
-		m_allocator.destroyImage(m_image, m_allocation);
+		m_allocator->destroyImage(m_image, m_allocation);
 		m_device.destroyImageView(m_imageView);
 	}
 }
@@ -224,7 +224,7 @@ bool VulkanImage::hasLoadingFailed()
 
 void VulkanImage::setVMADebugName(std::string name)
 {
-	m_allocator.setAllocationName(m_allocation, name.c_str());
+	m_allocator->setAllocationName(m_allocation, name.c_str());
 }
 
 //Transition the image from the oldLayout to a newLayout

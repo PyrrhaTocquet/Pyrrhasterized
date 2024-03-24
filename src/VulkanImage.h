@@ -45,7 +45,7 @@ private:
 	bool m_loadingFailed = false;
 
 private:
-	vma::Allocator m_allocator;
+	vma::Allocator* m_allocator;
 	vma::Allocation m_allocation;
 public:
 	//General single Image constructor

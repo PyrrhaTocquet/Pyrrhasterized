@@ -14,7 +14,7 @@ ShadowCascadeRenderPass::ShadowCascadeRenderPass(VulkanContext* context, Camera*
 ShadowCascadeRenderPass::~ShadowCascadeRenderPass() {
   
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        m_context->getAllocator().destroyBuffer(m_uniformBuffers[i], m_uniformBuffersAllocations[i]);
+        m_context->getAllocator()->destroyBuffer(m_uniformBuffers[i], m_uniformBuffersAllocations[i]);
     }
     for (auto& framebufferImageView : m_shadowDepthLayerViews)
     {
@@ -327,7 +327,7 @@ void ShadowCascadeRenderPass::createUniformBuffer()
     m_uniformBuffersAllocations.resize(MAX_FRAMES_IN_FLIGHT);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        std::tie(m_uniformBuffers[i], m_uniformBuffersAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu);
+        std::tie(m_uniformBuffers[i], m_uniformBuffersAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu, "Shadow Cascade Render Pass Uniform Buffer");
     }
 }
 
@@ -421,9 +421,9 @@ void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
     }
     m_cascadeUbos[currentFrame] = ubo;
 
-    void* data = m_context->getAllocator().mapMemory(m_uniformBuffersAllocations[currentFrame]);
+    void* data = m_context->getAllocator()->mapMemory(m_uniformBuffersAllocations[currentFrame]);
     memcpy(data, &ubo, sizeof(CascadeUniformObject));
-    m_context->getAllocator().unmapMemory(m_uniformBuffersAllocations[currentFrame]);
+    m_context->getAllocator()->unmapMemory(m_uniformBuffersAllocations[currentFrame]);
 
 }
 
