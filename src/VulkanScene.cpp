@@ -153,20 +153,22 @@ vk::DescriptorSet VulkanScene::getGeometryDescriptorSet()
 
 //Function used in order to multithread model loading
 static std::mutex modelsMutex;
-static void newModel(VulkanContext* context, std::filesystem::path path, Transform transform, std::vector<Model*>* models) {
+static void newModel(VulkanContext* context, std::filesystem::path path, Transform transform, std::vector<Model*>* models, int modelId) {
 	Model* model = new Model(context, path, transform);
 	std::lock_guard<std::mutex> lock(modelsMutex);
-	models->push_back(model);
+	models->at(modelId) = model;
 };
 
 // Loads the models in the model info list (multithreaded)
 void VulkanScene::loadModels()
 {
+	size_t modelsCount = m_modelLoadingInfos.size();
 	std::vector<std::jthread> modelLoadingThreads;
-	modelLoadingThreads.resize(m_modelLoadingInfos.size());
-	for (uint32_t i = 0; i < m_modelLoadingInfos.size(); i++)
+	modelLoadingThreads.resize(modelsCount);
+	m_models.resize(modelsCount);
+	for (uint32_t i = 0; i < modelsCount; i++)
 	{
-		modelLoadingThreads[i] = std::jthread(newModel, m_context, m_modelLoadingInfos[i].path, m_modelLoadingInfos[i].transform, &m_models);
+		modelLoadingThreads[i] = std::jthread(newModel, m_context, m_modelLoadingInfos[i].path, m_modelLoadingInfos[i].transform, &m_models, i);
 	}
 }
 

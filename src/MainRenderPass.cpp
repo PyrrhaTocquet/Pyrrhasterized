@@ -3,7 +3,7 @@
 //Always create this render pass after creating the shadow render pass
 MainRenderPass::MainRenderPass(VulkanContext* context, Camera* camera, ShadowCascadeRenderPass* shadowRenderPass) : VulkanRenderPass(context)
 {
-    std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
+    std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews(); // REMOVE ? useless ?
     m_framebuffers.resize(m_context->getSwapchainImagesCount());
 
     m_shadowRenderPass = shadowRenderPass;
@@ -27,8 +27,6 @@ MainRenderPass::~MainRenderPass()
             m_context->getAllocator()->destroyBuffer(m_materialUniformBuffers[i][k], m_materialUniformBufferAllocations[i][k]);
         }
     }
-    
-
 }
 
 void MainRenderPass::createRenderPass()

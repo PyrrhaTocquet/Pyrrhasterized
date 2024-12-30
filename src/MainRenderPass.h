@@ -19,7 +19,7 @@ class ShadowRenderPass;
 class MainRenderPass : public VulkanRenderPass {
 	//created
 	VulkanImage* m_colorAttachment = nullptr;
-	VulkanImage* m_depthAttachment = nullptr;
+	VulkanImage* m_depthAttachment = nullptr; // TODO remove for depth pre-pass attachment
 
 	std::vector<vk::Buffer> m_generalUniformBuffers;
 	std::vector<vma::Allocation> m_generalUniformBuffersAllocations;
@@ -34,7 +34,7 @@ class MainRenderPass : public VulkanRenderPass {
 	vk::DescriptorSetLayout m_materialDescriptorSetLayout;
 	std::vector<vk::DescriptorSet> m_materialDescriptorSet;
 
-	Camera* m_camera;
+	Camera* m_camera; 
 
 	//acquired at construction
 	ShadowCascadeRenderPass* m_shadowRenderPass = nullptr;

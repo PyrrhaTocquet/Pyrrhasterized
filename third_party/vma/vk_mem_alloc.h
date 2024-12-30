@@ -11766,7 +11766,7 @@ void VmaDeviceMemoryBlock::Destroy(VmaAllocator allocator)
 {
     // Define macro VMA_DEBUG_LOG_FORMAT to receive the list of the unfreed allocations
     if (!m_pMetadata->IsEmpty())
-        m_pMetadata->DebugLogAllAllocations();
+         m_pMetadata->DebugLogAllAllocations();
     // This is the most important assert in the entire library.
     // Hitting it means you have some memory leak - unreleased VmaAllocation objects.
     VMA_ASSERT(m_pMetadata->IsEmpty() && "Some allocations were not freed before destruction of this memory block!");

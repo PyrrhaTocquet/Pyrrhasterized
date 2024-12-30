@@ -6,6 +6,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <filesystem>
+#include <assert.h>
 
 /* RENDERING CONSTS*/
 const bool ENABLE_MSAA = false;
@@ -153,6 +154,13 @@ struct Mesh {
 	std::vector<Meshlet> meshlets;
 	std::vector<Vertex> vertices;
 };
+
+struct VulkanBuffer 
+{
+	vk::Buffer m_Buffer;
+	vma::Allocation m_Allocation;
+};
+
 
 /* CLEAR COLORS */
 constexpr vk::ClearColorValue CLEAR_COLOR = vk::ClearColorValue(std::array<float, 4>{.8f, .8f, .8f, 1.0f});

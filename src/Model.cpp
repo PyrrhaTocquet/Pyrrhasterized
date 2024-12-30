@@ -410,9 +410,10 @@ void Model::loadModel(const std::filesystem::path& path) {
 		std::runtime_error("Only .gltf and .glb files are supported for 3D model loading/baking");
 	}
 
-	if(!SerializationTools::isModelBaked(path))
+	// Serialization has not been a success lol
+	//if(!SerializationTools::isModelBaked(path))
+	if (true)
 	{
-		
 		//Bake meshlets
 		for(RawMesh mesh: m_rawMeshes)
 		{
@@ -426,8 +427,6 @@ void Model::loadModel(const std::filesystem::path& path) {
 				m_meshes.back().vertices = mesh.loadingVertices;
 				
 			}
-		
-			
 		}
 
 		SerializationTools::writeBakedModel(path, m_meshes);

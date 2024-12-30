@@ -66,7 +66,7 @@ int main() {
     scene.addModel("assets/SponzaGltf/sponza.glb", sponzaTransform);
     scene.addModel("assets/Ganon/ganon.gltf", ganonTransform);
     scene.addModel("assets/Helmet/DamagedHelmet.gltf", helmetTransform);
-    scene.addModel("assets/bunny.gtf", bunnyTransform);
+    //scene.addModel("assets/bunny.gtf", bunnyTransform);
     Peach* peachEntity = new Peach(&context);
     scene.addEntity(peachEntity);
     renderer.registerEntity(peachEntity);
@@ -75,7 +75,7 @@ int main() {
     sphereMaterialsTransform.translate.y = 10;
     sphereMaterialsTransform.translate.x = 10;
     sphereMaterialsTransform.scale *= 0.1;
-    scene.addModel("assets/SphereMaterials/spherematerials.glb", sphereMaterialsTransform);
+    //scene.addModel("assets/SphereMaterials/spherematerials.glb", sphereMaterialsTransform);
     
     
     /*Transform transform;

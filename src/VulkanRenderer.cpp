@@ -1,5 +1,6 @@
 #include "VulkanRenderer.h"
 
+
 #pragma region CONSTRUCTORS_DESTRUCTORS
 static void initRenderPass(VulkanRenderPass* renderPass, vk::DescriptorSetLayout geometryDescriptorSetLayout) {
     renderPass->createPushConstantsRanges();
@@ -160,6 +161,7 @@ void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32
     commandBuffer.begin(beginInfo); //TODO Revirtualise it well
     m_renderPasses[0]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
     m_renderPasses[1]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
+    m_renderPasses[2]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes); // this is indeed very ugly
     commandBuffer.end();
 }
 #pragma endregion
@@ -315,12 +317,16 @@ void VulkanRenderer::createRenderPasses() {
     shadowRenderPass->createRenderPass();
     m_renderPasses.push_back(shadowRenderPass);
 
-    //Render pass 2: Main Render Pass
+    // Render pass 2: Depth Pre-Pass
+    DepthPrePass* depthPrePass = new DepthPrePass(m_context, m_camera);
+    depthPrePass->createRenderPass();
+    m_renderPasses.push_back(depthPrePass);
+
+    //Render pass 3: Main Render Pass
     MainRenderPass* mainRenderPass = new MainRenderPass(m_context, m_camera, shadowRenderPass);
     mainRenderPass->createRenderPass();
     m_mainPass = mainRenderPass;
     m_renderPasses.push_back(mainRenderPass);
-
 }
 
 void VulkanRenderer::createGeometryDescriptorSetLayout()
