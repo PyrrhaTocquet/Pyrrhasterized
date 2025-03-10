@@ -43,6 +43,11 @@ struct GeneralUniformBufferObject {
 	float hairDensity;
 };
 
+struct CascadeUniformObject {
+	glm::mat4 cascadeViewProjMat[4];
+	float cascadeSplits[4];
+};
+
 struct ModelPushConstant {
 	glm::mat4 model;
 	glm::int32 materialId;

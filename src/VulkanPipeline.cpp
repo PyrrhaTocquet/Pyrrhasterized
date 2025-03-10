@@ -164,7 +164,7 @@ void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
     vk::PipelineDepthStencilStateCreateInfo depthStencilState{
         .depthTestEnable = m_pipelineInfo.depthTestEnable,
         .depthWriteEnable = m_pipelineInfo.depthWriteEnable,
-        .depthCompareOp = vk::CompareOp::eLess,
+        .depthCompareOp = vk::CompareOp::eLessOrEqual,
         .depthBoundsTestEnable = VK_FALSE,
         .stencilTestEnable = VK_FALSE,
         .front = {},

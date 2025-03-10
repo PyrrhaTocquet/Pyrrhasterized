@@ -841,7 +841,7 @@ vma::Allocator* VulkanContext::getAllocator()
 
 #pragma region BUFFERS
 //Creates and return the buffer and the allocation that matches the input arguments
-std::pair<vk::Buffer, vma::Allocation> VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::MemoryUsage memoryUsage, std::string name)
+VulkanBuffer VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::MemoryUsage memoryUsage, std::string name)
 {
 	vk::BufferCreateInfo bufferInfo{
 		.size = size,
@@ -863,7 +863,7 @@ std::pair<vk::Buffer, vma::Allocation> VulkanContext::createBuffer(vk::DeviceSiz
 	vma::Allocation& alloc = ret.second;
 	m_allocator.setAllocationName(alloc, name.c_str());
 #endif
-	return ret;
+	return VulkanBuffer{ret.first, ret.second};
 }
 
 //Copies a srcBuffer to a dstBuffer (GPU execution)

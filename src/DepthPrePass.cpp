@@ -1,15 +1,16 @@
 #include "DepthPrePass.h"
 
-DepthPrePass::DepthPrePass(VulkanContext* context, Camera* camera)
+DepthPrePass::DepthPrePass(VulkanContext* context)
 :	VulkanRenderPass(context)
 {
 	m_framebuffers.resize(MAX_FRAMES_IN_FLIGHT);
-	m_camera = camera;
 }
 
 DepthPrePass::~DepthPrePass()
 {
 	vk::Device device = m_context->getDevice();
+	device.destroyDescriptorPool(m_materialDescriptorPool);
+	device.destroyDescriptorSetLayout(m_materialDescriptorSetLayout);
 
 	cleanAttachments();
 
@@ -27,13 +28,13 @@ void DepthPrePass::createRenderPass()
 		.stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
 		.stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
 		.initialLayout = vk::ImageLayout::eUndefined,
-		.finalLayout = vk::ImageLayout::eDepthAttachmentOptimal,
+		.finalLayout = vk::ImageLayout::eAttachmentOptimal,
 	};
 
 	vk::AttachmentReference depthAttachmentRef
 	{
 		.attachment = 0,
-		.layout = vk::ImageLayout::eDepthAttachmentOptimal,
+		.layout = vk::ImageLayout::eAttachmentOptimal,
 	};
 
 	vk::SubpassDescription subpass
@@ -136,17 +137,18 @@ void DepthPrePass::createDescriptorPool()
 {
 	vk::Device device = m_context->getDevice();
 
-	vk::DescriptorPoolSize poolSize
-	{
-		.type = vk::DescriptorType::eUniformBuffer,
-		.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
-	};
+	std::array<vk::DescriptorPoolSize, 2> poolSizes;
+	poolSizes[0].type = vk::DescriptorType::eUniformBuffer;
+	poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+	poolSizes[1].type = vk::DescriptorType::eCombinedImageSampler;
+	poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * MAX_TEXTURE_COUNT; //Dynamic Indexing
+
 
 	vk::DescriptorPoolCreateInfo poolInfo
 	{
 		.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
-		.poolSizeCount = 1u,
-		.pPoolSizes = &poolSize,
+		.poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+		.pPoolSizes = poolSizes.data(),
 	};
 
 	try
@@ -156,6 +158,27 @@ void DepthPrePass::createDescriptorPool()
 	catch (vk::SystemError)
 	{
 		throw std::runtime_error("could not create descriptor pool");
+	}
+
+	//Materials
+	{
+		vk::DescriptorPoolSize materialPoolSize;
+		materialPoolSize.type = vk::DescriptorType::eUniformBuffer;
+		materialPoolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * MAX_MATERIAL_COUNT;
+
+		vk::DescriptorPoolCreateInfo materialPoolInfo{
+			.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
+			.poolSizeCount = 1,
+			.pPoolSizes = &materialPoolSize,
+		};
+
+		try {
+			m_materialDescriptorPool = device.createDescriptorPool(materialPoolInfo);
+		}
+		catch (vk::SystemError err)
+		{
+			throw std::runtime_error("could not create descriptor pool");
+		}
 	}
 }
 
@@ -170,9 +193,28 @@ void DepthPrePass::createDescriptorSetLayout()
         .stageFlags = vk::ShaderStageFlagBits::eTaskEXT | vk::ShaderStageFlagBits::eMeshEXT | vk::ShaderStageFlagBits::eFragment,
     };
 
+	vk::DescriptorSetLayoutBinding samplerLayoutBinding{
+		.binding = 1,
+		.descriptorType = vk::DescriptorType::eCombinedImageSampler,
+		.descriptorCount = MAX_TEXTURE_COUNT,  //Dynamic Indexing
+		.stageFlags = vk::ShaderStageFlagBits::eFragment,
+	};
+
+	vk::DescriptorSetLayoutBinding bindings[2] = { uboLayoutBinding, samplerLayoutBinding };
+
+	//Descriptor indexing
+	vk::DescriptorBindingFlags bindingFlags[2];
+	bindingFlags[1] = vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eVariableDescriptorCount; //Necessary for Dynamic indexing (VK_EXT_descriptor_indexing)
+
+	vk::DescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreateInfo{
+		.bindingCount = 2,
+		.pBindingFlags = bindingFlags,
+	};
+
     vk::DescriptorSetLayoutCreateInfo layoutInfo{
-        .bindingCount = 1,
-        .pBindings = &uboLayoutBinding,
+        .pNext = &bindingFlagsCreateInfo,
+		.bindingCount = 2,
+        .pBindings = bindings,
     };
 
     try {
@@ -182,58 +224,136 @@ void DepthPrePass::createDescriptorSetLayout()
     {
         throw std::runtime_error("could not create descriptor set layout");
     }
+
+	vk::DescriptorSetLayoutBinding materialLayoutBinding{
+	   .binding = 0,
+	   .descriptorType = vk::DescriptorType::eUniformBuffer,
+	   .descriptorCount = MAX_MATERIAL_COUNT,
+	   .stageFlags = vk::ShaderStageFlagBits::eFragment,
+	};
+
+	//Set 1: Material data 
+	vk::DescriptorBindingFlags bindingFlag;
+	bindingFlag = vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eVariableDescriptorCount; //Necessary for Dynamic indexing (VK_EXT_descriptor_indexing)
+
+	vk::DescriptorSetLayoutBindingFlagsCreateInfo materialBindingFlagsCreateInfo{
+		.bindingCount = 1,
+		.pBindingFlags = &bindingFlag,
+	};
+
+	vk::DescriptorSetLayoutCreateInfo materialLayoutInfo{
+		.pNext = &materialBindingFlagsCreateInfo,
+		.bindingCount = 1,
+		.pBindings = &materialLayoutBinding,
+	};
+
+	try {
+		m_materialDescriptorSetLayout = device.createDescriptorSetLayout(materialLayoutInfo);
+	}
+	catch (vk::SystemError err)
+	{
+		throw std::runtime_error("could not create descriptor set layout");
+	}
 }
 
 void DepthPrePass::createDescriptorSets(VulkanScene* scene)
 {
-	//Creates a vector of descriptorImageInfo from the scene's textures
-    m_mainDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
-    std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_mainDescriptorSetLayout);
+	//Creates a vector of descriptorImageInfo from the scene's textures (DUPLICATE, REFACTOR INTO SCENE)
+	{
+		std::vector<vk::DescriptorImageInfo> textureImageInfos = scene->generateTextureImageInfo();
 
-    /*Descriptor Sets Allocation*/
-    vk::DescriptorSetAllocateInfo allocInfo = {
-     .descriptorPool = m_mainDescriptorPool,
-     .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
-     .pSetLayouts = layouts.data()
-    };
+		m_mainDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
+		std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_mainDescriptorSetLayout);
 
-    try {
-        m_mainDescriptorSet = m_context->getDevice().allocateDescriptorSets(allocInfo);
-    }
-    catch (vk::SystemError err) {
-        throw std::runtime_error("could not allocate descriptor sets");
-    }
+		/* Dynamic Descriptor Counts */
+		uint32_t textureMaxCount = textureImageInfos.size();
+		std::vector<uint32_t> textureMaxCounts(MAX_FRAMES_IN_FLIGHT, textureMaxCount);
+		//std::vector<uint32_t> textureMaxCounts(MAX_FRAMES_IN_FLIGHT, materialMaxCount);
+		vk::DescriptorSetVariableDescriptorCountAllocateInfo setCounts{
+			.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
+			.pDescriptorCounts = textureMaxCounts.data(),
+		};
 
-    //Updating the descriptor sets with the appropriates references
-    for (uint32_t currentFrame = 0; currentFrame < MAX_FRAMES_IN_FLIGHT; currentFrame++) {
-        vk::DescriptorBufferInfo generalUboBufferInfo
-		{
-			.buffer = m_viewUniformBuffers[currentFrame].m_Buffer,
-			.offset = 0,
-			.range = sizeof(GeneralUniformBufferObject)
-        };     
+		/*Descriptor Sets Allocation*/
+		vk::DescriptorSetAllocateInfo allocInfo = {
+		 .pNext = &setCounts,
+		 .descriptorPool = m_mainDescriptorPool,
+		 .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
+		 .pSetLayouts = layouts.data()
+		};
 
-        vk::WriteDescriptorSet descriptorWrite;
-        descriptorWrite.dstSet = m_mainDescriptorSet[currentFrame];
-        descriptorWrite.dstBinding = 0;
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.pBufferInfo = &generalUboBufferInfo;
+		try {
+			m_mainDescriptorSet = m_context->getDevice().allocateDescriptorSets(allocInfo);
+		}
+		catch (vk::SystemError err) {
+			throw std::runtime_error("could not allocate descriptor sets");
+		}
 
-        try {
-            m_context->getDevice().updateDescriptorSets(descriptorWrite, nullptr);
-        }
-        catch (vk::SystemError err)
-        {
-            throw std::runtime_error("could not create descriptor sets");
-        }
-    }
+		//Updating the descriptor sets with the appropriates references
+		for (uint32_t currentFrame = 0; currentFrame < MAX_FRAMES_IN_FLIGHT; currentFrame++) {
+			vk::DescriptorBufferInfo generalUboBufferInfo
+			{
+				.buffer = scene->getGeneralUniformBuffer(currentFrame).m_Buffer,
+				.offset = 0,
+				.range = sizeof(GeneralUniformBufferObject)
+			};
+
+			std::array<vk::WriteDescriptorSet, 2> descriptorWrites;
+			descriptorWrites[0].dstSet = m_mainDescriptorSet[currentFrame];
+			descriptorWrites[0].dstBinding = 0;
+			descriptorWrites[0].dstArrayElement = 0;
+			descriptorWrites[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+			descriptorWrites[0].descriptorCount = 1;
+			descriptorWrites[0].pBufferInfo = &generalUboBufferInfo;
+
+			descriptorWrites[1].dstSet = m_mainDescriptorSet[currentFrame];
+			descriptorWrites[1].dstBinding = 1;
+			descriptorWrites[1].descriptorCount = textureImageInfos.size();
+			descriptorWrites[1].dstArrayElement = 0;
+			descriptorWrites[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+			descriptorWrites[1].pImageInfo = textureImageInfos.data();
+
+			try {
+				m_context->getDevice().updateDescriptorSets(descriptorWrites, nullptr);
+			}
+			catch (vk::SystemError err)
+			{
+				throw std::runtime_error("could not create descriptor sets");
+			}
+		}
+	}
+	{
+		m_materialDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
+		std::vector<vk::DescriptorSetLayout> materialLayouts(MAX_FRAMES_IN_FLIGHT, m_materialDescriptorSetLayout);
+
+		/* Dynamic Descriptor Counts */
+		uint32_t materialMaxCount = MAX_MATERIAL_COUNT;
+		std::vector<uint32_t> materialMaxCounts(MAX_FRAMES_IN_FLIGHT, materialMaxCount);
+		//std::vector<uint32_t> textureMaxCounts(MAX_FRAMES_IN_FLIGHT, materialMaxCount);
+		vk::DescriptorSetVariableDescriptorCountAllocateInfo setCounts{
+			.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
+			.pDescriptorCounts = materialMaxCounts.data(),
+		};
+
+		vk::DescriptorSetAllocateInfo allocInfo = {
+			 .pNext = &setCounts,
+			 .descriptorPool = m_materialDescriptorPool,
+			 .descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
+			 .pSetLayouts = materialLayouts.data()
+		};
+
+		try {
+			m_materialDescriptorSet = m_context->getDevice().allocateDescriptorSets(allocInfo);
+		}
+		catch (vk::SystemError err) {
+			throw std::runtime_error("could not allocate descriptor sets");
+		}
+	}
 }
 
 void DepthPrePass::createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout)
 {
-	 std::array<vk::DescriptorSetLayout, 2> layouts = { geometryDescriptorSetLayout, m_mainDescriptorSetLayout };
+	 std::array<vk::DescriptorSetLayout, 3> layouts = { geometryDescriptorSetLayout, m_mainDescriptorSetLayout, m_materialDescriptorSetLayout };
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo = {
        .setLayoutCount = layouts.size(),
@@ -261,17 +381,6 @@ void DepthPrePass::createDefaultPipeline()
 	m_mainPipeline = new VulkanPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());
 }
 
-void DepthPrePass::createPipelineRessources()
-{
-	//General UBO
-    vk::DeviceSize bufferSize = sizeof(GeneralUniformBufferObject);
-    m_viewUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        std::tie(m_viewUniformBuffers[i].m_Buffer, m_viewUniformBuffers[i].m_Allocation) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu, "General Uniform Buffer");
-    }
-}
-
 void DepthPrePass::createPushConstantsRanges()
 {
 	m_pushConstant = vk::PushConstantRange
@@ -282,22 +391,10 @@ void DepthPrePass::createPushConstantsRanges()
     };
 }
 
-void DepthPrePass::updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)
-{
-	vk::Extent2D extent = getRenderPassExtent();
-
-    //Model View Proj
-    GeneralUniformBufferObject ubo{};
-    ubo.view = m_camera->getViewMatrix();
-    ubo.proj = m_camera->getProjMatrix(m_context);
-    ubo.cameraPos = m_camera->getCameraPos();
-    ubo.time = m_context->getTime().elapsedSinceStart;
-	// TODO Proper struct for this pass
-}
 
 vk::Extent2D DepthPrePass::getRenderPassExtent()
 {
-	return vk::Extent2D();
+	return m_context->getSwapchainExtent();
 }
 
 void DepthPrePass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes)
@@ -309,8 +406,8 @@ void DepthPrePass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swap
            .offset = {0, 0},
            .extent = getRenderPassExtent(),
        },
-       .clearValueCount = static_cast<uint32_t>(MAIN_CLEAR_VALUES.size()),
-       .pClearValues = MAIN_CLEAR_VALUES.data(),
+       .clearValueCount = static_cast<uint32_t>(SHADOW_DEPTH_CLEAR_VALUES.size()),
+       .pClearValues = SHADOW_DEPTH_CLEAR_VALUES.data(),
     };
     ModelPushConstant pushConstant; // TODO Remove useless push constant
 	pushConstant.shellCount = 1;
@@ -320,8 +417,8 @@ void DepthPrePass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swap
     //Draws each scene
     for (auto& scene : scenes)
     {
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scene->getGeometryDescriptorSet() , m_mainDescriptorSet[m_currentFrame] }, nullptr);
-        scene->draw(commandBuffer, m_currentFrame, m_pipelineLayout, pushConstant);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scene->getGeometryDescriptorSet() , m_mainDescriptorSet[m_currentFrame], m_materialDescriptorSet[m_currentFrame] }, nullptr);
+		scene->draw(commandBuffer, m_currentFrame, m_pipelineLayout, pushConstant);
     }
     
     commandBuffer.endRenderPass();

@@ -1,9 +1,8 @@
 #include "ShadowCascadeRenderPass.h"
 
-ShadowCascadeRenderPass::ShadowCascadeRenderPass(VulkanContext* context, Camera* camera)
+ShadowCascadeRenderPass::ShadowCascadeRenderPass(VulkanContext* context)
 {
     m_context = context;
-    m_camera = camera;
     std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
     //One per cascade times two per frames frames in flight
     m_framebuffers.resize(SHADOW_CASCADE_COUNT);
@@ -13,9 +12,6 @@ ShadowCascadeRenderPass::ShadowCascadeRenderPass(VulkanContext* context, Camera*
 
 ShadowCascadeRenderPass::~ShadowCascadeRenderPass() {
   
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        m_context->getAllocator()->destroyBuffer(m_uniformBuffers[i], m_uniformBuffersAllocations[i]);
-    }
     for (auto& framebufferImageView : m_shadowDepthLayerViews)
     {
         m_context->getDevice().destroyImageView(framebufferImageView);
@@ -131,7 +127,7 @@ void ShadowCascadeRenderPass::createDescriptorSets(VulkanScene* scene)
     //Updating the descriptor sets with the appropriates references
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vk::DescriptorBufferInfo bufferInfo{
-            .buffer = m_uniformBuffers[i],
+            .buffer = scene->getShadowCascadeUniformBuffer(i).m_Buffer,
             .offset = 0,
             .range = sizeof(CascadeUniformObject)
         };
@@ -193,7 +189,6 @@ void ShadowCascadeRenderPass::createDefaultPipeline()
 
 void ShadowCascadeRenderPass::createPipelineRessources()
 {
-    createUniformBuffer();
 }
 
 void ShadowCascadeRenderPass::createPushConstantsRanges()
@@ -208,7 +203,6 @@ void ShadowCascadeRenderPass::createPushConstantsRanges()
 void ShadowCascadeRenderPass::updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)
 {
     m_sun = scenes[0]->getSun();
-    updateUniformBuffer(currentFrame);
 }
 
 
@@ -310,121 +304,6 @@ void ShadowCascadeRenderPass::recordShadowCascadeMemoryDependency(vk::CommandBuf
     };
 
     commandBuffer.pipelineBarrier2(dependencyInfo);
-}
-
-//returns the current frame Uniform Buffer Object used in the Shadow Cascade Pass
-CascadeUniformObject ShadowCascadeRenderPass::getCurrentUbo(uint32_t currentFrame)
-{
-    return m_cascadeUbos[currentFrame];
-}
-
-
-void ShadowCascadeRenderPass::createUniformBuffer()
-{
-    vk::DeviceSize bufferSize = sizeof(CascadeUniformObject);
-
-    m_uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    m_uniformBuffersAllocations.resize(MAX_FRAMES_IN_FLIGHT);
-
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        std::tie(m_uniformBuffers[i], m_uniformBuffersAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu, "Shadow Cascade Render Pass Uniform Buffer");
-    }
-}
-
-void ShadowCascadeRenderPass::updateUniformBuffer(uint32_t currentFrame)
-{
-    //CASCADES
-    //Model View Proj
-    CascadeUniformObject ubo{};
-    //glm::vec3 lightPos = glm::vec3(1.f, 50.f, 2.f);
-    //glm::vec3 lightPos = glm::vec3(1.f, 50.f, 20.f * cos(m_context->getTime().elapsedSinceStart/8));
-    glm::vec3 lightDirection = m_sun->getWorldDirection();
-    float cascadeSplits[SHADOW_CASCADE_COUNT] = { 0.f, 0.f, 0.f, 0.f };
-    
-    float nearClip = m_camera->nearPlane;
-    float farClip = m_camera->farPlane;
-    float clipRange = farClip - nearClip;
-
-    float minZ = nearClip;
-    float maxZ = nearClip + clipRange;
-
-    float range = maxZ - minZ;
-    float ratio = maxZ / minZ;
-
-    // Calculate split depths based on view camera frustum
-    // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
-
-    for (uint32_t i = 0; i < SHADOW_CASCADE_COUNT; i++) {
-        float p = (i + 1) / static_cast<float>(SHADOW_CASCADE_COUNT);
-        float log = minZ * std::pow(ratio, p);
-        float uniform = minZ + range * p;
-        float d = m_cascadeSplitLambda * (log - uniform) + uniform;
-        cascadeSplits[i] = (d - nearClip) / clipRange;
-    }
-
-    // Calculate orthographic projection matrix for each cascade
-    float lastSplitDist = 0.0;
-    for (uint32_t i = 0; i < SHADOW_CASCADE_COUNT; i++) {
-        float splitDist = cascadeSplits[i];
-
-        glm::vec3 frustumCorners[8] = {
-            glm::vec3(-1.0f,  1.0f, 0.0f),
-            glm::vec3(1.0f,  1.0f, 0.0f),
-            glm::vec3(1.0f, -1.0f, 0.0f),
-            glm::vec3(-1.0f, -1.0f, 0.0f),
-            glm::vec3(-1.0f,  1.0f,  1.0f),
-            glm::vec3(1.0f,  1.0f,  1.0f),
-            glm::vec3(1.0f, -1.0f,  1.0f),
-            glm::vec3(-1.0f, -1.0f,  1.0f),
-        };
-
-        // Project frustum corners into world space
-        glm::mat4 invCam = glm::inverse(m_camera->getProjMatrix(m_context) * m_camera->getViewMatrix());
-        for (uint32_t i = 0; i < 8; i++) {
-            glm::vec4 invCorner = invCam * glm::vec4(frustumCorners[i], 1.0f);
-            frustumCorners[i] = invCorner / invCorner.w;
-        }
-
-        for (uint32_t i = 0; i < 4; i++) {
-            glm::vec3 dist = frustumCorners[i + 4] - frustumCorners[i];
-            frustumCorners[i + 4] = frustumCorners[i] + (dist * splitDist);
-            frustumCorners[i] = frustumCorners[i] + (dist * lastSplitDist);
-        }
-
-        // Get frustum center
-        glm::vec3 frustumCenter = glm::vec3(0.0f);
-        for (uint32_t i = 0; i < 8; i++) {
-            frustumCenter += frustumCorners[i];
-        }
-        frustumCenter /= 8.0f;
-
-        float radius = 0.0f;
-        for (uint32_t i = 0; i < 8; i++) {
-            float distance = glm::length(frustumCorners[i] - frustumCenter);
-            radius = glm::max(radius, distance);
-        }
-        radius = std::ceil(radius * 16.0f) / 16.0f;
-
-        glm::vec3 maxExtents = glm::vec3(radius);
-        glm::vec3 minExtents = -maxExtents;
-
-        const float higher = m_camera->farPlane*(1 + m_shadowMapsBlendWidth); //Why does this fix everything :sob:. Added blend width to make sure we don't have the boundary of two shadow maps when blending
-        glm::vec3 lightDir = normalize(lightDirection);
-        glm::mat4 lightViewMatrix = glm::lookAt(frustumCenter - lightDir * (- minExtents.z + higher), frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z + higher);
-
-        // Store split distance and matrix in cascade
-        ubo.cascadeSplits[i] = (m_camera->nearPlane + splitDist * clipRange) * -1.0f;
-        ubo.cascadeViewProjMat[i] = lightOrthoMatrix * lightViewMatrix;
-
-        lastSplitDist = cascadeSplits[i];
-    }
-    m_cascadeUbos[currentFrame] = ubo;
-
-    void* data = m_context->getAllocator()->mapMemory(m_uniformBuffersAllocations[currentFrame]);
-    memcpy(data, &ubo, sizeof(CascadeUniformObject));
-    m_context->getAllocator()->unmapMemory(m_uniformBuffersAllocations[currentFrame]);
-
 }
 
 void ShadowCascadeRenderPass::createFramebuffer()

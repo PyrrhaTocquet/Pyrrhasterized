@@ -14,14 +14,18 @@ private:
 	// created
 	VulkanImage* m_depthAttachment = nullptr;
 
-	std::vector<VulkanBuffer> m_viewUniformBuffers;
+
+	vk::DescriptorPool m_materialDescriptorPool;
+	vk::DescriptorSetLayout m_materialDescriptorSetLayout;
+	std::vector<vk::DescriptorSet> m_materialDescriptorSet;
+
+	std::array<std::vector<vk::Buffer>, MAX_FRAMES_IN_FLIGHT> m_materialUniformBuffers;
+	std::array<std::vector<vma::Allocation>, MAX_FRAMES_IN_FLIGHT> m_materialUniformBufferAllocations;
 	
-	// borrowed
-	Camera* m_camera;
 
 
 public:
-	DepthPrePass(VulkanContext* context, Camera* camera);
+	DepthPrePass(VulkanContext* context);
 	virtual ~DepthPrePass();
 	virtual void createRenderPass();
 	virtual void createFramebuffer();
@@ -33,10 +37,11 @@ public:
 	virtual void createDescriptorSets(VulkanScene* scene);
 	virtual void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout);
 	virtual void createDefaultPipeline();
-	virtual void createPipelineRessources();
 	virtual void createPushConstantsRanges();
-	virtual void updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes);
+
 	virtual vk::Extent2D getRenderPassExtent();
 	virtual void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes);
 	virtual void updateDescriptorSets() {};
+
+	const VulkanImage* getDepthAttachment() { assert(m_depthAttachment != nullptr); return m_depthAttachment; };
 };

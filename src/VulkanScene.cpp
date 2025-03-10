@@ -13,10 +13,22 @@ VulkanScene::VulkanScene(VulkanContext* context, DirectionalLight* sun) {
 
 VulkanScene::~VulkanScene()
 {
-	m_allocator->destroyBuffer(m_indexBuffer, m_indexBufferAllocation);
-	m_allocator->destroyBuffer(m_vertexBuffer, m_vertexBufferAllocation);
-	m_allocator->destroyBuffer(m_primitiveBuffer, m_primitiveBufferAllocation);
-	m_allocator->destroyBuffer(m_meshletInfoBuffer, m_meshletInfoBufferAllocation);
+	// TODO less verbose stuff
+	m_allocator->destroyBuffer(m_indexBuffer.m_Buffer, m_indexBuffer.m_Allocation);
+	m_allocator->destroyBuffer(m_vertexBuffer.m_Buffer, m_vertexBuffer.m_Allocation);
+	m_allocator->destroyBuffer(m_primitiveBuffer.m_Buffer, m_primitiveBuffer.m_Allocation);
+	m_allocator->destroyBuffer(m_meshletInfoBuffer.m_Buffer, m_meshletInfoBuffer.m_Allocation);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		m_context->getAllocator()->destroyBuffer(m_generalUniformBuffers[i].m_Buffer, m_generalUniformBuffers[i].m_Allocation);
+		m_context->getAllocator()->destroyBuffer(m_lightUniformBuffers[i].m_Buffer, m_lightUniformBuffers[i].m_Allocation);
+		m_context->getAllocator()->destroyBuffer(m_shadowCascadeUniformBuffers[i].m_Buffer, m_shadowCascadeUniformBuffers[i].m_Allocation);
+
+		for (uint32_t k = 0; k < m_materialUniformBuffers[i].size();k++)
+		{
+			m_context->getAllocator()->destroyBuffer(m_materialUniformBuffers[i][k].m_Buffer, m_materialUniformBuffers[i][k].m_Allocation);
+		}
+	}
 
 	for (const auto& model : m_models) {
 		delete model;
@@ -90,25 +102,25 @@ void VulkanScene::createGeometryDescriptorSet(vk::DescriptorSetLayout geometryDe
 
 	//Writing to the set
     vk::DescriptorBufferInfo meshletBufferInfo{
-        .buffer = m_meshletInfoBuffer,
+        .buffer = m_meshletInfoBuffer.m_Buffer,
         .offset = 0,
         .range = sizeof(MeshletIndexingInfo) * m_meshletCount
     };
 
     vk::DescriptorBufferInfo primitiveBufferInfo{
-        .buffer = m_primitiveBuffer,
+        .buffer = m_primitiveBuffer.m_Buffer,
         .offset = 0,
         .range = sizeof(Meshlet::Triangle) * m_primitiveCount,
     };
 
 	vk::DescriptorBufferInfo indexBufferInfo{
-		.buffer = m_indexBuffer,
+		.buffer = m_indexBuffer.m_Buffer,
 		.offset = 0,
 		.range = sizeof(uint32_t) * m_indexCount,
 	};
 
 	vk::DescriptorBufferInfo vertexBufferInfo{
-		.buffer = m_vertexBuffer,
+		.buffer = m_vertexBuffer.m_Buffer,
 		.offset = 0,
 		.range = sizeof(Vertex) * m_vertexCount,
 	};
@@ -182,16 +194,15 @@ void copyStdVectorToGPUBuffer(VulkanContext* context, vma::Allocator* allocator,
 {
 	assert(inputStdVector.size() * sizeof(T) == size);
 
-	vk::Buffer stagingBuffer;
-	vma::Allocation stagingAllocation;
+	VulkanBuffer stagingBuffer;
 
-	std::tie(stagingBuffer, stagingAllocation) = context->createBuffer(size, vk::BufferUsageFlagBits::eTransferSrc, vma::MemoryUsage::eCpuToGpu, "std::vector to GPU buffer staging buffer");
+	stagingBuffer = context->createBuffer(size, vk::BufferUsageFlagBits::eTransferSrc, vma::MemoryUsage::eCpuToGpu, "std::vector to GPU buffer staging buffer");
 
-	char* data = static_cast<char*>(allocator->mapMemory(stagingAllocation));
+	char* data = static_cast<char*>(allocator->mapMemory(stagingBuffer.m_Allocation));
 	memcpy(data, inputStdVector.data(), size);
-	allocator->unmapMemory(stagingAllocation);
-	context->copyBuffer(stagingBuffer, gpuBuffer, size);
-	allocator->destroyBuffer(stagingBuffer, stagingAllocation);
+	allocator->unmapMemory(stagingBuffer.m_Allocation);
+	context->copyBuffer(stagingBuffer.m_Buffer, gpuBuffer, size);
+	allocator->destroyBuffer(stagingBuffer.m_Buffer, stagingBuffer.m_Allocation);
 }
 
 //Creates the index and vertex buffer
@@ -219,10 +230,10 @@ void VulkanScene::createGeometryBuffers()
 	vk::DeviceSize vertexBufferSize = sizeof(Vertex) * m_vertexCount;
 
 	/* Buffers Creation */
-	std::tie(m_meshletInfoBuffer, m_meshletInfoBufferAllocation) = m_context->createBuffer(meshletBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly, "Meshlet Info Buffer");
-	std::tie(m_primitiveBuffer, m_primitiveBufferAllocation) = m_context->createBuffer(primitiveBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly, "Primitive Buffer");
-	std::tie(m_indexBuffer, m_indexBufferAllocation) = m_context->createBuffer(indexBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly, "Index Buffer");
-	std::tie(m_vertexBuffer, m_vertexBufferAllocation) = m_context->createBuffer(vertexBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly, "Vertex Buffer");
+	m_meshletInfoBuffer = m_context->createBuffer(meshletBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly, "Meshlet Info Buffer");
+	m_primitiveBuffer= m_context->createBuffer(primitiveBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly, "Primitive Buffer");
+	m_indexBuffer = m_context->createBuffer(indexBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly, "Index Buffer");
+	m_vertexBuffer = m_context->createBuffer(vertexBufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer, vma::MemoryUsage::eGpuOnly, "Vertex Buffer");
 
 	/* Filling the buffer */
 	MeshletIndexingInfo meshletInfo{};
@@ -271,11 +282,10 @@ void VulkanScene::createGeometryBuffers()
 	} 
 
 	/* Sending to GPU buffers */
-	copyStdVectorToGPUBuffer<MeshletIndexingInfo>(m_context, m_allocator, meshletInfos, m_meshletInfoBuffer, meshletBufferSize);
-	copyStdVectorToGPUBuffer<Meshlet::Triangle>(m_context, m_allocator, triangles, m_primitiveBuffer,  primitiveBufferSize);
-	copyStdVectorToGPUBuffer<uint32_t>(m_context, m_allocator, indices, m_indexBuffer,  indexBufferSize);
-	copyStdVectorToGPUBuffer<Vertex>(m_context, m_allocator, vertices, m_vertexBuffer,  vertexBufferSize);
-
+	copyStdVectorToGPUBuffer<MeshletIndexingInfo>(m_context, m_allocator, meshletInfos, m_meshletInfoBuffer.m_Buffer, meshletBufferSize);
+	copyStdVectorToGPUBuffer<Meshlet::Triangle>(m_context, m_allocator, triangles, m_primitiveBuffer.m_Buffer,  primitiveBufferSize);
+	copyStdVectorToGPUBuffer<uint32_t>(m_context, m_allocator, indices, m_indexBuffer.m_Buffer,  indexBufferSize);
+	copyStdVectorToGPUBuffer<Vertex>(m_context, m_allocator, vertices, m_vertexBuffer.m_Buffer,  vertexBufferSize);
 }
 
 //Computes the index buffer size from indices count
@@ -337,12 +347,11 @@ void VulkanScene::createIndexBuffer()
 
 	vk::DeviceSize bufferSize = sizeof(Vertex) * indicesCount;
 
-	vk::Buffer stagingBuffer;
-	vma::Allocation stagingAllocation;
-	std::tie(stagingBuffer, stagingAllocation) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+	VulkanBuffer stagingBuffer;
+	stagingBuffer = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
 		vma::MemoryUsage::eCpuToGpu, "Index Staging Buffer");
 
-	char* data = static_cast<char*>(m_allocator->mapMemory(stagingAllocation));
+	char* data = static_cast<char*>(m_allocator->mapMemory(stagingBuffer.m_Allocation));
 
 	int indexOffset = 0;
 	for (int modelIndex = 0; modelIndex < m_models.size(); modelIndex++) {
@@ -359,14 +368,14 @@ void VulkanScene::createIndexBuffer()
 		}
 		//m_models[modelIndex]->clearLoadingIndexData();
 	}
-	m_allocator->unmapMemory(stagingAllocation);
+	m_allocator->unmapMemory(stagingBuffer.m_Allocation);
 
-	std::tie(m_indexBuffer, m_indexBufferAllocation) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+	m_indexBuffer = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
 		vma::MemoryUsage::eGpuOnly, "Index Buffer");
 
-	m_context->copyBuffer(stagingBuffer, m_indexBuffer, bufferSize);
+	m_context->copyBuffer(stagingBuffer.m_Buffer, m_indexBuffer.m_Buffer, bufferSize);
 
-	m_allocator->destroyBuffer(stagingBuffer, stagingAllocation);
+	m_allocator->destroyBuffer(stagingBuffer.m_Buffer, stagingBuffer.m_Allocation);
 }
 
 
@@ -383,12 +392,11 @@ void VulkanScene::createVertexBuffer()
 
 	vk::DeviceSize bufferSize = sizeof(Vertex) * verticesCount;
 
-	vk::Buffer stagingBuffer;
-	vma::Allocation stagingAllocation;
-	std::tie(stagingBuffer, stagingAllocation) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+	VulkanBuffer stagingBuffer;
+	stagingBuffer = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
 		vma::MemoryUsage::eCpuToGpu, "Vertex Staging Buffer");
 
-	char* data = static_cast<char*>(m_allocator->mapMemory(stagingAllocation));
+	char* data = static_cast<char*>(m_allocator->mapMemory(stagingBuffer.m_Allocation));
 
 	for (const auto& model : m_models) {
 		for (const auto& texturedMesh : model->getRawMeshes()) {
@@ -397,13 +405,290 @@ void VulkanScene::createVertexBuffer()
 		}
 		//model->clearLoadingVertexData();
 	}
-	m_allocator->unmapMemory(stagingAllocation);
+	m_allocator->unmapMemory(stagingBuffer.m_Allocation);
 
-	std::tie(m_vertexBuffer, m_vertexBufferAllocation) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+	m_vertexBuffer = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
 		vma::MemoryUsage::eGpuOnly, "Vertex Buffer");
 
-	m_context->copyBuffer(stagingBuffer, m_vertexBuffer, bufferSize);
+	m_context->copyBuffer(stagingBuffer.m_Buffer, m_vertexBuffer.m_Buffer, bufferSize);
 
-	m_allocator->destroyBuffer(stagingBuffer, stagingAllocation);
+	m_allocator->destroyBuffer(stagingBuffer.m_Buffer, stagingBuffer.m_Allocation);
 }
 
+void VulkanScene::createUniformBuffers()
+{
+	//General UBO
+	{
+		vk::DeviceSize bufferSize = sizeof(GeneralUniformBufferObject);
+
+		m_generalUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			m_generalUniformBuffers[i] = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu, "General Uniform Buffer");
+		}
+	}
+	// Lights UBO
+	{
+		vk::DeviceSize bufferSize = sizeof(LightUBO) * MAX_LIGHT_COUNT;
+
+		m_lightUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			m_lightUniformBuffers[i] = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu, "Light Uniform Buffer");
+		}
+	}
+	//Shadow Cascades UBO
+	{
+		vk::DeviceSize bufferSize = sizeof(CascadeUniformObject);
+
+		m_shadowCascadeUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			m_shadowCascadeUniformBuffers[i] = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu, "Shadow Cascades Uniform Buffer");
+		}
+	}
+	// Materials UBO ( Maybe it needs to be somewhere else )
+	{
+ 		std::vector<MaterialUBO> materialUBOs;
+		MaterialUBO defaultMaterial{};
+		materialUBOs.push_back(defaultMaterial);
+		//Retrieving Material UBOs
+		for (auto& model : m_models) {
+			for (auto& mesh : model->getRawMeshes()) {
+				if (mesh.material != nullptr)
+				{
+					mesh.materialId = materialUBOs.size();
+					materialUBOs.push_back(mesh.material->getUBO());
+				}
+				else {
+					mesh.materialId = 0;
+				}
+
+			}
+		}
+
+		m_materialCount = materialUBOs.size();
+
+		for (uint32_t currentFrame = 0; currentFrame < MAX_FRAMES_IN_FLIGHT; currentFrame++) 
+		{
+			std::vector<vk::DescriptorBufferInfo> materialBufferInfos;
+
+			//Creating and filling the Uniform Buffers for each material
+			// TODO Just one buffer for fuck sake
+				vk::DeviceSize bufferSize = sizeof(MaterialUBO);
+			m_materialUniformBuffers[currentFrame].resize(materialUBOs.size());
+			materialBufferInfos.resize(materialUBOs.size());
+			for (size_t i = 0; i < materialUBOs.size(); i++)
+			{
+				m_materialUniformBuffers[currentFrame][i] = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu, "Material Uniform Buffer");
+
+				//Write the material to the buffer
+				void* data = m_context->getAllocator()->mapMemory(m_materialUniformBuffers[currentFrame][i].m_Allocation);
+				memcpy(data, &materialUBOs[i], sizeof(MaterialUBO));
+				m_context->getAllocator()->unmapMemory(m_materialUniformBuffers[currentFrame][i].m_Allocation);
+			}
+		}
+	}
+}
+
+//adds the texture info to the texture image info and sets the right Id to the mesh
+static void appendImageInfo(std::vector<vk::DescriptorImageInfo>& textureImageInfo, vk::Sampler sampler, VulkanImage* image, uint32_t& id, uint32_t& textureId)
+{
+	vk::DescriptorImageInfo imageInfo{
+			  .sampler = sampler,
+			  .imageView = image->m_imageView,
+			  .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+	};
+	textureImageInfo.push_back(imageInfo);
+	id = textureId; //Attributes the texture id to the mesh
+	textureId++;
+}
+
+//returns are vector of DescriptorImageInfo, containing the albedo and normal map texture information from the Models' TexturedMeshes
+[[nodiscard]] std::vector<vk::DescriptorImageInfo> VulkanScene::generateTextureImageInfo()
+{
+	std::vector<vk::DescriptorImageInfo> textureImageInfo;
+	uint32_t textureId = 0;
+	for (auto& model : m_models) {
+		for (auto& texturedMesh : model->getRawMeshes()) {
+			Material* material = texturedMesh.material;
+			if (material == nullptr)
+				continue;
+
+			if (material->hasAlbedoTexture())
+			{
+				appendImageInfo(textureImageInfo, Material::s_baseColorSampler, material->getAlbedoTexture(), material->m_albedoTextureId, textureId);
+			}
+			if (material->hasNormalTexture())
+			{
+				appendImageInfo(textureImageInfo, Material::s_normalSampler, material->getNormalTexture(), material->m_normalTextureId, textureId);
+			}
+			if (material->hasMetallicRoughness())
+			{
+				appendImageInfo(textureImageInfo, Material::s_metallicRoughnessSampler, material->getMetallicRoughnessTexture(), material->m_metallicRoughnessTextureId, textureId);
+			}
+			if (material->hasEmissiveTexture())
+			{
+				appendImageInfo(textureImageInfo, Material::s_emissiveSampler, material->getEmissiveTexture(), material->m_emissiveTextureId, textureId);
+			}
+		}
+	}
+	return textureImageInfo;
+}
+
+void	VulkanScene::updateGeneralUniformBuffer(uint32_t currentFrame)
+{
+	//Model View Proj
+	GeneralUniformBufferObject ubo{};
+	ubo.view = m_camera->getViewMatrix();
+	ubo.proj = m_camera->getProjMatrix(m_context);
+	ubo.cameraPos = m_camera->getCameraPos();
+	ubo.time = m_context->getTime().elapsedSinceStart;
+	ubo.shadowMapsBlendWidth = 0.5f;
+	ubo.hairLength = 0.03f; // TODO Scene accessible IMGUI stuff
+	ubo.gravityFactor = 0.02f;
+	ubo.hairDensity = 1000.f;
+
+	//Get the cascade view/proj matrices and frustrum splits previously calculated in the shadowRenderPass
+	CascadeUniformObject cascadeUbo = m_cascadeUbos[currentFrame];
+
+	for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
+	{
+		ubo.cascadeSplits[i] = cascadeUbo.cascadeSplits[i];
+		ubo.cascadeViewProj[i] = cascadeUbo.cascadeViewProjMat[i];
+	}
+
+	void* data = m_context->getAllocator()->mapMemory(m_generalUniformBuffers[currentFrame].m_Allocation);
+	memcpy(data, &ubo, sizeof(GeneralUniformBufferObject));
+	m_context->getAllocator()->unmapMemory(m_generalUniformBuffers[currentFrame].m_Allocation);
+}
+
+void	VulkanScene::updateUniformBuffers(uint32_t currentFrame)
+{
+	updateGeneralUniformBuffer(currentFrame);
+	updateLightUniformBuffer(currentFrame);
+	updateShadowCascadeUniformBuffer(currentFrame);
+}
+
+void	VulkanScene::setCamera(Camera* camera)
+{
+	m_camera = camera;
+}
+
+void	VulkanScene::updateShadowCascadeUniformBuffer(uint32_t currentFrame)
+{
+	//CASCADES
+	//Model View Proj
+	CascadeUniformObject ubo{};
+	//glm::vec3 lightPos = glm::vec3(1.f, 50.f, 2.f);
+	//glm::vec3 lightPos = glm::vec3(1.f, 50.f, 20.f * cos(m_context->getTime().elapsedSinceStart/8));
+	glm::vec3 lightDirection = m_sun->getWorldDirection();
+	float cascadeSplits[SHADOW_CASCADE_COUNT] = { 0.f, 0.f, 0.f, 0.f };
+
+	float nearClip = m_camera->nearPlane;
+	float farClip = m_camera->farPlane;
+	float clipRange = farClip - nearClip;
+
+	float minZ = nearClip;
+	float maxZ = nearClip + clipRange;
+
+	float range = maxZ - minZ;
+	float ratio = maxZ / minZ;
+
+	// Calculate split depths based on view camera frustum
+	// Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
+	const float m_cascadeSplitLambda = 0.95f;
+	for (uint32_t i = 0; i < SHADOW_CASCADE_COUNT; i++) {
+		float p = (i + 1) / static_cast<float>(SHADOW_CASCADE_COUNT);
+		float log = minZ * std::pow(ratio, p);
+		float uniform = minZ + range * p;
+		float d = m_cascadeSplitLambda * (log - uniform) + uniform;
+		cascadeSplits[i] = (d - nearClip) / clipRange;
+	}
+
+	// Calculate orthographic projection matrix for each cascade
+	float lastSplitDist = 0.0;
+	for (uint32_t i = 0; i < SHADOW_CASCADE_COUNT; i++) {
+		float splitDist = cascadeSplits[i];
+
+		glm::vec3 frustumCorners[8] = {
+			glm::vec3(-1.0f,  1.0f, 0.0f),
+			glm::vec3(1.0f,  1.0f, 0.0f),
+			glm::vec3(1.0f, -1.0f, 0.0f),
+			glm::vec3(-1.0f, -1.0f, 0.0f),
+			glm::vec3(-1.0f,  1.0f,  1.0f),
+			glm::vec3(1.0f,  1.0f,  1.0f),
+			glm::vec3(1.0f, -1.0f,  1.0f),
+			glm::vec3(-1.0f, -1.0f,  1.0f),
+		};
+
+		// Project frustum corners into world space
+		glm::mat4 invCam = glm::inverse(m_camera->getProjMatrix(m_context) * m_camera->getViewMatrix());
+		for (uint32_t i = 0; i < 8; i++) {
+			glm::vec4 invCorner = invCam * glm::vec4(frustumCorners[i], 1.0f);
+			frustumCorners[i] = invCorner / invCorner.w;
+		}
+
+		for (uint32_t i = 0; i < 4; i++) {
+			glm::vec3 dist = frustumCorners[i + 4] - frustumCorners[i];
+			frustumCorners[i + 4] = frustumCorners[i] + (dist * splitDist);
+			frustumCorners[i] = frustumCorners[i] + (dist * lastSplitDist);
+		}
+
+		// Get frustum center
+		glm::vec3 frustumCenter = glm::vec3(0.0f);
+		for (uint32_t i = 0; i < 8; i++) {
+			frustumCenter += frustumCorners[i];
+		}
+		frustumCenter /= 8.0f;
+
+		float radius = 0.0f;
+		for (uint32_t i = 0; i < 8; i++) {
+			float distance = glm::length(frustumCorners[i] - frustumCenter);
+			radius = glm::max(radius, distance);
+		}
+		radius = std::ceil(radius * 16.0f) / 16.0f;
+
+		glm::vec3 maxExtents = glm::vec3(radius);
+		glm::vec3 minExtents = -maxExtents;
+
+		const float m_shadowMapsBLendWidth = 0.5f;
+		const float higher = m_camera->farPlane * (1 + m_shadowMapsBLendWidth); //Why does this fix everything :sob:. Added blend width to make sure we don't have the boundary of two shadow maps when blending
+		glm::vec3 lightDir = normalize(lightDirection);
+		glm::mat4 lightViewMatrix = glm::lookAt(frustumCenter - lightDir * (-minExtents.z + higher), frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z + higher);
+
+		// Store split distance and matrix in cascade
+		ubo.cascadeSplits[i] = (m_camera->nearPlane + splitDist * clipRange) * -1.0f;
+		ubo.cascadeViewProjMat[i] = lightOrthoMatrix * lightViewMatrix;
+
+		lastSplitDist = cascadeSplits[i];
+	}
+	m_cascadeUbos[currentFrame] = ubo;
+
+	void* data = m_context->getAllocator()->mapMemory(m_shadowCascadeUniformBuffers[currentFrame].m_Allocation);
+	memcpy(data, &ubo, sizeof(CascadeUniformObject));
+	m_context->getAllocator()->unmapMemory(m_shadowCascadeUniformBuffers[currentFrame].m_Allocation);
+}
+
+//Updates uniform buffer for Light uniform data
+void	VulkanScene::updateLightUniformBuffer(uint32_t currentFrame)
+{
+	std::vector<Light*> lights = getLights();
+	std::array<LightUBO, MAX_LIGHT_COUNT> lightsUbo;
+	for (uint32_t i = 0; i < MAX_LIGHT_COUNT; i++)
+	{
+		if (i < lights.size())
+		{
+			LightUBO ubo = lights[i]->getUniformData();
+			lightsUbo[i] = ubo;
+		}
+		else {
+			lightsUbo[i] = LightUBO{};
+		}
+	}
+
+	void* data = m_context->getAllocator()->mapMemory(m_lightUniformBuffers[currentFrame].m_Allocation);
+	memcpy(data, lightsUbo.data(), sizeof(LightUBO) * lightsUbo.size());
+	m_context->getAllocator()->unmapMemory(m_lightUniformBuffers[currentFrame].m_Allocation);
+}

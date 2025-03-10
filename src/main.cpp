@@ -8,7 +8,7 @@
 
 #define VMA_IMPLEMENTATION
 #ifndef NDEBUG
-#define VMA_VERBOSE_ALLOC_DEALLOC
+//#define VMA_VERBOSE_ALLOC_DEALLOC
 #define VMA_DEBUG_LOG(str) VMA_DEBUG_LOG_FORMAT("%s\n", str)
 #endif
 #include "vk_mem_alloc.hpp"
