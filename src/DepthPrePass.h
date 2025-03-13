@@ -34,7 +34,7 @@ public:
 	virtual void recreateRenderPass();
 	virtual void createDescriptorPool();
 	virtual void createDescriptorSetLayout();
-	virtual void createDescriptorSets(VulkanScene* scene);
+	virtual void createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo> textureImageInfos);
 	virtual void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout);
 	virtual void createDefaultPipeline();
 	virtual void createPushConstantsRanges();

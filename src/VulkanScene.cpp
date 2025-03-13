@@ -565,9 +565,9 @@ void	VulkanScene::updateGeneralUniformBuffer(uint32_t currentFrame)
 
 void	VulkanScene::updateUniformBuffers(uint32_t currentFrame)
 {
+	updateShadowCascadeUniformBuffer(currentFrame);
 	updateGeneralUniformBuffer(currentFrame);
 	updateLightUniformBuffer(currentFrame);
-	updateShadowCascadeUniformBuffer(currentFrame);
 }
 
 void	VulkanScene::setCamera(Camera* camera)

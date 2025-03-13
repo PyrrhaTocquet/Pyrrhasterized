@@ -302,10 +302,12 @@ void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
     vulkanScene->loadModels();
     vulkanScene->createGeometryBuffers();
     vulkanScene->createGeometryDescriptorSet(m_geometryDescriptorSetLayout);
+    // Gorefix: the generateTextureImageInfo needs to generate the textureIds before the MaterialUBO is created and sent to the GPU
+    std::vector<vk::DescriptorImageInfo> textureImageInfos = vulkanScene->generateTextureImageInfo();
     vulkanScene->createUniformBuffers();
     for (auto& renderPass : m_renderPasses)
     {
-        renderPass->createDescriptorSets(vulkanScene);
+        renderPass->createDescriptorSets(vulkanScene, textureImageInfos);
     }
     
     for (auto& light : vulkanScene->getLights())

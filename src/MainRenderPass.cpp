@@ -459,7 +459,7 @@ void MainRenderPass::createMaterialDescriptorSet(VulkanScene* scene)
     }
 }
 
-void MainRenderPass::createDescriptorSets(VulkanScene* scene)
+void MainRenderPass::createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo> textureImageInfos)
 {
     createMainDescriptorSet(scene);
     createMaterialDescriptorSet(scene);

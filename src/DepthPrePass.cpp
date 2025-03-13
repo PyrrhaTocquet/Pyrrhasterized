@@ -256,12 +256,10 @@ void DepthPrePass::createDescriptorSetLayout()
 	}
 }
 
-void DepthPrePass::createDescriptorSets(VulkanScene* scene)
+void DepthPrePass::createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo> textureImageInfos)
 {
 	//Creates a vector of descriptorImageInfo from the scene's textures (DUPLICATE, REFACTOR INTO SCENE)
 	{
-		std::vector<vk::DescriptorImageInfo> textureImageInfos = scene->generateTextureImageInfo();
-
 		m_mainDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
 		std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_mainDescriptorSetLayout);
 
@@ -347,6 +345,42 @@ void DepthPrePass::createDescriptorSets(VulkanScene* scene)
 		}
 		catch (vk::SystemError err) {
 			throw std::runtime_error("could not allocate descriptor sets");
+		}
+	}
+
+	// TODO THIS
+	for (uint32_t currentFrame = 0; currentFrame < MAX_FRAMES_IN_FLIGHT; currentFrame++) {
+		std::vector<vk::DescriptorBufferInfo> materialBufferInfos;
+
+		//Creating and filling the Uniform Buffers for each material
+		vk::DeviceSize bufferSize = sizeof(MaterialUBO);
+
+		materialBufferInfos.resize(scene->m_materialCount);
+		for (size_t i = 0; i < materialBufferInfos.size(); i++) {
+
+			//filling the material buffer infos
+			vk::DescriptorBufferInfo bufferInfo{
+				.buffer = scene->getMaterialUniformBuffer(currentFrame, i).m_Buffer,
+				.offset = 0,
+				.range = bufferSize
+			};
+			materialBufferInfos[i] = bufferInfo;
+		}
+
+		vk::WriteDescriptorSet descriptorWriteInfo{
+			.dstSet = m_materialDescriptorSet[currentFrame],
+			.dstBinding = 0,
+			.descriptorCount = static_cast<uint32_t>(materialBufferInfos.size()),
+			.descriptorType = vk::DescriptorType::eUniformBuffer,
+			.pBufferInfo = materialBufferInfos.data(),
+		};
+
+		try {
+			m_context->getDevice().updateDescriptorSets(descriptorWriteInfo, nullptr);
+		}
+		catch (vk::SystemError err)
+		{
+			throw std::runtime_error("could not create descriptor sets");
 		}
 	}
 }

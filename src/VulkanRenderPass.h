@@ -39,7 +39,7 @@ public :
 	virtual void recreateRenderPass() = 0;
 	virtual void createDescriptorPool() = 0;
 	virtual void createDescriptorSetLayout() = 0;
-	virtual void createDescriptorSets(VulkanScene* scene) = 0;
+	virtual void createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo>) = 0;
 	virtual void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout) = 0;
 	virtual void createDefaultPipeline() = 0;
 	virtual void createPipelineRessources() {};

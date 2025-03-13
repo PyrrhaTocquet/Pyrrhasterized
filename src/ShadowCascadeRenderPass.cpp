@@ -106,7 +106,7 @@ void ShadowCascadeRenderPass::createDescriptorSetLayout()
 
 }
 
-void ShadowCascadeRenderPass::createDescriptorSets(VulkanScene* scene)
+void ShadowCascadeRenderPass::createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo> textureImageInfos)
 {
     m_mainDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
     std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_mainDescriptorSetLayout);

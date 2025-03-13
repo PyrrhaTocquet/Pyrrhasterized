@@ -26,7 +26,7 @@ public:
 	void cleanAttachments()override;
 	void createDescriptorPool()override;
 	void createDescriptorSetLayout()override;
-	void createDescriptorSets(VulkanScene* scene)override;
+	void createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo> textureImageInfos)override;
 	void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout)override;
 	void createDefaultPipeline()override;
 	void createPipelineRessources()override;
