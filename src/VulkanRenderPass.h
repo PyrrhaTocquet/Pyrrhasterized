@@ -22,7 +22,7 @@ protected:
 	vk::PipelineLayout m_pipelineLayout;
 	VulkanPipeline* m_mainPipeline;
 
-	vk::DescriptorPool m_mainDescriptorPool;
+	vk::DescriptorPool m_mainDescriptorPool, m_materialDescriptorPool;
 	vk::DescriptorSetLayout m_mainDescriptorSetLayout;
 	std::vector<vk::DescriptorSet> m_mainDescriptorSet;
 
@@ -39,12 +39,12 @@ public :
 	virtual void recreateRenderPass() = 0;
 	virtual void createDescriptorPool() = 0;
 	virtual void createDescriptorSetLayout() = 0;
-	virtual void createDescriptorSets(VulkanScene* scene) = 0;
+	virtual void createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo>) = 0;
 	virtual void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout) = 0;
 	virtual void createDefaultPipeline() = 0;
-	virtual void createPipelineRessources() = 0;
+	virtual void createPipelineRessources() {};
 	virtual void createPushConstantsRanges() = 0;
-	virtual void updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes) = 0;
+	virtual void updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes) {};
 	virtual vk::Extent2D getRenderPassExtent() = 0;
 	virtual void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) = 0;
 	virtual void updateDescriptorSets() {};

@@ -1,5 +1,6 @@
 #include "VulkanRenderer.h"
 
+
 #pragma region CONSTRUCTORS_DESTRUCTORS
 static void initRenderPass(VulkanRenderPass* renderPass, vk::DescriptorSetLayout geometryDescriptorSetLayout) {
     renderPass->createPushConstantsRanges();
@@ -160,6 +161,7 @@ void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32
     commandBuffer.begin(beginInfo); //TODO Revirtualise it well
     m_renderPasses[0]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
     m_renderPasses[1]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
+    m_renderPasses[2]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes); // this is indeed very ugly
     commandBuffer.end();
 }
 #pragma endregion
@@ -215,6 +217,11 @@ void VulkanRenderer::drawFrame() {
      m_device.resetFences(m_inFlightFences[m_currentFrame]); //Always reset fences (after being sure we are going to submit work
     m_commandBuffers[imageIndex].reset(); //Reset to record the command buffer
     
+    for (auto& scene : m_scenes)
+    {
+        scene->updateUniformBuffers(m_currentFrame);
+    }
+
     for (auto& renderPass : m_renderPasses)
     {
         renderPass->updatePipelineRessources(m_currentFrame, m_scenes);
@@ -290,15 +297,19 @@ bool VulkanRenderer::present(vk::Semaphore *signalSemaphores, uint32_t imageInde
 //Adds a scene to the scenes to be renderer. Generates the descriptor sets with the textures before adding.
 void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
     //TODO MAKE SURE THERE IS A UNIQUE SCENE !!!!!
+    m_scenes.push_back(vulkanScene);
+    vulkanScene->setCamera(m_camera);
     vulkanScene->loadModels();
     vulkanScene->createGeometryBuffers();
     vulkanScene->createGeometryDescriptorSet(m_geometryDescriptorSetLayout);
+    // Gorefix: the generateTextureImageInfo needs to generate the textureIds before the MaterialUBO is created and sent to the GPU
+    std::vector<vk::DescriptorImageInfo> textureImageInfos = vulkanScene->generateTextureImageInfo();
+    vulkanScene->createUniformBuffers();
     for (auto& renderPass : m_renderPasses)
     {
-        renderPass->createDescriptorSets(vulkanScene);
+        renderPass->createDescriptorSets(vulkanScene, textureImageInfos);
     }
     
-    m_scenes.push_back(vulkanScene);
     for (auto& light : vulkanScene->getLights())
     {
         light->setCamera(m_camera);
@@ -310,17 +321,21 @@ void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
 #pragma region RENDER_PASSES
 void VulkanRenderer::createRenderPasses() {
     //Render pass 1: Shadow Render Pass
-    ShadowCascadeRenderPass* shadowRenderPass = new ShadowCascadeRenderPass(m_context, m_camera);
+    ShadowCascadeRenderPass* shadowRenderPass = new ShadowCascadeRenderPass(m_context);
     m_shadowPass = shadowRenderPass;
     shadowRenderPass->createRenderPass();
     m_renderPasses.push_back(shadowRenderPass);
 
-    //Render pass 2: Main Render Pass
-    MainRenderPass* mainRenderPass = new MainRenderPass(m_context, m_camera, shadowRenderPass);
+    // Render pass 2: Depth Pre-Pass
+    DepthPrePass* depthPrePass = new DepthPrePass(m_context);
+    depthPrePass->createRenderPass();
+    m_renderPasses.push_back(depthPrePass);
+
+    //Render pass 3: Main Render Pass
+    MainRenderPass* mainRenderPass = new MainRenderPass(m_context, shadowRenderPass, depthPrePass);
     mainRenderPass->createRenderPass();
     m_mainPass = mainRenderPass;
     m_renderPasses.push_back(mainRenderPass);
-
 }
 
 void VulkanRenderer::createGeometryDescriptorSetLayout()

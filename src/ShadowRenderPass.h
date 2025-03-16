@@ -30,7 +30,7 @@ public:
 	virtual void cleanAttachments() override;
 	virtual void createDescriptorPool()override {}; //TODO
 	virtual void createDescriptorSetLayout()override {};
-	virtual void createDescriptorSets(VulkanScene* scene)override {};
+	virtual void createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo>)override {};
 	virtual void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout)override {};
 	virtual void createDefaultPipeline()override {};
 	virtual void recreateRenderPass() override;

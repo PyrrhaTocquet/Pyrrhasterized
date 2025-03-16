@@ -1,13 +1,13 @@
 #include "MainRenderPass.h"
 
 //Always create this render pass after creating the shadow render pass
-MainRenderPass::MainRenderPass(VulkanContext* context, Camera* camera, ShadowCascadeRenderPass* shadowRenderPass) : VulkanRenderPass(context)
+MainRenderPass::MainRenderPass(VulkanContext *context, ShadowCascadeRenderPass *shadowRenderPass, DepthPrePass *depthPrePass) : VulkanRenderPass(context)
 {
-    std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
+    std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews(); // REMOVE ? useless ?
     m_framebuffers.resize(m_context->getSwapchainImagesCount());
 
     m_shadowRenderPass = shadowRenderPass;
-    m_camera = camera;
+    m_depthPrePass = depthPrePass;
 }
 
 MainRenderPass::~MainRenderPass()
@@ -17,18 +17,6 @@ MainRenderPass::~MainRenderPass()
     device.destroyDescriptorSetLayout(m_materialDescriptorSetLayout);
     device.destroySampler(m_shadowMapSampler);
     cleanAttachments();
-    
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        m_context->getAllocator()->destroyBuffer(m_generalUniformBuffers[i], m_generalUniformBuffersAllocations[i]);
-        m_context->getAllocator()->destroyBuffer(m_lightUniformBuffers[i], m_lightUniformBuffersAllocations[i]);
-        
-        for(uint32_t k = 0; k < m_materialUniformBuffers[i].size();k++)
-        {
-            m_context->getAllocator()->destroyBuffer(m_materialUniformBuffers[i][k], m_materialUniformBufferAllocations[i][k]);
-        }
-    }
-    
-
 }
 
 void MainRenderPass::createRenderPass()
@@ -55,12 +43,12 @@ void MainRenderPass::createRenderPass()
     vk::AttachmentDescription depthDescription{
         .format = findDepthFormat(),
         .samples = ENABLE_MSAA ? msaaSampleCount : vk::SampleCountFlagBits::e1,
-        .loadOp = vk::AttachmentLoadOp::eClear,
+        .loadOp = vk::AttachmentLoadOp::eLoad,
         .storeOp = vk::AttachmentStoreOp::eDontCare,
         .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
         .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-        .initialLayout = vk::ImageLayout::eUndefined,
-        .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+        .initialLayout = vk::ImageLayout::eAttachmentOptimal,
+        .finalLayout = vk::ImageLayout::eAttachmentOptimal,
     };
 
     vk::AttachmentReference depthAttachmentRef = {
@@ -149,18 +137,11 @@ void MainRenderPass::createAttachments() {
     };
 
     if (ENABLE_MSAA)m_colorAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
-
-    imageParams.format = findDepthFormat();
-    imageParams.usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eDepthStencilAttachment;
-    imageViewParams.aspectFlags = vk::ImageAspectFlagBits::eDepth;
-
-    m_depthAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
 }
 
 void MainRenderPass::cleanAttachments()
 {
     if (ENABLE_MSAA)delete m_colorAttachment;
-    delete m_depthAttachment;
 }
 
 void MainRenderPass::recreateRenderPass()
@@ -208,14 +189,14 @@ void MainRenderPass::createDescriptorPool()
         materialPoolSize.type = vk::DescriptorType::eUniformBuffer; 
         materialPoolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * MAX_MATERIAL_COUNT;
 
-        vk::DescriptorPoolCreateInfo shadowPoolInfo{
+        vk::DescriptorPoolCreateInfo materialPoolInfo{
             .maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT),
             .poolSizeCount = 1,
             .pPoolSizes = &materialPoolSize,
         };
 
         try {
-            m_materialDescriptorPool = device.createDescriptorPool(shadowPoolInfo);
+            m_materialDescriptorPool = device.createDescriptorPool(materialPoolInfo);
         }
         catch (vk::SystemError err)
         {
@@ -313,56 +294,11 @@ void MainRenderPass::createDescriptorSetLayout()
     }
 }
 
-//adds the texture info to the texture image info and sets the right Id to the mesh
-static void appendImageInfo(std::vector<vk::DescriptorImageInfo>& textureImageInfo, vk::Sampler sampler, VulkanImage* image, uint32_t& id, uint32_t& textureId)
-{
-    vk::DescriptorImageInfo imageInfo{
-              .sampler = sampler,
-              .imageView = image->m_imageView,
-              .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-    };
-    textureImageInfo.push_back(imageInfo);
-    id = textureId; //Attributes the texture id to the mesh
-    textureId++;
-}
-
-//returns are vector of DescriptorImageInfo, containing the albedo and normal map texture information from the Models' TexturedMeshes
-std::vector<vk::DescriptorImageInfo> MainRenderPass::generateTextureImageInfo(VulkanScene* scene)
-{
-    std::vector<vk::DescriptorImageInfo> textureImageInfo;
-    uint32_t textureId = 0;
-    for (auto& model : scene->m_models) {
-        for (auto& texturedMesh : model->getRawMeshes()) {
-            Material* material = texturedMesh.material;
-            if (material == nullptr)
-                continue;
-
-            if (material->hasAlbedoTexture())
-            {
-                appendImageInfo(textureImageInfo, Material::s_baseColorSampler, material->getAlbedoTexture(), material->m_albedoTextureId, textureId);
-            }
-            if (material->hasNormalTexture())
-            {
-                appendImageInfo(textureImageInfo, Material::s_normalSampler, material->getNormalTexture(), material->m_normalTextureId, textureId);
-            }
-            if (material->hasMetallicRoughness())
-            {
-                appendImageInfo(textureImageInfo, Material::s_metallicRoughnessSampler, material->getMetallicRoughnessTexture(), material->m_metallicRoughnessTextureId, textureId);
-            }
-            if (material->hasEmissiveTexture())
-            {
-                appendImageInfo(textureImageInfo, Material::s_emissiveSampler, material->getEmissiveTexture(), material->m_emissiveTextureId, textureId);
-            }
-        }
-    }
-    return textureImageInfo;
-}
-
 //Creates the descriptor set that has the general/camera ubo, the light ubo array, the shadow map and the texture array
 void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
 {
     //Creates a vector of descriptorImageInfo from the scene's textures
-    std::vector<vk::DescriptorImageInfo> textureImageInfos = generateTextureImageInfo(scene);
+    std::vector<vk::DescriptorImageInfo> textureImageInfos = scene->generateTextureImageInfo();
 
     m_mainDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
     std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_mainDescriptorSetLayout);
@@ -393,14 +329,16 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
 
     //Updating the descriptor sets with the appropriates references
     for (uint32_t currentFrame = 0; currentFrame < MAX_FRAMES_IN_FLIGHT; currentFrame++) {
-        vk::DescriptorBufferInfo generalUboBufferInfo{
-            .buffer = m_generalUniformBuffers[currentFrame],
+        vk::DescriptorBufferInfo generalUboBufferInfo
+        {
+            .buffer = scene->getGeneralUniformBuffer(currentFrame).m_Buffer,
             .offset = 0,
             .range = sizeof(GeneralUniformBufferObject)
         };
 
-        vk::DescriptorBufferInfo lightUboBufferInfo{
-             .buffer = m_lightUniformBuffers[currentFrame],
+        vk::DescriptorBufferInfo lightUboBufferInfo
+        {
+             .buffer = scene->getLightUniformBuffer(currentFrame).m_Buffer,
              .offset = 0,
              .range = sizeof(LightUBO) * MAX_LIGHT_COUNT
         };
@@ -455,7 +393,7 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
 //Creates the descriptor set for the material data
 void MainRenderPass::createMaterialDescriptorSet(VulkanScene* scene)
 {
-
+// TODO Refactor in scene !
     m_materialDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
     std::vector<vk::DescriptorSetLayout> materialLayouts(MAX_FRAMES_IN_FLIGHT, m_materialDescriptorSetLayout);
 
@@ -484,48 +422,19 @@ void MainRenderPass::createMaterialDescriptorSet(VulkanScene* scene)
         throw std::runtime_error("could not allocate descriptor sets");
     }
 
-
-    std::vector<MaterialUBO> materialUBOs;
-
-    MaterialUBO defaultMaterial{};
-    materialUBOs.push_back(defaultMaterial);
-    //Retrieving Material UBOs
-    for (auto& model : scene->m_models) {
-        for (auto& mesh : model->getRawMeshes()) {
-            if (mesh.material != nullptr)
-            {
-                mesh.materialId = materialUBOs.size();
-                materialUBOs.push_back(mesh.material->getUBO());
-            }
-            else {
-                mesh.materialId = 0;
-            }
-
-        }
-    }
+   // TODO THIS
     for (uint32_t currentFrame = 0; currentFrame < MAX_FRAMES_IN_FLIGHT; currentFrame++) {
-
         std::vector<vk::DescriptorBufferInfo> materialBufferInfos;
-
 
         //Creating and filling the Uniform Buffers for each material
         vk::DeviceSize bufferSize = sizeof(MaterialUBO);
 
-        m_materialUniformBuffers[currentFrame].resize(materialUBOs.size());
-        m_materialUniformBufferAllocations[currentFrame].resize(materialUBOs.size());
-        materialBufferInfos.resize(materialUBOs.size());
-        for (size_t i = 0; i < materialUBOs.size(); i++) {
-            std::tie(m_materialUniformBuffers[currentFrame][i], m_materialUniformBufferAllocations[currentFrame][i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu, "Material Uniform Buffer");
-
-            //Write the material to the buffer
-            void* data = m_context->getAllocator()->mapMemory(m_materialUniformBufferAllocations[currentFrame][i]);
-            memcpy(data, &materialUBOs[i], sizeof(MaterialUBO));
-            m_context->getAllocator()->unmapMemory(m_materialUniformBufferAllocations[currentFrame][i]);
-
-
+        materialBufferInfos.resize(scene->m_materialCount);
+        for (size_t i = 0; i < materialBufferInfos.size(); i++) {
+            
             //filling the material buffer infos
             vk::DescriptorBufferInfo bufferInfo{
-                .buffer = m_materialUniformBuffers[currentFrame][i],
+                .buffer = scene->getMaterialUniformBuffer(currentFrame, i).m_Buffer,
                 .offset = 0,
                 .range = bufferSize
             };
@@ -550,7 +459,7 @@ void MainRenderPass::createMaterialDescriptorSet(VulkanScene* scene)
     }
 }
 
-void MainRenderPass::createDescriptorSets(VulkanScene* scene)
+void MainRenderPass::createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo> textureImageInfos)
 {
     createMainDescriptorSet(scene);
     createMaterialDescriptorSet(scene);
@@ -581,6 +490,7 @@ void MainRenderPass::createDefaultPipeline()
         .taskShaderPath = "shaders/taskShell.spv",
        .meshShaderPath = "shaders/meshPBR.spv",
        .fragShaderPath = "shaders/fragmentPBR.spv",
+       .depthWriteEnable = VK_FALSE,
     };
 
     m_mainPipeline = new VulkanPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());
@@ -649,12 +559,14 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
 void MainRenderPass::createFramebuffer() {
     std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
     std::vector<vk::ImageView> attachments;
+
+    vk::ImageView depthPrePassImageView = m_depthPrePass->getDepthAttachment()->m_imageView;
     for (size_t i = 0; i < m_framebuffers.size(); i++) {
         if (ENABLE_MSAA)
         {
             attachments = { //Order corresponds to the attachment references
             m_colorAttachment->m_imageView,
-            m_depthAttachment->m_imageView,
+            depthPrePassImageView,
             swapchainImageViews[i],
             };
         }
@@ -662,7 +574,7 @@ void MainRenderPass::createFramebuffer() {
 
             attachments = {
                 swapchainImageViews[i],
-                m_depthAttachment->m_imageView,
+                depthPrePassImageView
             };
         }
 
@@ -712,12 +624,11 @@ void MainRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t sw
         scene->draw(commandBuffer, m_currentFrame, m_pipelineLayout, pushConstant);
     }
     
-    renderImGui(commandBuffer);
+    //renderImGui(commandBuffer);
     commandBuffer.endRenderPass();
 }
 
 void MainRenderPass::createPipelineRessources() {
-    createUniformBuffers();
     createShadowMapSampler();
 }
 
@@ -728,58 +639,6 @@ void MainRenderPass::createPushConstantsRanges()
         .offset = 0,
         .size = 128,
     };
-
-}
-
-//updates uniform buffer for camera/general uniform buffer
-void MainRenderPass::updateGeneralUniformBuffer(uint32_t currentFrame) {
-    vk::Extent2D extent = getRenderPassExtent();
-
-    //Model View Proj
-    GeneralUniformBufferObject ubo{};
-    ubo.view = m_camera->getViewMatrix();
-    ubo.proj = m_camera->getProjMatrix(m_context);
-    ubo.cameraPos = m_camera->getCameraPos();
-    ubo.time = m_context->getTime().elapsedSinceStart;
-    ubo.shadowMapsBlendWidth = m_shadowRenderPass->m_shadowMapsBlendWidth;
-    ubo.hairLength = hairLength;
-    ubo.gravityFactor = gravityFactor;
-    ubo.hairDensity = hairDensity;
-
-    //Get the cascade view/proj matrices and frustrum splits previously calculated in the shadowRenderPass
-    CascadeUniformObject cascadeUbo = m_shadowRenderPass->getCurrentUbo(currentFrame);
-
-    for (int i = 0; i < SHADOW_CASCADE_COUNT; i++)
-    {
-        ubo.cascadeSplits[i] = cascadeUbo.cascadeSplits[i];
-        ubo.cascadeViewProj[i] = cascadeUbo.cascadeViewProjMat[i];
-    }
-
-    void* data = m_context->getAllocator()->mapMemory(m_generalUniformBuffersAllocations[currentFrame]);
-    memcpy(data, &ubo, sizeof(GeneralUniformBufferObject));
-    m_context->getAllocator()->unmapMemory(m_generalUniformBuffersAllocations[currentFrame]);
-}
-
-//Updates uniform buffer for Light uniform data
-void MainRenderPass::updateLightUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes) {
-    std::vector<Light*> lights = scenes[0]->getLights();
-    std::array<LightUBO, MAX_LIGHT_COUNT> lightsUbo;
-    for (uint32_t i = 0; i < MAX_LIGHT_COUNT; i++)
-    {
-        if (i < lights.size())
-        {
-            LightUBO ubo = lights[i]->getUniformData();
-            lightsUbo[i] = ubo;
-        }
-        else {
-            lightsUbo[i] = LightUBO{};
-        }
-
-    }
-
-    void* data = m_context->getAllocator()->mapMemory(m_lightUniformBuffersAllocations[currentFrame]);
-    memcpy(data, lightsUbo.data(), sizeof(LightUBO)*lightsUbo.size());
-    m_context->getAllocator()->unmapMemory(m_lightUniformBuffersAllocations[currentFrame]);
 
 }
 
@@ -795,44 +654,11 @@ void MainRenderPass::updateMaterialUniformBuffer(uint32_t currentFrame, std::vec
     */
 }
 
-
-
 //Populates the uniform buffers for rendering
 void MainRenderPass::updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)
 {
-    updateGeneralUniformBuffer(currentFrame);
-    updateLightUniformBuffer(currentFrame, scenes);
-    //updateMaterialUniformBuffer(currentFrame, scenes); //TODO REMOVE
     
 }
-
-
-void MainRenderPass::createUniformBuffers() {
-    //General UBO
-    { 
-        vk::DeviceSize bufferSize = sizeof(GeneralUniformBufferObject);
-
-        m_generalUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-        m_generalUniformBuffersAllocations.resize(MAX_FRAMES_IN_FLIGHT);
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            std::tie(m_generalUniformBuffers[i], m_generalUniformBuffersAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu, "General Uniform Buffer");
-        }
-    }
-    {
-        vk::DeviceSize bufferSize = sizeof(LightUBO)*MAX_LIGHT_COUNT;
-
-        m_lightUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-        m_lightUniformBuffersAllocations.resize(MAX_FRAMES_IN_FLIGHT);
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            std::tie(m_lightUniformBuffers[i], m_lightUniformBuffersAllocations[i]) = m_context->createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vma::MemoryUsage::eCpuToGpu, "Light Uniform Buffer");
-        }
-    }
-
-
-}
-
 
 //Creates the sampler used for shadow mapping sampling
 void MainRenderPass::createShadowMapSampler() {

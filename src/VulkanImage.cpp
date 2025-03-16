@@ -88,15 +88,14 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 	uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 
 	//Staging buffer (CPU visible)
-	vk::Buffer stagingBuffer;
-	vma::Allocation stagingBufferAllocation;
+	VulkanBuffer stagingBuffer;
 	vk::DeviceSize imageSize = texWidth * texHeight * 4;
-	std::tie(stagingBuffer, stagingBufferAllocation) = context->createBuffer(imageSize, vk::BufferUsageFlagBits::eTransferSrc, vma::MemoryUsage::eCpuToGpu, "Vulkan Image Staging Buffer");
+	stagingBuffer = context->createBuffer(imageSize, vk::BufferUsageFlagBits::eTransferSrc, vma::MemoryUsage::eCpuToGpu, "Vulkan Image Staging Buffer");
 
 	//Copy the pixel values to the buffer
-	void* data = context->getAllocator()->mapMemory(stagingBufferAllocation);
+	void* data = context->getAllocator()->mapMemory(stagingBuffer.m_Allocation);
 	memcpy(data, pixels, static_cast<size_t>(imageSize));
-	context->getAllocator()->unmapMemory(stagingBufferAllocation);
+	context->getAllocator()->unmapMemory(stagingBuffer.m_Allocation);
 
 	//Remember to free !
 	stbi_image_free(pixels);
@@ -110,8 +109,8 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 
 	//Copy the staging buffer to the texture image
 	transitionImageLayout( context, imageParams.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, imageParams.mipLevels); 
-	context->copyBufferToImage(stagingBuffer, m_image, m_commandPool, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-	m_allocator->destroyBuffer(stagingBuffer, stagingBufferAllocation);
+	context->copyBufferToImage(stagingBuffer.m_Buffer, m_image, m_commandPool, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+	m_allocator->destroyBuffer(stagingBuffer.m_Buffer, stagingBuffer.m_Allocation);
 
 
 	//Generating the mip maps transitions the image to shader reading layout

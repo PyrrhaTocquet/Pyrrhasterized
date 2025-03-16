@@ -8,7 +8,7 @@
 
 #define VMA_IMPLEMENTATION
 #ifndef NDEBUG
-#define VMA_VERBOSE_ALLOC_DEALLOC
+//#define VMA_VERBOSE_ALLOC_DEALLOC
 #define VMA_DEBUG_LOG(str) VMA_DEBUG_LOG_FORMAT("%s\n", str)
 #endif
 #include "vk_mem_alloc.hpp"
@@ -66,7 +66,7 @@ int main() {
     scene.addModel("assets/SponzaGltf/sponza.glb", sponzaTransform);
     scene.addModel("assets/Ganon/ganon.gltf", ganonTransform);
     scene.addModel("assets/Helmet/DamagedHelmet.gltf", helmetTransform);
-    scene.addModel("assets/bunny.gtf", bunnyTransform);
+    //scene.addModel("assets/bunny.gtf", bunnyTransform);
     Peach* peachEntity = new Peach(&context);
     scene.addEntity(peachEntity);
     renderer.registerEntity(peachEntity);
@@ -75,7 +75,7 @@ int main() {
     sphereMaterialsTransform.translate.y = 10;
     sphereMaterialsTransform.translate.x = 10;
     sphereMaterialsTransform.scale *= 0.1;
-    scene.addModel("assets/SphereMaterials/spherematerials.glb", sphereMaterialsTransform);
+    //scene.addModel("assets/SphereMaterials/spherematerials.glb", sphereMaterialsTransform);
     
     
     /*Transform transform;
