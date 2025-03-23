@@ -21,26 +21,16 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 	}
 }
 
+VulkanContext::VulkanContext(int argc, char *argv[])
+{
+	parseArgs(argc, argv);
+	init();
+}
 
 VulkanContext::VulkanContext()
 {
-	updateTime();
-	createWindow();
-	createInstance();
-	createDebugMessenger();
-	createSurface();
-	pickPhysicalDevice();
-	createLogicalDevice();
-	pfnDebugMarkerSetObjectTag = (PFN_vkDebugMarkerSetObjectTagEXT)vkGetDeviceProcAddr(m_device, "vkDebugMarkerSetObjectTagEXT");
-	pfnDebugMarkerSetObjectName = (PFN_vkDebugMarkerSetObjectNameEXT)vkGetDeviceProcAddr(m_device, "vkDebugMarkerSetObjectNameEXT");
-	pfnCmdDebugMarkerBegin = (PFN_vkCmdDebugMarkerBeginEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerBeginEXT");
-	pfnCmdDebugMarkerEnd = (PFN_vkCmdDebugMarkerEndEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerEndEXT");
-	pfnCmdDebugMarkerInsert = (PFN_vkCmdDebugMarkerInsertEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerInsertEXT");
-	m_commandPool = createCommandPool();
-	createAllocator();
-	createSwapchain();
+	init();
 }
-
 
 VulkanContext::~VulkanContext()
 {
@@ -65,6 +55,25 @@ VulkanContext::~VulkanContext()
 	m_device.destroy();
 	m_instance.destroy();
 
+}
+
+void VulkanContext::init()
+{
+	updateTime();
+	createWindow();
+	createInstance();
+	createDebugMessenger();
+	createSurface();
+	pickPhysicalDevice();
+	createLogicalDevice();
+	pfnDebugMarkerSetObjectTag = (PFN_vkDebugMarkerSetObjectTagEXT)vkGetDeviceProcAddr(m_device, "vkDebugMarkerSetObjectTagEXT");
+	pfnDebugMarkerSetObjectName = (PFN_vkDebugMarkerSetObjectNameEXT)vkGetDeviceProcAddr(m_device, "vkDebugMarkerSetObjectNameEXT");
+	pfnCmdDebugMarkerBegin = (PFN_vkCmdDebugMarkerBeginEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerBeginEXT");
+	pfnCmdDebugMarkerEnd = (PFN_vkCmdDebugMarkerEndEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerEndEXT");
+	pfnCmdDebugMarkerInsert = (PFN_vkCmdDebugMarkerInsertEXT)vkGetDeviceProcAddr(m_device, "vkCmdDebugMarkerInsertEXT");
+	m_commandPool = createCommandPool();
+	createAllocator();
+	createSwapchain();
 }
 
 #pragma region VALIDATION_LAYERS
@@ -260,7 +269,7 @@ bool VulkanContext::isDeviceSuitable(const vk::PhysicalDevice &device)
 vk::PhysicalDevice VulkanContext::getBestDevice(std::vector<vk::PhysicalDevice> devices) {
 
 	vk::PhysicalDevice bestDevice;
-	float bestScore = c_pickWorseDevice ? std::numeric_limits<float>::max() : 0;
+	float bestScore = 0.f;
 	for (auto device : devices)
 	{
 		float score = 0;
@@ -295,20 +304,38 @@ vk::PhysicalDevice VulkanContext::getBestDevice(std::vector<vk::PhysicalDevice> 
 			}
 		}
 
-		if (!c_pickWorseDevice)
+		if (bestScore < score)
 		{
-			if (bestScore < score)
-			{
-				bestDevice = device;
-				bestScore = score;
+			bestDevice = device;
+			bestScore = score;
+		}
+	}
+	return bestDevice;
+}
+
+// Picks the worst VRAM dedicated GPU
+vk::PhysicalDevice VulkanContext::getWorstDedicatedDevice(std::vector<vk::PhysicalDevice> devices) {
+	vk::PhysicalDevice bestDevice;
+	float bestScore = std::numeric_limits<float>::max();
+	for (auto device : devices)
+	{
+		float score = std::numeric_limits<float>::max();
+		if (device.getProperties().deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
+			score = 1.f;
+
+		auto memoryProps = device.getMemoryProperties();
+		auto heaps = memoryProps.memoryHeaps;
+		for (const auto& heap : heaps) {
+			if (heap.flags & vk::MemoryHeapFlagBits::eDeviceLocal) {
+				//Decimal part is VRAM / 100GO
+				score += heap.size / 100000000000.f;
 			}
 		}
-		else {
-			if (bestScore > score)
-			{
-				bestDevice = device;
-				bestScore = score;
-			}
+
+		if (bestScore > score)
+		{
+			bestDevice = device;
+			bestScore = score;
 		}
 	}
 	return bestDevice;
@@ -326,13 +353,15 @@ void VulkanContext::pickPhysicalDevice() {
 	for (const auto& device : physicalDevices)
 	{
 		if (isDeviceSuitable(device))
-		{
-
-			std::cout << "Device name: " << device.getProperties().deviceName << std::endl;
 			suitableDevices.push_back(device);
-		}
 	}
-	m_physicalDevice = getBestDevice(suitableDevices);
+
+	if (m_pickWorseDedicatedDevice)
+		m_physicalDevice = getWorstDedicatedDevice(suitableDevices);
+	else
+		m_physicalDevice = getBestDevice(suitableDevices);
+
+	std::cout << "Device name: " << m_physicalDevice.getProperties().deviceName << std::endl;
 	if (!m_physicalDevice) {
 		throw std::runtime_error("failed to find a suitable GPU!");
 	}
@@ -1057,7 +1086,7 @@ ImGui_ImplVulkan_InitInfo VulkanContext::getImGuiInitInfo() {
 
 	return initGuiInfo;
 }
-#pragma engregion IMGUI
+#pragma endregion IMGUI
 //Sets the debug name of a Vulkan object
 void VulkanContext::setDebugObjectName(uint64_t object, VkDebugReportObjectTypeEXT objectType, const char* name)
 {
@@ -1073,3 +1102,17 @@ void VulkanContext::setDebugObjectName(uint64_t object, VkDebugReportObjectTypeE
 		pfnDebugMarkerSetObjectName(m_device, &nameInfo);
 	}
 }
+
+#pragma region ARGS
+//Parses the program arguments
+void VulkanContext::parseArgs(int argc, char *argv[])
+{
+	for (int i = 0; i < argc; i++)
+	{
+		std::string arg(argv[i]);
+		if (arg == "--worst-dedicated")
+			m_pickWorseDedicatedDevice = true;
+			
+	}
+}
+#pragma endregion ARGS

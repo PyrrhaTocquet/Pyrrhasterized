@@ -23,9 +23,9 @@
 #include "Spotlight.h"
 #include "Peach.h"
 
-int main() {
+int main(int argc, char *argv[]) {
 
-    VulkanContext context;
+    VulkanContext context(argc, argv);
     VulkanRenderer renderer(&context);
 
     DirectionalLight sun(&context, -glm::vec4(5.f, 50.f, 0.f, 0.f), glm::vec4(1.f, 1.f, .95f, 1.f));

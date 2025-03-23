@@ -54,7 +54,6 @@ const std::vector<const char*> requiredExtensions = {
 const int DEFAULT_WIDTH = 1920;
 const int DEFAULT_HEIGHT = 1080;
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
-const bool c_pickWorseDevice = false;
 
 /* APPLICATION INFO */
 const char applicationName[] = "Pyrrhasterized: a porte-folio rasterized renderer";
@@ -89,8 +88,6 @@ private:
 	vk::Format m_swapchainFormat = vk::Format::eUndefined;
 	vk::Extent2D m_swapchainExtent;
 
-
-
 	vk::SurfaceFormatKHR m_surfaceFormat;
 	GLFWwindow* m_window;
 
@@ -101,8 +98,11 @@ private:
 	//TIME
 	Time m_time;
 
+	//Args dependant
+	bool m_pickWorseDedicatedDevice = false;
 public:
 	VulkanContext();
+	VulkanContext(int argc, char *argv[]);
 	~VulkanContext();
 
 	//ACCESSORS
@@ -165,6 +165,10 @@ public:
 	Time getTime();
 	void updateTime();
 private:
+	void init();
+	//ARGS MANAGEMENT
+	void parseArgs(int argc, char *argv[]);
+
 	//VALIDATION LAYERS
 	[[nodiscard]] bool checkValidationLayerSupport();
 	void createDebugMessenger();
@@ -182,6 +186,7 @@ private:
 	void pickPhysicalDevice();
 	[[nodiscard]] bool isDeviceSuitable(const vk::PhysicalDevice& device);
 	[[nodiscard]] vk::PhysicalDevice getBestDevice(std::vector<vk::PhysicalDevice> devices);
+	[[nodiscard]] vk::PhysicalDevice getWorstDedicatedDevice(std::vector<vk::PhysicalDevice> devices);
 
 
 	//LOGICAL DEVICE
