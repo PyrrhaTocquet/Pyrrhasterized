@@ -1,5 +1,6 @@
 # Pyrrhasterized
-Pyrrhasterized is a cross-platform rasterized Vulkan renderer which is both a porte-folio project to get hired as a graphics programmer and a project to learn techniques in the vast world of graphics programming. It is available for Windows and Linux.
+"Pyrrhasterized is a cross-platform rasterized Vulkan renderer which is both a porte-folio project to get hired as a graphics programmer and a project to learn techniques in the vast world of graphics programming. It is available for Windows and Linux."
+Was ! Linux is no longer maintained. Pyrrhasterized is now a pet renderer project, meant for learning more techniques and sharing its developpement on twitch.
 ![renderer screenshot](https://github.com/PyrrhaTocquet/Pyrrhasterized/blob/master/pictures/renderer3.png)
 ![renderer screenshot](https://github.com/PyrrhaTocquet/Pyrrhasterized/blob/master/pictures/renderer2.png)
 ![renderer screenshot](https://github.com/PyrrhaTocquet/Pyrrhasterized/blob/master/pictures/renderer.png)
@@ -7,18 +8,18 @@ Pyrrhasterized is a cross-platform rasterized Vulkan renderer which is both a po
 ## Features
 *Unchecked Features are planned features*
 - [x] Cascaded Shadow Maps
-- [x] Normal Mapping
 - [x] 3D Models file support
   - [x] Basic .obj support
   - [x] Basic .gltf/.glb support
-- [x] PBR Materials  
+- [x] PBR Materials
+- [x] Mesh Shading based rendering
+  - [ ] Frustum Culling
+  - [ ] Occlusion Culling  
 - [ ] Forward+ Lighting
-- [ ] Global Illumination (Voxel GI)
-- [ ] Decals
-- [ ] Athmospheric Rendering
-
+  - [x] Depth Pre-Pass
+- [x] A hidden hair generation feature with shell texturing
 ## Feedback/Contributing
-As this is a personnal project, directly contributing to the code isn't possible. However, I very gladly encourage code reviews, suggestions, bug reports through either issues or pull requests. Please keep in mind that it is a solo student project, and that I'm trying to cram features in a short time period.
+As this is a personnal project, directly contributing to the code isn't possible. However, I very gladly encourage code reviews, suggestions, bug reports through either issues or pull requests. Please keep in mind that it is a solo project.
 
 ## Building
 Don't forget to use --recurse-submodules when cloning the repo.
