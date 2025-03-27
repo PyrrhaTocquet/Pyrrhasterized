@@ -624,7 +624,7 @@ void MainRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t sw
         scene->draw(commandBuffer, m_currentFrame, m_pipelineLayout, pushConstant);
     }
     
-    //renderImGui(commandBuffer);
+    renderImGui(commandBuffer);
     commandBuffer.endRenderPass();
 }
 

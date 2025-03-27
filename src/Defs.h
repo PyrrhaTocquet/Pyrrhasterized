@@ -20,6 +20,7 @@ const std::filesystem::path BAKED_ASSETS_PATH = "baked_assets/";
 /* ENUMS */
 enum RenderPassesId {
 	ShadowMappingPassId = 0,
+	DepthPrePassId,
 	MainRenderPassId,
 };
 

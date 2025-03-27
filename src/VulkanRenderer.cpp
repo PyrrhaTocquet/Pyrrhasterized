@@ -159,9 +159,9 @@ void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32
 {
     vk::CommandBufferBeginInfo beginInfo{};
     commandBuffer.begin(beginInfo); //TODO Revirtualise it well
-    m_renderPasses[0]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
-    m_renderPasses[1]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
-    m_renderPasses[2]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes); // this is indeed very ugly
+    m_renderPasses[RenderPassesId::ShadowMappingPassId]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
+    m_renderPasses[RenderPassesId::DepthPrePassId]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
+    m_renderPasses[RenderPassesId::MainRenderPassId]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes); // this is indeed very ugly
     commandBuffer.end();
 }
 #pragma endregion

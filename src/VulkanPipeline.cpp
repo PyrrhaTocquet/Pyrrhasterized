@@ -78,6 +78,7 @@ void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
             .pName = "main"
         };
         shaderStages.insert(shaderStages.begin(), taskStageCreateInfo);
+        device.destroyShaderModule(taskShaderModule);
     }
 
 
@@ -197,9 +198,8 @@ void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
         throw std::runtime_error("could not create pipeline");
     }
 
-
     device.destroyShaderModule(meshShaderModule);
-    device.destroyShaderModule(fragShaderModule);
+    device.destroyShaderModule(fragShaderModule);    
 
     m_pipeline = pipelineResult.value;
     m_context->setDebugObjectName((uint64_t)static_cast<VkPipeline>(m_pipeline), static_cast<VkDebugReportObjectTypeEXT>(m_pipeline.debugReportObjectType), "PARCE QUE C'EST NOTRE PIPELINE");
