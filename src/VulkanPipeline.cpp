@@ -40,6 +40,8 @@ void VulkanPipeline::cleanPipeline()
 
 void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
 {
+    const bool hasTaskShader = m_pipelineInfo.taskShaderPath.has_value();
+
     vk::Device device = m_context->getDevice();
     auto meshShaderCode = vkTools::readFile(m_pipelineInfo.meshShaderPath);
     auto fragShaderCode = vkTools::readFile(m_pipelineInfo.fragShaderPath);
@@ -65,7 +67,8 @@ void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
         }
     };
 
-    if(m_pipelineInfo.taskShaderPath.has_value())
+    vk::ShaderModule taskShaderModule;
+    if(hasTaskShader)
     {
         auto taskShaderCode = vkTools::readFile(m_pipelineInfo.taskShaderPath.value());
         spv_reflect::ShaderModule taskShaderModuleInfo(taskShaderCode.size(), taskShaderCode.data());
@@ -78,7 +81,6 @@ void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
             .pName = "main"
         };
         shaderStages.insert(shaderStages.begin(), taskStageCreateInfo);
-        device.destroyShaderModule(taskShaderModule);
     }
 
 
@@ -199,7 +201,9 @@ void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
     }
 
     device.destroyShaderModule(meshShaderModule);
-    device.destroyShaderModule(fragShaderModule);    
+    device.destroyShaderModule(fragShaderModule);
+    if (hasTaskShader)
+        device.destroyShaderModule(taskShaderModule);
 
     m_pipeline = pipelineResult.value;
     m_context->setDebugObjectName((uint64_t)static_cast<VkPipeline>(m_pipeline), static_cast<VkDebugReportObjectTypeEXT>(m_pipeline.debugReportObjectType), "PARCE QUE C'EST NOTRE PIPELINE");
