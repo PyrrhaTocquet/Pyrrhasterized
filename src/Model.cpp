@@ -220,15 +220,10 @@ void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipeli
 			commandBuffer.pushConstants<ModelPushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eTaskEXT | vk::ShaderStageFlagBits::eMeshEXT | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 			if(this->m_meshes.size() < 16 && i == 3){vkDrawMeshTasks(commandBuffer, m_meshes[i].meshlets.size(), 1, pushConstant.shellCount);} else{ vkDrawMeshTasks(commandBuffer, m_meshes[i].meshlets.size(), 1, 1);}
 		}
-
 			
 		k += m_meshes[i].meshlets.size();
-		
-	
-
 	}
 
-	
 }
 
 //returns textured meshes dividing the model
@@ -411,8 +406,7 @@ void Model::loadModel(const std::filesystem::path& path) {
 	}
 
 	// Serialization has not been a success lol
-	//if(!SerializationTools::isModelBaked(path))
-	if (true)
+	if(!SerializationTools::isModelBaked(path))
 	{
 		//Bake meshlets
 		for(RawMesh mesh: m_rawMeshes)
@@ -432,12 +426,12 @@ void Model::loadModel(const std::filesystem::path& path) {
 		SerializationTools::writeBakedModel(path, m_meshes);
 		std::cout << "Baked Model: " << path << std::endl;       
 
-	}else{
+	}
+	else
+	{
 		SerializationTools::loadBakedModel(path, m_meshes);
 		std::cout << "Loaded Model: " << path << std::endl;
-	}
-
-	
+	}	
 }
 
 //Used in a new thread by generateTangents to compute tangent data

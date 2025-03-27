@@ -60,6 +60,7 @@ namespace SerializationTools{
                 file.read(reinterpret_cast<char*>(&v.pos.z), sizeof(float));
                 file.read(reinterpret_cast<char*>(&v.normal.x), sizeof(float));
                 file.read(reinterpret_cast<char*>(&v.normal.y), sizeof(float));
+                file.read(reinterpret_cast<char*>(&v.normal.z), sizeof(float));
                 file.read(reinterpret_cast<char*>(&v.texCoord.x), sizeof(float));
                 file.read(reinterpret_cast<char*>(&v.texCoord.y), sizeof(float));
                 file.read(reinterpret_cast<char*>(&v.tangent.x), sizeof(float));
@@ -129,6 +130,7 @@ namespace SerializationTools{
             file.write(reinterpret_cast<char*>(&v.pos.z), sizeof(float));
             file.write(reinterpret_cast<char*>(&v.normal.x), sizeof(float));
             file.write(reinterpret_cast<char*>(&v.normal.y), sizeof(float));
+            file.write(reinterpret_cast<char*>(&v.normal.z), sizeof(float));
             file.write(reinterpret_cast<char*>(&v.texCoord.x), sizeof(float));
             file.write(reinterpret_cast<char*>(&v.texCoord.y), sizeof(float));
             file.write(reinterpret_cast<char*>(&v.tangent.x), sizeof(float));
