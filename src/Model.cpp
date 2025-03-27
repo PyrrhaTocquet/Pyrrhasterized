@@ -280,8 +280,6 @@ void Model::clearLoadingIndexData()
 	}
 }
 
-
-
 //Picks the right tinygltf function depending on the file format and manages errors
 static void loadGltfData(const std::filesystem::path& path, tinygltf::Model& gltfModel) {
 	bool ret = false;
@@ -313,7 +311,7 @@ static void loadGltfData(const std::filesystem::path& path, tinygltf::Model& glt
 }
 
 //Loads GLTF and GLB files
-void Model::loadGltf(const std::filesystem::path& path)
+void Model::loadGltf(const std::filesystem::path& path, bool isBaked)
 {
 	tinygltf::Model gltfModel;
 	loadGltfData(path, gltfModel);
@@ -326,87 +324,95 @@ void Model::loadGltf(const std::filesystem::path& path)
 		RawMesh texturedMesh;
 		m_rawMeshes.push_back(texturedMesh);
 	}
-	for (const auto& mesh : gltfModel.meshes) {
-		for (const auto& attribute : mesh.primitives) {
-			int positionBufferIndex = attribute.attributes.at("POSITION");
-			int texCoordBufferIndex = attribute.attributes.at("TEXCOORD_0");
-			int normalBufferIndex = attribute.attributes.at("NORMAL");
-			int indicesBufferIndex = attribute.indices;
 
-			//Vertices
-			for (int i = 0; i < gltfModel.accessors[indicesBufferIndex].count; i++) {
-				int positionBufferOffset = gltfModel.accessors[positionBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteOffset;
-				int texCoordBufferOffset = gltfModel.accessors[texCoordBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteOffset;
-				int indicesBufferOffset = gltfModel.accessors[indicesBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[indicesBufferIndex].bufferView].byteOffset;
-				int normalBufferOffset = gltfModel.accessors[normalBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteOffset;
+	if (!isBaked)
+	{
+		for (const auto& mesh : gltfModel.meshes) 
+		{
+			for (const auto& attribute : mesh.primitives) 
+			{
+				int positionBufferIndex = attribute.attributes.at("POSITION");
+				int texCoordBufferIndex = attribute.attributes.at("TEXCOORD_0");
+				int normalBufferIndex = attribute.attributes.at("NORMAL");
+				int indicesBufferIndex = attribute.indices;
 
-				int positionBufferStride = gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteStride;
-				int texCoordBufferStride = gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteStride;
-				int normalBufferStride = gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteStride;
+				//Vertices
+				for (int i = 0; i < gltfModel.accessors[indicesBufferIndex].count; i++) {
+					int positionBufferOffset = gltfModel.accessors[positionBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteOffset;
+					int texCoordBufferOffset = gltfModel.accessors[texCoordBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteOffset;
+					int indicesBufferOffset = gltfModel.accessors[indicesBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[indicesBufferIndex].bufferView].byteOffset;
+					int normalBufferOffset = gltfModel.accessors[normalBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteOffset;
 
-				if (positionBufferStride == 0)positionBufferStride = 4 * 3;
-				if (texCoordBufferStride == 0)texCoordBufferStride = 4 * 2;
-				if (normalBufferStride == 0)normalBufferStride = 4 * 3;
+					int positionBufferStride = gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteStride;
+					int texCoordBufferStride = gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteStride;
+					int normalBufferStride = gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteStride;
 
-				uint16_t index = *(uint16_t*)(&gltfModel.buffers[0].data[indicesBufferOffset + 2 * i]); //TODO better index type handling
+					if (positionBufferStride == 0)positionBufferStride = 4 * 3;
+					if (texCoordBufferStride == 0)texCoordBufferStride = 4 * 2;
+					if (normalBufferStride == 0)normalBufferStride = 4 * 3;
 
-				Vertex vertex{};
-				if (positionBufferStride * index + 2 * 4 > gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteLength)
-				{
-					std::cout << "position exceeded !" << std::endl;
+					uint16_t index = *(uint16_t*)(&gltfModel.buffers[0].data[indicesBufferOffset + 2 * i]); //TODO better index type handling
+
+					Vertex vertex{};
+					if (positionBufferStride * index + 2 * 4 > gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteLength)
+					{
+						std::cout << "position exceeded !" << std::endl;
+					}
+					vertex.pos = glm::vec3(*(float*)(&gltfModel.buffers[0].data[positionBufferOffset + positionBufferStride * index + 0 * 4]),
+						*(float*)(&gltfModel.buffers[0].data[positionBufferOffset + positionBufferStride * index + 1 * 4]),
+						*(float*)(&gltfModel.buffers[0].data[positionBufferOffset + positionBufferStride * index + 2 * 4]));
+
+					vertex.texCoord = {
+						*(float*)(&gltfModel.buffers[0].data[texCoordBufferOffset + texCoordBufferStride * index + 0 * 4]),
+						*(float*)(&gltfModel.buffers[0].data[texCoordBufferOffset + texCoordBufferStride * index + 1 * 4])
+					};
+
+					vertex.normal = {
+						*(float*)(&gltfModel.buffers[0].data[normalBufferOffset + normalBufferStride * index + 0 * 4]),
+						*(float*)(&gltfModel.buffers[0].data[normalBufferOffset + normalBufferStride * index + 1 * 4]),
+						*(float*)(&gltfModel.buffers[0].data[normalBufferOffset + normalBufferStride * index + 2 * 4])
+					};
+
+					int materialIndex = attribute.material;
+					if (materialCount <= 0)
+					{
+						materialIndex = 0;
+					}
+					m_rawMeshes[materialIndex].loadingVertices.push_back(vertex);
+					m_rawMeshes[materialIndex].loadingIndices.push_back(m_rawMeshes[materialIndex].loadingIndices.size());
+
 				}
-				vertex.pos = glm::vec3(*(float*)(&gltfModel.buffers[0].data[positionBufferOffset + positionBufferStride * index + 0 * 4]),
-					*(float*)(&gltfModel.buffers[0].data[positionBufferOffset + positionBufferStride * index + 1 * 4]),
-					*(float*)(&gltfModel.buffers[0].data[positionBufferOffset + positionBufferStride * index + 2 * 4]));
-
-				vertex.texCoord = {
-					*(float*)(&gltfModel.buffers[0].data[texCoordBufferOffset + texCoordBufferStride * index + 0 * 4]),
-					*(float*)(&gltfModel.buffers[0].data[texCoordBufferOffset + texCoordBufferStride * index + 1 * 4])
-				};
-
-				vertex.normal = {
-					*(float*)(&gltfModel.buffers[0].data[normalBufferOffset + normalBufferStride * index + 0 * 4]),
-					*(float*)(&gltfModel.buffers[0].data[normalBufferOffset + normalBufferStride * index + 1 * 4]),
-					*(float*)(&gltfModel.buffers[0].data[normalBufferOffset + normalBufferStride * index + 2 * 4])
-				};
-
-				int materialIndex = attribute.material;
-				if (materialCount <= 0)
-				{
-					materialIndex = 0;
-				}
-				m_rawMeshes[materialIndex].loadingVertices.push_back(vertex);
-				m_rawMeshes[materialIndex].loadingIndices.push_back(m_rawMeshes[materialIndex].loadingIndices.size());
-
 			}
-
 		}
 	}
-	std::vector<std::jthread> materialsFromGltfThread;
-	materialsFromGltfThread.resize(materialCount + 1);
+	
 	for (uint32_t materialIndex = 0; materialIndex < materialCount; materialIndex++)
 	{
-		materialsFromGltfThread[materialIndex] = std::jthread(createMaterialFromGltf, m_context, std::ref(m_rawMeshes[materialIndex]), std::ref(gltfModel.materials[materialIndex]), std::ref(gltfModel), std::ref(path));
+		createMaterialFromGltf(m_context, m_rawMeshes[materialIndex], gltfModel.materials[materialIndex], gltfModel, path);
 	}
 
-	materialsFromGltfThread[materialCount] = std::jthread(&Model::generateTangents, this);
+	if (!isBaked)
+		generateTangents();
+		
 
 };
 
 //Calls the appropriate loading function depending on the file extension
 void Model::loadModel(const std::filesystem::path& path) {
 	
+	const bool isBaked = SerializationTools::isModelBaked(path);
+
 	//Load GLTF
 	std::filesystem::path extension = path.extension();
 	if (extension == ".gltf" || extension == ".glb") {
-		loadGltf(path);
+		loadGltf(path, isBaked);
 	}
 	else {
 		std::runtime_error("Only .gltf and .glb files are supported for 3D model loading/baking");
 	}
 
 	// Serialization has not been a success lol
-	if(!SerializationTools::isModelBaked(path))
+	if(!isBaked)
 	{
 		//Bake meshlets
 		for(RawMesh mesh: m_rawMeshes)
@@ -423,8 +429,10 @@ void Model::loadModel(const std::filesystem::path& path) {
 			}
 		}
 
-		SerializationTools::writeBakedModel(path, m_meshes);
-		std::cout << "Baked Model: " << path << std::endl;       
+		std::vector<std::jthread> writeBakedModelThreads;
+		writeBakedModelThreads.resize(m_meshes.size());
+	
+		SerializationTools::writeBakedModel(path, m_meshes);     
 
 	}
 	else

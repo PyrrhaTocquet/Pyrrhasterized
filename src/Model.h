@@ -33,7 +33,7 @@ private:
 
 
 	void loadModel(const std::filesystem::path& path);
-	void loadGltf(const std::filesystem::path& path);
+	void loadGltf(const std::filesystem::path& path, bool isBaked);
 	void generateTangents();
 public:
 	Model(VulkanContext* context, const std::filesystem::path& path, const Transform& transform);
