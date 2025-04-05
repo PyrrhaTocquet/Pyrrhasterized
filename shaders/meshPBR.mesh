@@ -89,12 +89,12 @@ void main()
 {
 
   MeshletInfo currentMeshlet = meshletInfosBuffer.meshletInfos[PushConstants.meshletId + taskData.meshletOffset];
-  meshletId[gl_LocalInvocationID.x] = PushConstants.meshletId + taskData.meshletOffset;
   SetMeshOutputsEXT(currentMeshlet.vertexCount, currentMeshlet.primitiveCount);
 
   if(gl_LocalInvocationID.x < currentMeshlet.vertexCount)
   {
-
+    meshletId[gl_LocalInvocationID.x] = PushConstants.meshletId + taskData.meshletOffset;
+    
     uint vertexIndex = currentMeshlet.vertexOffset + gl_LocalInvocationID.x;//indexBuffer.indices[currentMeshlet.vertexOffset + gl_LocalInvocationID.x];
     Vertex vertex = vertexBuffer.vertices[vertexIndex];
 

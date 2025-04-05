@@ -512,13 +512,16 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
 
 
     //imgui commands
-    double framerate = ImGui::GetIO().Framerate;
+    float frametime = ImGui::GetIO().DeltaTime;
+    float framerate = 1.f / frametime;
+    frametime *= 1000.f;
     ImGui::Begin("Renderer Performance", &m_hideImGui);
     ImGui::SetWindowSize(ImVec2(400.f, 500.f));
     ImGui::SetWindowPos(ImVec2(10.f, 10.f));
     
     ImGui::Text("Statistics:");
-    ImGui::Text("Framerate: %f", framerate);
+    ImGui::Text("Framerate: %.1f FPS", framerate);
+    ImGui::Text("Frametime: %.2f ms", frametime);
     ImGui::Text("----------");
 
 

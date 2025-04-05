@@ -22,6 +22,9 @@ layout(location = 5) flat in uint meshletId;
 layout(location = 6) flat in uint shellId;
 layout(location = 7) flat in uint shellCount;
 
+//
+
+
 layout( push_constant ) uniform constants
 {
 	mat4 model;
