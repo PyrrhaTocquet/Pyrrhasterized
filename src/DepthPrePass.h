@@ -5,24 +5,14 @@ desc: Depth pre-pass for forward+
 */
 
 #pragma once
-#include "VulkanRenderPass.h"
+#include "DepthOnlyPass.h"
 
-class DepthPrePass : public VulkanRenderPass 
+class DepthPrePass : public DepthOnlyPass 
 {
 
 private:
-	// created
-	VulkanImage* m_depthAttachment = nullptr;
-
-
-	vk::DescriptorPool m_materialDescriptorPool;
-	vk::DescriptorSetLayout m_materialDescriptorSetLayout;
-	std::vector<vk::DescriptorSet> m_materialDescriptorSet;
-
 	std::array<std::vector<vk::Buffer>, MAX_FRAMES_IN_FLIGHT> m_materialUniformBuffers;
 	std::array<std::vector<vma::Allocation>, MAX_FRAMES_IN_FLIGHT> m_materialUniformBufferAllocations;
-	
-
 
 public:
 	DepthPrePass(VulkanContext* context);
@@ -32,10 +22,6 @@ public:
 	virtual void createAttachments();
 	virtual void cleanAttachments();
 	virtual void recreateRenderPass();
-	virtual void createDescriptorPool();
-	virtual void createDescriptorSetLayout();
-	virtual void createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo> textureImageInfos);
-	virtual void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout);
 	virtual void createDefaultPipeline();
 	virtual void createPushConstantsRanges();
 
@@ -44,4 +30,9 @@ public:
 	virtual void updateDescriptorSets() {};
 
 	const VulkanImage* getDepthAttachment() { assert(m_depthAttachment != nullptr); return m_depthAttachment; };
+
+private:
+	vk::DescriptorBufferInfo getUboInfo(VulkanScene *scene, const uint32_t frame);
+
+
 };

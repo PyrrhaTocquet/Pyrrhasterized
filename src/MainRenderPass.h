@@ -15,7 +15,7 @@ desc: Manages the render pass that draws the final image
 
 
 
-class ShadowRenderPass;
+class DepthOnlyPass;
 
 class MainRenderPass : public VulkanRenderPass {
 	//created

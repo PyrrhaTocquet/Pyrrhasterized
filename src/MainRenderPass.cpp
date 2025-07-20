@@ -345,7 +345,7 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
 
         vk::DescriptorImageInfo shadowImageInfo{
             .sampler = m_shadowMapSampler,
-            .imageView = m_shadowRenderPass->getShadowAttachment(),
+            .imageView = m_shadowRenderPass->getDepthAttachment(),
             .imageLayout = vk::ImageLayout::eReadOnlyOptimal,
         };
      
@@ -487,10 +487,10 @@ void MainRenderPass::createPipelineLayout(vk::DescriptorSetLayout geometryDescri
 void MainRenderPass::createDefaultPipeline()
 {
     PipelineInfo pipelineInfo{
-        .taskShaderPath = "shaders/taskShell.spv",
-       .meshShaderPath = "shaders/meshPBR.spv",
-       .fragShaderPath = "shaders/fragmentPBR.spv",
-       .depthWriteEnable = VK_FALSE,
+        .taskShaderPath = "shaders/amplificationPBR.spv",
+        .meshShaderPath = "shaders/meshPBR.spv",
+        .fragShaderPath = "shaders/fragmentPBR.spv",
+        .depthWriteEnable = VK_FALSE,
     };
 
     m_mainPipeline = new VulkanPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());
@@ -512,13 +512,16 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
 
 
     //imgui commands
-    double framerate = ImGui::GetIO().Framerate;
+    float frametime = ImGui::GetIO().DeltaTime;
+    float framerate = 1.f / frametime;
+    frametime *= 1000.f;
     ImGui::Begin("Renderer Performance", &m_hideImGui);
     ImGui::SetWindowSize(ImVec2(400.f, 500.f));
     ImGui::SetWindowPos(ImVec2(10.f, 10.f));
     
     ImGui::Text("Statistics:");
-    ImGui::Text("Framerate: %f", framerate);
+    ImGui::Text("Framerate: %.1f FPS", framerate);
+    ImGui::Text("Frametime: %.2f ms", frametime);
     ImGui::Text("----------");
 
 
