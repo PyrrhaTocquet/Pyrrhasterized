@@ -20,7 +20,6 @@ desc: Manages the rendering flow and logic. "Heart of the Renderer"
 
 #include "VulkanRenderPass.h"
 #include "MainRenderPass.h"
-#include "ShadowRenderPass.h"
 #include "ShadowCascadeRenderPass.h"
 #include "DepthPrePass.h"
 #include "Camera.h"
@@ -39,7 +38,7 @@ struct Mesh;
 class VulkanScene;
 class VulkanRenderPass;
 class MainRenderPass;
-class ShadowRenderPass;
+class DepthOnlyPass;
 
 class VulkanRenderer
 {

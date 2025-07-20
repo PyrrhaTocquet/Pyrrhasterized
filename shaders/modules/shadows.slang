@@ -11,7 +11,7 @@ import "global";
 
 namespace Shadows
 {
-    public static const uint cShadowCascadeCount = 4;
+    public static const uint cShadowCascadeCount = 4u;
 
     public static const float4x4 cBiasMat = float4x4( 
 	0.5, 0.0, 0.0, 0.5,

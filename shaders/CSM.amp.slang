@@ -8,7 +8,7 @@ import "modules/global";
 [shader("amplification")]
 [numthreads(1, 1, 1)]
 void amplificationMain(
-    uint3 globalThreadId: SV_GroupThreadID,
+    uint3 globalThreadId: SV_DispatchThreadID,
     in uniform Global::PushConstant inPushConstant,
 )
 {

@@ -345,7 +345,7 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
 
         vk::DescriptorImageInfo shadowImageInfo{
             .sampler = m_shadowMapSampler,
-            .imageView = m_shadowRenderPass->getShadowAttachment(),
+            .imageView = m_shadowRenderPass->getDepthAttachment(),
             .imageLayout = vk::ImageLayout::eReadOnlyOptimal,
         };
      
@@ -487,10 +487,10 @@ void MainRenderPass::createPipelineLayout(vk::DescriptorSetLayout geometryDescri
 void MainRenderPass::createDefaultPipeline()
 {
     PipelineInfo pipelineInfo{
-        .taskShaderPath = "shaders/taskShell.spv",
-       .meshShaderPath = "shaders/meshPBR.spv",
-       .fragShaderPath = "shaders/fragmentPBR.spv",
-       .depthWriteEnable = VK_FALSE,
+        .taskShaderPath = "shaders/amplificationPBR.spv",
+        .meshShaderPath = "shaders/meshPBR.spv",
+        .fragShaderPath = "shaders/fragmentPBR.spv",
+        .depthWriteEnable = VK_FALSE,
     };
 
     m_mainPipeline = new VulkanPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());

@@ -18,7 +18,7 @@ import "modules/shadows";
 [outputtopology("triangle")]
 [numthreads(128, 1, 1)]
 void meshMain(
-    uint3 threadId: SV_DispatchThreadID,
+    uint3 threadId: SV_GroupIndex,
     in payload uint inMeshletOffset,
     in uniform Global::PushConstant inPushConstant,
     out indices uint3 outSharedIndices[128],

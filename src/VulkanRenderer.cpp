@@ -181,7 +181,6 @@ void VulkanRenderer::createSyncObjects()
 
     try {
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-
             m_imageAvailableSemaphores[i] =  m_device.createSemaphore(semaphoreInfo);
             m_renderFinishedSemaphores[i] = m_device.createSemaphore(semaphoreInfo);
             m_inFlightFences[i] = m_device.createFence(fenceInfo);
