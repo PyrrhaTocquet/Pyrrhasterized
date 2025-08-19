@@ -37,6 +37,7 @@ void meshMain(
         float4 positionWorld = mul(inPushConstant.model, float4(vertex.pos, 1.0));
         float4x4 cascadeViewMatrix = ubo.cascadeViewProj[inPushConstant.cascadeId];
         outSharedVertices[threadId.x].pos = mul(cascadeViewMatrix, positionWorld);
+        outSharedVertices[threadId.x].texCoord = vertex.texCoord;
     }
 
     // Primitives

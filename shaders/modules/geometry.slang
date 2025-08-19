@@ -33,6 +33,7 @@ namespace Geometry
     public struct MinimalOutputVertex
     {
         public float4 pos : SV_Position;
+        public float2 texCoord : TEXCOORD0;
     }
 
     public struct MeshletInfo

@@ -14,7 +14,7 @@ import "modules/material";
 
 [[shader("fragment")]]
 void fragMain(
-    in Geometry::MeshOutputVertex inVertex,
+    in Geometry::MinimalOutputVertex inVertex,
     in uniform Global::PushConstant inPushConstant
 )
 {
