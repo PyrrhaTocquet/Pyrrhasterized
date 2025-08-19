@@ -68,6 +68,10 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 	m_commandPool = context->createCommandPool();
 	constructVkImage(context, imageParams);
 	constructVkImageView(context, imageParams, imageViewParams);
+
+#ifndef NDEBUG
+	m_allocator->setAllocationName(m_allocation, "VkImage");
+#endif
 }
 
 //Constructor for textures
@@ -118,7 +122,10 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 
 	//Image View
 	constructVkImageView(context, imageParams, imageViewParams);
+
+#ifndef NDEBUG
 	m_allocator->setAllocationName(m_allocation, path.c_str());
+#endif
 }
 
 

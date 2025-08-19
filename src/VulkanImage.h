@@ -25,6 +25,8 @@ struct VulkanImageParams {
 	vk::ImageUsageFlags usage;
 	bool useDedicatedMemory = false; //Set to true for large images that can be destroyed and recreated with different sizes (framebuffer attachments)
 	uint32_t layers = 1;
+
+	
 };
 
 struct VulkanImageViewParams {
