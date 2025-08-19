@@ -11,8 +11,6 @@ DepthPrePass::~DepthPrePass()
 	vk::Device device = m_context->getDevice();
 	device.destroyDescriptorPool(m_materialDescriptorPool);
 	device.destroyDescriptorSetLayout(m_materialDescriptorSetLayout);
-
-	cleanAttachments();
 }
 
 
@@ -68,10 +66,6 @@ void DepthPrePass::createRenderPass()
 
 	if (m_context->getDevice().createRenderPass(&renderPassInfo, nullptr, &m_renderPass) != vk::Result::eSuccess)
 		throw std::runtime_error("failed to create depth pre-pass render pass");
-}
-
-void DepthPrePass::cleanAttachments()
-{
 }
 
 void DepthPrePass::createFramebuffer()

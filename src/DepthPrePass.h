@@ -20,7 +20,6 @@ public:
 	virtual void createRenderPass();
 	virtual void createFramebuffer();
 	virtual void createAttachments();
-	virtual void cleanAttachments();
 	virtual void recreateRenderPass();
 	virtual void createDefaultPipeline();
 	virtual void createPushConstantsRanges();

@@ -50,6 +50,7 @@ VulkanContext::~VulkanContext()
 
 	glfwDestroyWindow(m_window);
 	glfwTerminate();
+	ImGui::DestroyContext();
 	m_instance.destroySurfaceKHR(m_surface);
 	m_allocator.destroy();
 	m_device.destroy();
@@ -872,13 +873,15 @@ vma::Allocator* VulkanContext::getAllocator()
 //Creates and return the buffer and the allocation that matches the input arguments
 VulkanBuffer VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::MemoryUsage memoryUsage, std::string name)
 {
-	vk::BufferCreateInfo bufferInfo{
+	vk::BufferCreateInfo bufferInfo
+	{
 		.size = size,
 		.usage = usage,
 		.sharingMode = vk::SharingMode::eExclusive,
 	};
 
-	vma::AllocationCreateInfo bufferAllocInfo{
+	vma::AllocationCreateInfo bufferAllocInfo
+	{
 		.usage = memoryUsage,
 	};
 
