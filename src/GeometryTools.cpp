@@ -488,14 +488,14 @@ namespace GeometryTools
                 m_positions.push_back(points[1]);
                 m_positions.push_back(points[2]);
 
-                glm::vec3 normal = glm::vec3(computeNormal(points));
-                normals.push_back(normal);
+                glm::vec3 tempNormal = glm::vec3(computeNormal(points));
+                normals.push_back(tempNormal);
 
                 //New bounding sphere & normal axis
                 psphere = minimumBoundingSphere(m_positions.data(), static_cast<uint32_t>(m_positions.size()));
 
                 glm::vec4 nsphere = minimumBoundingSphere(normals.data(), static_cast<uint32_t>(normals.size()));
-                normal = glm::normalize(glm::vec3(nsphere));
+                normal = glm::normalize(nsphere);
 
                 // Find and add all applicable adjacent triangles to candidate list
                 const uint32_t adjIndex = index * 3;
@@ -546,7 +546,7 @@ namespace GeometryTools
                         vertices[triIndices[2]].pos,
                     };
 
-                    candidates[i].second = computeScore(*curr, psphere, glm::vec4(normal, 0.0), triIndices, triVerts);
+                    candidates[i].second = computeScore(*curr, psphere, normal, triIndices, triVerts);
 
                 }
 
