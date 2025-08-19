@@ -304,7 +304,7 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
     std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_mainDescriptorSetLayout);
 
     /* Dynamic Descriptor Counts */
-    uint32_t textureMaxCount = textureImageInfos.size();
+    uint32_t textureMaxCount = static_cast<uint32_t>(textureImageInfos.size());
     std::vector<uint32_t> textureMaxCounts(MAX_FRAMES_IN_FLIGHT, textureMaxCount);
     //std::vector<uint32_t> textureMaxCounts(MAX_FRAMES_IN_FLIGHT, materialMaxCount);
     vk::DescriptorSetVariableDescriptorCountAllocateInfo setCounts{
@@ -374,7 +374,7 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
 
         descriptorWrites[3].dstSet = m_mainDescriptorSet[currentFrame];
         descriptorWrites[3].dstBinding = 3;
-        descriptorWrites[3].descriptorCount = textureImageInfos.size();
+        descriptorWrites[3].descriptorCount = static_cast<uint32_t>(textureImageInfos.size());
         descriptorWrites[3].dstArrayElement = 0;
         descriptorWrites[3].descriptorType = vk::DescriptorType::eCombinedImageSampler;
         descriptorWrites[3].pImageInfo = textureImageInfos.data();
@@ -430,7 +430,7 @@ void MainRenderPass::createMaterialDescriptorSet(VulkanScene* scene)
         vk::DeviceSize bufferSize = sizeof(MaterialUBO);
 
         materialBufferInfos.resize(scene->m_materialCount);
-        for (size_t i = 0; i < materialBufferInfos.size(); i++) {
+        for (uint32_t i = 0; i < static_cast<uint32_t>(materialBufferInfos.size()); i++) {
             
             //filling the material buffer infos
             vk::DescriptorBufferInfo bufferInfo{
@@ -470,7 +470,7 @@ void MainRenderPass::createPipelineLayout(vk::DescriptorSetLayout geometryDescri
     std::array<vk::DescriptorSetLayout, 3> layouts = { geometryDescriptorSetLayout, m_mainDescriptorSetLayout, m_materialDescriptorSetLayout };
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo = {
-       .setLayoutCount = layouts.size(),
+       .setLayoutCount = static_cast<uint32_t>(layouts.size()),
        .pSetLayouts = layouts.data(),
        .pushConstantRangeCount = 1,
        .pPushConstantRanges = &m_pushConstant,
@@ -531,9 +531,9 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
     ImGui::Text("----------");
     
     ImGui::Text("Shell Texturing");
-    int currentChoice = 0;
+    uint32_t currentChoice = 0;
     std::array<std::string, 11> shellCountList = {"1", "2", "4", "8", "16", "32", "64", "128", "256", "512", "1024"};
-    int k = 0;
+    uint32_t k = 0;
     if (ImGui::ListBoxHeader("Shell Count"))
     {
         for (auto shellCountStr : shellCountList)
@@ -541,7 +541,7 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
             if (ImGui::Selectable(shellCountStr.c_str(), selectedId == k ? true : false))
             {
                 selectedId = k;
-                shellCount = pow(2, selectedId);
+                shellCount = static_cast<uint32_t>(pow(2, selectedId));
             }
             k++;
         }

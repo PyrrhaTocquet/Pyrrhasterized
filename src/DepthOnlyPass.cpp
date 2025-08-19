@@ -155,7 +155,7 @@ void DepthOnlyPass::createDescriptorSets(VulkanScene* scene, std::vector<vk::Des
 		std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_mainDescriptorSetLayout);
 
 		/* Dynamic Descriptor Counts */
-		uint32_t textureMaxCount = textureImageInfos.size();
+		uint32_t textureMaxCount = static_cast<uint32_t>(textureImageInfos.size());
 		std::vector<uint32_t> textureMaxCounts(MAX_FRAMES_IN_FLIGHT, textureMaxCount);
 
 		vk::DescriptorSetVariableDescriptorCountAllocateInfo setCounts
@@ -195,7 +195,7 @@ void DepthOnlyPass::createDescriptorSets(VulkanScene* scene, std::vector<vk::Des
 
 			descriptorWrites[1].dstSet = m_mainDescriptorSet[currentFrame];
 			descriptorWrites[1].dstBinding = 1;
-			descriptorWrites[1].descriptorCount = textureImageInfos.size();
+			descriptorWrites[1].descriptorCount = static_cast<uint32_t>(textureImageInfos.size());
 			descriptorWrites[1].dstArrayElement = 0;
 			descriptorWrites[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
 			descriptorWrites[1].pImageInfo = textureImageInfos.data();
@@ -246,7 +246,7 @@ void DepthOnlyPass::createDescriptorSets(VulkanScene* scene, std::vector<vk::Des
 		vk::DeviceSize bufferSize = sizeof(MaterialUBO);
 
 		materialBufferInfos.resize(scene->m_materialCount);
-		for (size_t i = 0; i < materialBufferInfos.size(); i++) {
+		for (uint32_t i = 0; i < static_cast<uint32_t>(materialBufferInfos.size()); i++) {
 
 			//filling the material buffer infos
 			vk::DescriptorBufferInfo bufferInfo{
@@ -281,7 +281,7 @@ void DepthOnlyPass::createPipelineLayout(vk::DescriptorSetLayout geometryDescrip
 	std::array<vk::DescriptorSetLayout, 3> layouts = { geometryDescriptorSetLayout, m_mainDescriptorSetLayout, m_materialDescriptorSetLayout };
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo = {
-		.setLayoutCount = layouts.size(),
+		.setLayoutCount = static_cast<uint32_t>(layouts.size()),
 		.pSetLayouts = layouts.data(),
 		.pushConstantRangeCount = 1,
 		.pPushConstantRanges = &m_pushConstant,

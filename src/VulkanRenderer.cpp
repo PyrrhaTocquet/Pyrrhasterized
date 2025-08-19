@@ -211,7 +211,9 @@ void VulkanRenderer::mainloop() {
 void VulkanRenderer::drawFrame() {
 
     //Wait and reset CPU semaphore
-    m_device.waitForFences(1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);//Wait for one or all fences (VK_TRUE), uint64_max disables the timeout
+    if (m_device.waitForFences(1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX) != vk::Result::eSuccess) //Wait for one or all fences (VK_TRUE), uint64_max disables the timeout
+        throw std::runtime_error("failed to wait for fences!");
+
     uint32_t imageIndex = m_context->acquireNextSwapchainImage(m_imageAvailableSemaphores[m_currentFrame]);
      m_device.resetFences(m_inFlightFences[m_currentFrame]); //Always reset fences (after being sure we are going to submit work
     m_commandBuffers[imageIndex].reset(); //Reset to record the command buffer

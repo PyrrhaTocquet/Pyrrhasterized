@@ -808,6 +808,7 @@ vk::Format VulkanContext::findSupportedFormat(const std::vector<vk::Format>& can
 		}
 		throw std::runtime_error("failed to find supported format!");
 	}
+	return vk::Format::eUndefined;
 
 }
 // Returns the maximum sample count used. Return vk::SamplecountFlagBits::e1 if MSAA is not enabled
@@ -1056,7 +1057,7 @@ ImGui_ImplVulkan_InitInfo VulkanContext::getImGuiInitInfo() {
 	vk::DescriptorPoolCreateInfo poolInfo = {
 		.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
 		.maxSets = 1000,
-		.poolSizeCount = std::size(poolSizes),
+		.poolSizeCount = static_cast<uint32_t>(std::size(poolSizes)),
 		.pPoolSizes = poolSizes,
 	};
 

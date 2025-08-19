@@ -213,13 +213,13 @@ void VulkanScene::createGeometryBuffers()
 	{
 		for(auto mesh: model->getMeshes())
 		{
-			m_meshletCount += mesh.meshlets.size();
-			m_vertexCount += mesh.vertices.size();
+			m_meshletCount += static_cast<uint32_t>(mesh.meshlets.size());
+			m_vertexCount += static_cast<uint32_t>(mesh.vertices.size());
 
 			for(auto meshlet: mesh.meshlets)
 			{
-				m_primitiveCount += meshlet.primitiveIndices.size();
-				m_indexCount += meshlet.uniqueVertexIndices.size();
+				m_primitiveCount += static_cast<uint32_t>(meshlet.primitiveIndices.size());
+				m_indexCount += static_cast<uint32_t>(meshlet.uniqueVertexIndices.size());
 			}
 		}
 	}
@@ -252,27 +252,27 @@ void VulkanScene::createGeometryBuffers()
 			for(auto& meshlet: mesh.meshlets)
 			{
 				meshletInfo.boundingSphere = meshlet.meshletInfo.boundingSphere;
-				meshletInfo.primitiveOffset = triangles.size();	
+				meshletInfo.primitiveOffset = static_cast<uint32_t>(triangles.size());	
 				
 				triangles.insert(triangles.end(), meshlet.primitiveIndices.begin(), meshlet.primitiveIndices.end());
 				
-				std::for_each(meshlet.uniqueVertexIndices.begin(), meshlet.uniqueVertexIndices.end(), [indices](uint32_t& index){index+=indices.size();});
+				std::for_each(meshlet.uniqueVertexIndices.begin(), meshlet.uniqueVertexIndices.end(),
+								[indices](uint32_t& index){
+									index += static_cast<uint32_t>(indices.size());
+								});
+
 				indices.insert(indices.end(), meshlet.uniqueVertexIndices.begin(), meshlet.uniqueVertexIndices.end());
 				
-
-
-				meshletInfo.primitiveCount = meshlet.primitiveIndices.size();
-				meshletInfo.vertexCount = meshlet.uniqueVertexIndices.size();
-				
+				meshletInfo.primitiveCount = static_cast<uint32_t>(meshlet.primitiveIndices.size());
+				meshletInfo.vertexCount = static_cast<uint32_t>(meshlet.uniqueVertexIndices.size());
 				
 				meshletInfo.meshletId = i;
 
 				meshlet.meshletInfo = meshletInfo;
 				
 				meshletInfos.push_back(meshletInfo);
-				meshletInfo.vertexOffset += meshlet.uniqueVertexIndices.size();
+				meshletInfo.vertexOffset += static_cast<uint32_t>(meshlet.uniqueVertexIndices.size());
 				
-
 				i++;
 			}
 			
@@ -294,7 +294,7 @@ const uint32_t VulkanScene::getIndexBufferSize()
 	uint32_t indicesCount = 0;
 	for (const auto& model : m_models) {
 		for (const auto& texturedMesh : model->getRawMeshes()) {
-			indicesCount += texturedMesh.loadingIndices.size();
+			indicesCount += static_cast<uint32_t>(texturedMesh.loadingIndices.size());
 		}
 
 	}
@@ -353,16 +353,18 @@ void VulkanScene::createIndexBuffer()
 
 	char* data = static_cast<char*>(m_allocator->mapMemory(stagingBuffer.m_Allocation));
 
-	int indexOffset = 0;
-	for (int modelIndex = 0; modelIndex < m_models.size(); modelIndex++) {
+	uint32_t indexOffset = 0;
+	for (uint32_t modelIndex = 0; modelIndex < m_models.size(); modelIndex++) 
+	{
 		auto texturedMeshes = m_models[modelIndex]->getRawMeshes();
-		for (int texturedMeshIndex = 0; texturedMeshIndex < texturedMeshes.size(); texturedMeshIndex++) {
+		for (uint32_t texturedMeshIndex = 0; texturedMeshIndex < static_cast<uint32_t>(texturedMeshes.size()); texturedMeshIndex++) {
 			
 			auto& texturedMesh = texturedMeshes[texturedMeshIndex];
-			for (auto& index : texturedMesh.loadingIndices) {
+			for (auto& index : texturedMesh.loadingIndices) 
+			{
 				index += indexOffset;
 			}
-			indexOffset += texturedMesh.loadingIndices.size();
+			indexOffset += static_cast<uint32_t>(texturedMesh.loadingIndices.size());
 			memcpy(data, texturedMesh.loadingIndices.data(), static_cast<size_t>(texturedMesh.loadingIndices.size()*sizeof(uint32_t)));
 			data += texturedMesh.loadingIndices.size() * sizeof(uint32_t);
 		}
@@ -457,7 +459,7 @@ void VulkanScene::createUniformBuffers()
 			for (auto& mesh : model->getRawMeshes()) {
 				if (mesh.material != nullptr)
 				{
-					mesh.materialId = materialUBOs.size();
+					mesh.materialId = static_cast<uint32_t>(materialUBOs.size());
 					materialUBOs.push_back(mesh.material->getUBO());
 				}
 				else {
@@ -467,7 +469,7 @@ void VulkanScene::createUniformBuffers()
 			}
 		}
 
-		m_materialCount = materialUBOs.size();
+		m_materialCount = static_cast<uint32_t>(materialUBOs.size());
 
 		for (uint32_t currentFrame = 0; currentFrame < MAX_FRAMES_IN_FLIGHT; currentFrame++) 
 		{

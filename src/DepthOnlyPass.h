@@ -18,7 +18,7 @@ TODO Refactor
 class DepthOnlyPass : public VulkanRenderPass 
 {
 protected:
-	VulkanImage* m_depthAttachment;
+	VulkanImage* m_depthAttachment = nullptr;
 
 	vk::DescriptorPool m_materialDescriptorPool;
 	vk::DescriptorSetLayout m_materialDescriptorSetLayout;

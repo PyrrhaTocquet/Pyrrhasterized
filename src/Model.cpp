@@ -167,11 +167,11 @@ static void createMaterialFromGltf(VulkanContext* context, RawMesh& texturedMesh
 		glm::vec4 emissiveFactor = glm::vec4(materialInfo.emissiveFactor[0], materialInfo.emissiveFactor[1], materialInfo.emissiveFactor[2], 1.f);
 		texturedMesh.material = (new Material(context))
 			->setBaseColor(baseColor)
-			->setMetallicFactor(materialInfo.pbrMetallicRoughness.metallicFactor)
+			->setMetallicFactor(static_cast<float>(materialInfo.pbrMetallicRoughness.metallicFactor))
 			->setEmissiveFactor(emissiveFactor)
-			->setRoughnessFactor(materialInfo.pbrMetallicRoughness.roughnessFactor);
+			->setRoughnessFactor(static_cast<float>(materialInfo.pbrMetallicRoughness.roughnessFactor));
 
-		texturedMesh.material->setAlphaCutoff(materialInfo.alphaCutoff);
+		texturedMesh.material->setAlphaCutoff(static_cast<float>(materialInfo.alphaCutoff));
 		if (materialInfo.alphaMode == "MASK")
 		{
 			texturedMesh.material->setAlphaMode(MaskAlphaMode);
@@ -216,12 +216,12 @@ void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipeli
 		if(m_meshes[i].meshlets.size() > 0)
 		{
 			pushConstant.meshlet = m_meshes[i].meshlets[0].meshletInfo.meshletId;
-			pushConstant.meshletCount = m_meshes[i].meshlets.size();
+			pushConstant.meshletCount = static_cast<glm::uint32>(m_meshes[i].meshlets.size());
 			commandBuffer.pushConstants<ModelPushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eTaskEXT | vk::ShaderStageFlagBits::eMeshEXT | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-			if(this->m_meshes.size() < 16 && i == 3){vkDrawMeshTasks(commandBuffer, m_meshes[i].meshlets.size(), 1, pushConstant.shellCount);} else{ vkDrawMeshTasks(commandBuffer, m_meshes[i].meshlets.size(), 1, 1);}
+			if(this->m_meshes.size() < 16 && i == 3){vkDrawMeshTasks(commandBuffer, static_cast<uint32_t>(m_meshes[i].meshlets.size()), 1, pushConstant.shellCount);} else{ vkDrawMeshTasks(commandBuffer, static_cast<uint32_t>(m_meshes[i].meshlets.size()), 1, 1);}
 		}
 			
-		k += m_meshes[i].meshlets.size();
+		k += static_cast<uint32_t>(m_meshes[i].meshlets.size());
 	}
 
 }
@@ -264,7 +264,7 @@ void Model::clearLoadingVertexData()
 {
 	for (auto& mesh : m_rawMeshes)
 	{
-		mesh.verticesCount = mesh.loadingVertices.size();
+		mesh.verticesCount = static_cast<uint32_t>(mesh.loadingVertices.size());
 		std::vector<Vertex>().swap(mesh.loadingVertices);
 
 	}
@@ -275,7 +275,7 @@ void Model::clearLoadingIndexData()
 {
 	for (auto& mesh : m_rawMeshes)
 	{
-		mesh.indicesCount = mesh.loadingIndices.size();
+		mesh.indicesCount = static_cast<uint32_t>(mesh.loadingIndices.size());
 		std::vector<uint32_t>().swap(mesh.loadingIndices);
 	}
 }
@@ -297,7 +297,7 @@ static void loadGltfData(const std::filesystem::path& path, tinygltf::Model& glt
 		ret = loader.LoadBinaryFromFile(&gltfModel, &err, &warn, path.string());
 	}
 	else {
-		std::runtime_error("Model format not supported");
+		throw std::runtime_error("Model format not supported");
 	}
 
 	if (!err.empty()) {
@@ -338,14 +338,14 @@ void Model::loadGltf(const std::filesystem::path& path, bool isBaked)
 
 				//Vertices
 				for (int i = 0; i < gltfModel.accessors[indicesBufferIndex].count; i++) {
-					int positionBufferOffset = gltfModel.accessors[positionBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteOffset;
-					int texCoordBufferOffset = gltfModel.accessors[texCoordBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteOffset;
-					int indicesBufferOffset = gltfModel.accessors[indicesBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[indicesBufferIndex].bufferView].byteOffset;
-					int normalBufferOffset = gltfModel.accessors[normalBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteOffset;
+					int positionBufferOffset = static_cast<int>(gltfModel.accessors[positionBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteOffset);
+					int texCoordBufferOffset = static_cast<int>(gltfModel.accessors[texCoordBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteOffset);
+					int indicesBufferOffset = static_cast<int>(gltfModel.accessors[indicesBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[indicesBufferIndex].bufferView].byteOffset);
+					int normalBufferOffset = static_cast<int>(gltfModel.accessors[normalBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteOffset);
 
-					int positionBufferStride = gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteStride;
-					int texCoordBufferStride = gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteStride;
-					int normalBufferStride = gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteStride;
+					int positionBufferStride = static_cast<int>(gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteStride);
+					int texCoordBufferStride = static_cast<int>(gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteStride);
+					int normalBufferStride = static_cast<int>(gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteStride);
 
 					if (positionBufferStride == 0)positionBufferStride = 4 * 3;
 					if (texCoordBufferStride == 0)texCoordBufferStride = 4 * 2;
@@ -379,7 +379,7 @@ void Model::loadGltf(const std::filesystem::path& path, bool isBaked)
 						materialIndex = 0;
 					}
 					m_rawMeshes[materialIndex].loadingVertices.push_back(vertex);
-					m_rawMeshes[materialIndex].loadingIndices.push_back(m_rawMeshes[materialIndex].loadingIndices.size());
+					m_rawMeshes[materialIndex].loadingIndices.push_back(static_cast<uint32_t>(m_rawMeshes[materialIndex].loadingIndices.size()));
 
 				}
 			}
@@ -408,7 +408,7 @@ void Model::loadModel(const std::filesystem::path& path) {
 		loadGltf(path, isBaked);
 	}
 	else {
-		std::runtime_error("Only .gltf and .glb files are supported for 3D model loading/baking");
+		throw std::runtime_error("Only .gltf and .glb files are supported for 3D model loading/baking");
 	}
 
 	// Serialization has not been a success lol
@@ -423,7 +423,7 @@ void Model::loadModel(const std::filesystem::path& path) {
 			m_meshes.emplace_back();
 			if(mesh.loadingIndices.size() > 0)
 			{
-				GeometryTools::bakeMeshlets(maxPrimitives, maxVertices, mesh.loadingIndices.data(), mesh.loadingIndices.size(), mesh.loadingVertices, m_meshes.back().meshlets);
+				GeometryTools::bakeMeshlets(maxPrimitives, maxVertices, mesh.loadingIndices.data(), static_cast<uint32_t>(mesh.loadingIndices.size()), mesh.loadingVertices, m_meshes.back().meshlets);
 				m_meshes.back().vertices = mesh.loadingVertices;
 				
 			}

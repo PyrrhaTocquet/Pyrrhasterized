@@ -68,12 +68,12 @@ namespace GeometryTools
 
         //Vertex reuse
         uint32_t reuse = computeReuse(meshlet, triIndices);
-        float reuseScore = 1 - (float(reuse) / 3.0);
+        float reuseScore = 1 - (float(reuse) / 3.f);
 
         float maxSq = 0;
 
         for(uint32_t i = 0; i < 3u; ++i){
-            glm::vec4 v = sphere - glm::vec4(triVerts[i], 0.0);
+            glm::vec4 v = sphere - glm::vec4(triVerts[i], 0.f);
             maxSq = std::max(maxSq, glm::dot(v, v));
         }
 
@@ -433,7 +433,7 @@ namespace GeometryTools
         std::vector<uint32_t> adjacency;
         adjacency.resize(indexCount);
 
-        buildAdjacencyList(indices, indexCount, vertices, vertices.size(), adjacency.data());
+        buildAdjacencyList(indices, indexCount, vertices, static_cast<uint32_t>(vertices.size()), adjacency.data());
 
         outMeshlets.clear();
         outMeshlets.emplace_back();
@@ -553,7 +553,7 @@ namespace GeometryTools
                 // Determine wether we need to move to the next meshlet
                 if (isMeshletFull(maxVertices, maxPrimitives, *curr))
                 {
-                    outMeshlets.back().meshletInfo.boundingSphere = minimumBoundingSphere(m_positions.data(), m_positions.size());
+                    outMeshlets.back().meshletInfo.boundingSphere = minimumBoundingSphere(m_positions.data(), static_cast<uint32_t>(m_positions.size()));
                     m_positions.clear();
                     normals.clear();
                     candidateCheck.clear();
@@ -579,7 +579,7 @@ namespace GeometryTools
             {
                 if(candidates.empty())
                 {
-                    outMeshlets.back().meshletInfo.boundingSphere = minimumBoundingSphere(m_positions.data(), m_positions.size());
+                    outMeshlets.back().meshletInfo.boundingSphere = minimumBoundingSphere(m_positions.data(), static_cast<uint32_t>(m_positions.size()));
                     m_positions.clear();
                     normals.clear();
                     candidateCheck.clear();

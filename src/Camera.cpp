@@ -54,8 +54,8 @@ void Camera::update()
     double posX, posY;
     glfwGetCursorPos(window, &posX, &posY);
 
-    float deltaX = posX - lastMousePosX;
-    float deltaY = lastMousePosY - posY;
+    float deltaX = static_cast<float>(posX - lastMousePosX);
+    float deltaY = static_cast<float>(lastMousePosY - posY);
     lastMousePosX = posX;
     lastMousePosY = posY;
 

@@ -103,20 +103,20 @@ namespace SerializationTools{
             MESH 1 VERTICES COUNT
             ....
         */
-        uint32_t numMeshes = meshes.size();
+        uint32_t numMeshes = static_cast<uint32_t>(meshes.size());
         file.write(reinterpret_cast<char*>(&numMeshes), sizeof(uint32_t));
 
     for (const Mesh& mesh : meshes) {
         // Write the size of vertices and meshlets
-        uint32_t numVertices = mesh.vertices.size();
-        uint32_t numMeshlets = mesh.meshlets.size();
+        uint32_t numVertices = static_cast<uint32_t>(mesh.vertices.size());
+        uint32_t numMeshlets = static_cast<uint32_t>(mesh.meshlets.size());
         file.write(reinterpret_cast<char*>(&numVertices), sizeof(uint32_t));
         file.write(reinterpret_cast<char*>(&numMeshlets), sizeof(uint32_t));
 
         for (const Meshlet& meshlet : mesh.meshlets) {
             // Write the size of primitiveIndices and uniqueVertexIndices
-            uint32_t numPrimitives = meshlet.primitiveIndices.size();
-            uint32_t numUniqueVertices = meshlet.uniqueVertexIndices.size();
+            uint32_t numPrimitives = static_cast<uint32_t>(meshlet.primitiveIndices.size());
+            uint32_t numUniqueVertices = static_cast<uint32_t>(meshlet.uniqueVertexIndices.size());
             file.write(reinterpret_cast<char*>(&numPrimitives), sizeof(uint32_t));
             file.write(reinterpret_cast<char*>(&numUniqueVertices), sizeof(uint32_t));
         }

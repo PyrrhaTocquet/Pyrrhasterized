@@ -15,16 +15,16 @@ class VulkanScene;
 class VulkanRenderPass {
 
 protected:
-	VulkanContext* m_context = nullptr;
-	std::vector<vk::Framebuffer> m_framebuffers;
-	vk::RenderPass m_renderPass = VK_NULL_HANDLE;
+	VulkanContext*					m_context = nullptr;
+	std::vector<vk::Framebuffer>	m_framebuffers;
+	vk::RenderPass					m_renderPass = VK_NULL_HANDLE;
+	
+	vk::PipelineLayout				m_pipelineLayout = VK_NULL_HANDLE;
+	VulkanPipeline*					m_mainPipeline = nullptr;
 
-	vk::PipelineLayout m_pipelineLayout;
-	VulkanPipeline* m_mainPipeline;
-
-	vk::DescriptorPool m_mainDescriptorPool, m_materialDescriptorPool;
-	vk::DescriptorSetLayout m_mainDescriptorSetLayout;
-	std::vector<vk::DescriptorSet> m_mainDescriptorSet;
+	vk::DescriptorPool				m_mainDescriptorPool, m_materialDescriptorPool = VK_NULL_HANDLE;
+	vk::DescriptorSetLayout			m_mainDescriptorSetLayout = VK_NULL_HANDLE;
+	std::vector<vk::DescriptorSet>	m_mainDescriptorSet;
 
 	vk::PushConstantRange m_pushConstant;
 public :

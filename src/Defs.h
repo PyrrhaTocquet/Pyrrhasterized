@@ -50,12 +50,12 @@ struct CascadeUniformObject {
 };
 
 struct ModelPushConstant {
-	glm::mat4 model;
-	glm::int32 materialId;
-	glm::uint32 cascadeId;
-	uint32_t meshlet;
-	uint32_t meshletCount;
-	uint32_t shellCount = 8;
+	glm::mat4 model = glm::mat4();
+	glm::int32 materialId = 0;
+	glm::uint32 cascadeId = 0u;
+	glm::uint32 meshlet = 0u;
+	glm::uint32 meshletCount = 0u;
+	glm::uint32 shellCount = 8u;
 	//float padding[5];
 };
 

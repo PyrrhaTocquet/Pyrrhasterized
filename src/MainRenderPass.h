@@ -27,7 +27,7 @@ class MainRenderPass : public VulkanRenderPass {
 	vk::DescriptorSetLayout m_materialDescriptorSetLayout;
 	std::vector<vk::DescriptorSet> m_materialDescriptorSet;
 
-	Camera* m_camera; 
+	Camera* m_camera = nullptr; 
 
 	//acquired at construction
 	ShadowCascadeRenderPass *m_shadowRenderPass = nullptr;
@@ -36,10 +36,10 @@ class MainRenderPass : public VulkanRenderPass {
 	//IMGUI
 	bool m_hideImGui = false;
 
-	int selectedId = 0;
-	int shellCount = 128;
-	float hairLength = 0.03;
-	float gravityFactor = 0.02;
+	uint32_t selectedId = 0;
+	uint32_t shellCount = 128;
+	float hairLength = 0.03f;
+	float gravityFactor = 0.02f;
 	float hairDensity = 1000.f;
 public:
 	MainRenderPass(VulkanContext *context, ShadowCascadeRenderPass *shadowRenderPass, DepthPrePass *depthPrePass);
