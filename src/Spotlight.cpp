@@ -15,7 +15,7 @@ Spotlight::Spotlight(VulkanContext* context, const glm::vec4& position, const gl
 }
 
 //Make sure the camera reference is set !
-void Spotlight::update()
+void Spotlight::update(VulkanScene *scene)
 {
 	glm::mat4 viewMat = m_camera->getViewMatrix();
 	m_positionView = viewMat * m_positionWorld;

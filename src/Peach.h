@@ -9,11 +9,13 @@ Peach is controllable horizontally with OKLM keys
 #pragma once
 #include "Defs.h"
 #include "Entity.h"
+#include "VulkanScene.h"
 
 class Peach : public Entity {
 private:
-
+	
 public:
-	Peach(VulkanContext* context);
-	void update() override;
+	uint32_t m_node;
+	Peach(VulkanContext* context, VulkanScene *scene, int parent = -1);
+	void update(VulkanScene *scene) override;
 };

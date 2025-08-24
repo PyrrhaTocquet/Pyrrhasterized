@@ -17,7 +17,7 @@ class DirectionalLight : public Light {
 public:
 	DirectionalLight(VulkanContext* context, const glm::vec4& direction);
 	DirectionalLight(VulkanContext* context, const glm::vec4& direction, const glm::vec4& lightColor);
-	virtual void update()override;
+	virtual void update(VulkanScene *scene)override;
 	virtual LightUBO getUniformData()override;
 	glm::vec4 getWorldDirection();
 	void setShadowCaster();

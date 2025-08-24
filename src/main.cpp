@@ -39,11 +39,10 @@ int main(int argc, char *argv[]) {
 
     /* Helmet */
     Transform helmetTransform;
-    helmetTransform.translate = glm::vec3(0.f, 1.12f, -0.5f);
-    helmetTransform.rotate = glm::vec3(90.f, 0.f, -90.f);
+    helmetTransform.translate = glm::vec3(0.0f, 1.1f, 0.f);
+    helmetTransform.rotate = glm::vec3(90.f, 0.f, 0.f);
     helmetTransform.scale = glm::vec3(0.15f, 0.15f, 0.15f);
 
-  
     /* Sponza */
     Transform sponzaTransform;
     sponzaTransform.translate = glm::vec3(0.f, -2.f, 0.0f);
@@ -63,12 +62,14 @@ int main(int argc, char *argv[]) {
     Transform bunnyTransform;
     
     //scene.addModel("assets/TreasureChest/model.gltf", chestTransform);
-    scene.addModel("assets/SponzaGltf/sponza.glb", sponzaTransform);
-    scene.addModel("assets/Ganon/ganon.gltf", ganonTransform);
-    scene.addModel("assets/Helmet/DamagedHelmet.gltf", helmetTransform);
+    scene.addMeshNode("assets/SponzaGltf/sponza.glb", sponzaTransform);
+    uint32_t ganonNode = scene.addMeshNode("assets/Ganon/ganon.gltf", ganonTransform);
+    scene.addMeshNode("assets/Helmet/DamagedHelmet.gltf", helmetTransform, ganonNode);
     //scene.addModel("assets/bunny.gtf", bunnyTransform);
-    Peach* peachEntity = new Peach(&context);
-    scene.addEntity(peachEntity);
+    Peach* peachEntity = new Peach(&context, &scene);
+    helmetTransform.scale = glm::vec3(0.35f, 0.35f, 0.35f);
+    helmetTransform.translate = glm::vec3(0.0f, 1.2f, 0.f);
+    scene.addMeshNode("assets/Helmet/DamagedHelmet.gltf", helmetTransform, peachEntity->m_node);
     renderer.registerEntity(peachEntity);
 
     Transform sphereMaterialsTransform;
@@ -101,6 +102,6 @@ int main(int argc, char *argv[]) {
 
     renderer.mainloop();
 
-    delete peachEntity;
+    //delete peachEntity;
     return 0;
 }

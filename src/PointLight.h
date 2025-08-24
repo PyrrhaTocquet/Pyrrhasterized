@@ -13,6 +13,6 @@ class PointLight : public Light {
 public:
 	PointLight(VulkanContext* context, const glm::vec4& position, float range);
 	PointLight(VulkanContext* context, const glm::vec4& position, float range, const glm::vec4 lightColor);
-	virtual void update()override;
+	virtual void update(VulkanScene *scene)override;
 	virtual LightUBO getUniformData()override;
 };

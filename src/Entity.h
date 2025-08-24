@@ -7,18 +7,17 @@ note: The model is not initialized by the entity and is left to be initialized b
 
 #pragma once
 #include "Defs.h"
-#include "Model.h"
+#include "VulkanContext.h"
+//#include "VulkanScene.h"
 
+class VulkanScene;
 
 class Entity {
 
 protected:
-	Model* m_model = nullptr;
 	VulkanContext* m_context = nullptr;
 public:
 	Entity(VulkanContext* context);
 	~Entity();
-	virtual void update() = 0;
-	Model* getModelPtr();
-
+	virtual void update(VulkanScene *scene) = 0;
 };

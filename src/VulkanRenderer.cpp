@@ -220,6 +220,7 @@ void VulkanRenderer::drawFrame() {
     
     for (auto& scene : m_scenes)
     {
+        scene->updateTransforms(); 
         scene->updateUniformBuffers(m_currentFrame);
     }
 
@@ -400,11 +401,12 @@ void VulkanRenderer::manageInput() {
 #pragma region ENTITIES
 //Iterates the entity list to call their update function
 void VulkanRenderer::updateEntities() {
-    for (auto& entity : m_entities) {
-        entity->update();
-    }
+   // TODO only one scene please
     for (auto& scene : m_scenes) {
         scene->updateLights();
+        for (auto& entity : m_entities) {
+            entity->update(scene);
+        }
     }
 }
 

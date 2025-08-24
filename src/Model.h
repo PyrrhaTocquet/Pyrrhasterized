@@ -7,11 +7,6 @@
 #include "SerializationTools.h"
 #include "GeometryTools.h"
 
-struct ModelLoadingInfo {
-	std::filesystem::path path;
-	Transform transform;
-};
-
 struct RawMesh {
 	std::vector<Vertex> loadingVertices;
 	std::vector<uint32_t> loadingIndices;
@@ -25,30 +20,28 @@ struct RawMesh {
 class Model {
 private:
 	VulkanContext* m_context = nullptr;
+	std::filesystem::path m_path;
 	std::vector<RawMesh> m_rawMeshes;
 	std::vector<Mesh> m_meshes;
-	Transform m_transform;
+	bool m_isLoaded = false;
 
 	PFN_vkCmdDrawMeshTasksEXT vkDrawMeshTasks;
 
 
-	void loadModel(const std::filesystem::path& path);
 	void loadGltf(const std::filesystem::path& path, bool isBaked);
 	void generateTangents();
 public:
-	Model(VulkanContext* context, const std::filesystem::path& path, const Transform& transform);
-	Model();
+	Model(VulkanContext* context, std::filesystem::path path);
 	~Model();
-	[[nodiscard]]glm::mat4 getMatrix();
+	void loadModel();
 	void drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, uint32_t& indexOffset, ModelPushConstant& pushConstant);
 	[[nodiscard]]std::vector<Mesh>& getMeshes();
 	[[nodiscard]]std::vector<RawMesh>& getRawMeshes();
 
-	void translateBy(glm::vec3 translation);
-	void rotateBy(glm::vec3 rotation);
-	void scaleBy(glm::vec3 scale);
-
 	void clearLoadingVertexData();
 	void clearLoadingIndexData();
+
+	bool isLoaded(){ return m_isLoaded;};
+	const std::filesystem::path& path(){ return m_path;};
 
 };

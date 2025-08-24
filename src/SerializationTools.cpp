@@ -14,7 +14,7 @@ namespace SerializationTools{
 
     }
 
-    void loadBakedModel(const std::filesystem::path& path, std::vector<Mesh>&meshes)
+    void loadBakedModel(const std::filesystem::path& path, std::vector<Mesh> &meshes)
     {
     
         std::filesystem::path bakedModelPath = BAKED_ASSETS_PATH;

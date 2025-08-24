@@ -6,11 +6,9 @@ Camera::Camera(VulkanContext* context) : Entity(context)
     Transform cameraTransform;
 	cameraTransform.translate = m_cameraCoords.cameraPos;
 	cameraTransform.rotate = m_cameraCoords.pitchYawRoll;
-
-    m_model = new Model(context, "assets/Camera/camera.gltf", cameraTransform);
 }
 
-void Camera::update()
+void Camera::update(VulkanScene* scene)
 {
   
     static bool zPressed = false;

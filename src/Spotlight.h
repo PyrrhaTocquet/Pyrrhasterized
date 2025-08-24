@@ -16,6 +16,6 @@ class Spotlight : public Light {
 public :
 	Spotlight(VulkanContext* context, const glm::vec4& position, const glm::vec4& direction, float spotlightAngle, float range);
 	Spotlight(VulkanContext* context, const glm::vec4& position, const glm::vec4& direction, float spotlightAngle, float range, const glm::vec4& lightColor);
-	virtual void update()override;
+	virtual void update(VulkanScene *scene)override;
 	virtual LightUBO getUniformData()override;
 };

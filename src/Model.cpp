@@ -13,11 +13,9 @@ desc: Manages model loading and drawing
 #include <thread>
 
 
-Model::Model(VulkanContext* context, const std::filesystem::path& path, const Transform& transform) {
-	m_transform = transform;
+Model::Model(VulkanContext* context, std::filesystem::path path) {
 	m_context = context;
-
-	loadModel(path);
+	m_path = path;
 
 	//TODO Dynamic loading
 	vkDrawMeshTasks = (PFN_vkCmdDrawMeshTasksEXT)vkGetDeviceProcAddr(m_context->getDevice(), "vkCmdDrawMeshTasksEXT");
@@ -188,29 +186,12 @@ static void createMaterialFromGltf(VulkanContext* context, RawMesh& texturedMesh
 
 }
 
-//returns the model matrix (world space) of the model computed from transform data
-glm::mat4 Model::getMatrix()
-{
-	return m_transform.computeMatrix();
-}
-
 //Write command buffer at scene drawing
 void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, uint32_t &indexOffset, ModelPushConstant& pushConstant)
 {
-
-	/*for (auto& mesh : m_rawMeshes)
-	{
-		pushConstant.model = m_transform.computeMatrix();
-		pushConstant.materialId = static_cast<glm::int32>(mesh.materialId);
-
-		commandBuffer.pushConstants<ModelPushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-		commandBuffer.drawIndexed(mesh.loadingIndices.size(), 1, indexOffset, 0, 0);
-		indexOffset += mesh.loadingIndices.size();
-	}*/
 	uint32_t k = 0;
 	for (int i = 0; i < m_rawMeshes.size(); i++)
 	{
-		pushConstant.model = m_transform.computeMatrix();
 		pushConstant.materialId = static_cast<glm::int32>(m_rawMeshes[i].materialId);
 		
 		if(m_meshes[i].meshlets.size() > 0)
@@ -218,7 +199,8 @@ void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipeli
 			pushConstant.meshlet = m_meshes[i].meshlets[0].meshletInfo.meshletId;
 			pushConstant.meshletCount = static_cast<glm::uint32>(m_meshes[i].meshlets.size());
 			commandBuffer.pushConstants<ModelPushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eTaskEXT | vk::ShaderStageFlagBits::eMeshEXT | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-			if(this->m_meshes.size() < 16 && i == 3){vkDrawMeshTasks(commandBuffer, static_cast<uint32_t>(m_meshes[i].meshlets.size()), 1, pushConstant.shellCount);} else{ vkDrawMeshTasks(commandBuffer, static_cast<uint32_t>(m_meshes[i].meshlets.size()), 1, 1);}
+
+			vkDrawMeshTasks(commandBuffer, static_cast<uint32_t>(m_meshes[i].meshlets.size()), 1, 1);
 		}
 			
 		k += static_cast<uint32_t>(m_meshes[i].meshlets.size());
@@ -238,26 +220,6 @@ std::vector<RawMesh>& Model::getRawMeshes()
 	return m_rawMeshes;
 }
 
-//Translates the model by the inputed vector (do before computing model matrix)
-void Model::translateBy(glm::vec3 translation)
-{
-	m_transform.translate += translation;
-	m_transform.hasChanged = true;
-}
-
-//Rotates the model by the inputed vector (do before computing model matrix). Rotations are in degrees.
-void Model::rotateBy(glm::vec3 rotation)
-{
-	m_transform.rotate += rotation;
-	m_transform.hasChanged = true;
-}
-
-//Scales the model by the inputed vector (do before computing model matrix)
-void Model::scaleBy(glm::vec3 scale)
-{
-	m_transform.scale *= scale;
-	m_transform.hasChanged = true;
-}
 
 //Releases vertices memory
 void Model::clearLoadingVertexData()
@@ -398,14 +360,17 @@ void Model::loadGltf(const std::filesystem::path& path, bool isBaked)
 };
 
 //Calls the appropriate loading function depending on the file extension
-void Model::loadModel(const std::filesystem::path& path) {
+void Model::loadModel() {
 	
-	const bool isBaked = SerializationTools::isModelBaked(path);
+	if (m_isLoaded)
+		return;
+
+	const bool isBaked = SerializationTools::isModelBaked(m_path);
 
 	//Load GLTF
-	std::filesystem::path extension = path.extension();
+	std::filesystem::path extension = m_path.extension();
 	if (extension == ".gltf" || extension == ".glb") {
-		loadGltf(path, isBaked);
+		loadGltf(m_path, isBaked);
 	}
 	else {
 		throw std::runtime_error("Only .gltf and .glb files are supported for 3D model loading/baking");
@@ -415,7 +380,7 @@ void Model::loadModel(const std::filesystem::path& path) {
 	if(!isBaked)
 	{
 		//Bake meshlets
-		for(RawMesh mesh: m_rawMeshes)
+		for(RawMesh &mesh: m_rawMeshes)
 		{
 			uint32_t maxPrimitives = 128;
 			uint32_t maxVertices = 128;
@@ -432,14 +397,14 @@ void Model::loadModel(const std::filesystem::path& path) {
 		std::vector<std::jthread> writeBakedModelThreads;
 		writeBakedModelThreads.resize(m_meshes.size());
 	
-		SerializationTools::writeBakedModel(path, m_meshes);     
-
+		SerializationTools::writeBakedModel(m_path, m_meshes);     
 	}
 	else
 	{
-		SerializationTools::loadBakedModel(path, m_meshes);
-		std::cout << "Loaded Model: " << path << std::endl;
-	}	
+		SerializationTools::loadBakedModel(m_path, m_meshes);
+		std::cout << "Loaded Model: " << m_path << std::endl;
+	}
+	m_isLoaded = true;
 }
 
 //Used in a new thread by generateTangents to compute tangent data

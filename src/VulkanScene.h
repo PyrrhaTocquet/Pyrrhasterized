@@ -5,21 +5,53 @@
 #include "VulkanContext.h"
 #include "VulkanImage.h"
 #include "Defs.h"
-#include "Entity.h"
 #include <filesystem>
 #include "Model.h"
 #include "Drawable.h"
 #include "DirectionalLight.h"
 #include <future>
 #include <thread>
+#include <set>
 
+#define MAX_SCENE_DEPTH 16
 
 class VulkanScene : Drawable
 {
 public :
+
+	struct Hierarchy
+	{
+		int	parent = -1;
+		int	firstChild = -1;
+		int	nextSibling = -1;
+		int	lastSibling = -1;
+		int	level = 0;
+	};
+
+	struct DirtyableTransform
+	{
+		glm::mat4	transform;
+		bool		isDirty;
+	};
+
 	VulkanBuffer m_meshletInfoBuffer, m_primitiveBuffer, m_indexBuffer, m_vertexBuffer;
-	std::vector<Model*> m_models; //TODO private after drawScene refactoring ??
+
+	// Scene Tree
+	std::vector<Transform> m_localTransforms;
+	std::vector<glm::mat4> m_globalTransforms;
+	std::vector<Hierarchy> m_hierarchies;
+	std::vector<Model> m_models; 
+	std::vector<std::string> m_nodeNames;
+
+	std::unordered_map<uint32_t, uint32_t> modelForNode;
+	//std::unordered_map<uint32_t, uint32_t> materialForNode; //TODO
+
+	std::vector<uint32_t> m_changedThisFrame[MAX_SCENE_DEPTH];
+
+
+	std::vector<uint32_t> m_modelsToLoad;
 	std::vector<Light*> m_lights;
+
 
 	// Uniform Buffers
 	std::vector<VulkanBuffer> m_generalUniformBuffers;
@@ -34,7 +66,6 @@ private:
 	uint32_t m_meshletCount = 0, m_primitiveCount = 0, m_indexCount = 0, m_vertexCount = 0;
 	vma::Allocator* m_allocator;
 	DirectionalLight* m_sun;
-	std::vector<ModelLoadingInfo> m_modelLoadingInfos;
 	std::array<CascadeUniformObject, MAX_FRAMES_IN_FLIGHT> m_cascadeUbos;
 
 	Camera* m_camera;
@@ -44,12 +75,14 @@ private:
 public:
 	VulkanScene(VulkanContext* context, DirectionalLight* sun);
 	~VulkanScene();
-	void addModel(const std::filesystem::path& path, const Transform& transform);
-	void addModel(Model* model);
+	uint32_t addMeshNode(const std::filesystem::path& path, Transform transform, int parent = -1);
+	void updateTransforms();
+	void dirtyNode(uint32_t node);
+	uint32_t addMeshNode(Model &model, Transform transform, int parent = -1);
+	uint32_t addNode(Transform transform, std::string name = "empty Node", int parent = -1);
 	void createGeometryDescriptorSet(vk::DescriptorSetLayout geometryDescriptorSetLayout);
 	[[nodiscard]]	vk::DescriptorSet getGeometryDescriptorSet();
 	void loadModels();
-	void addEntity(Entity* entity);
 	void createGeometryBuffers();
 	[[nodiscard]]	const uint32_t getIndexBufferSize();
 	void addLight(Light* light);
@@ -60,6 +93,10 @@ public:
 	void	createUniformBuffers();
 	void	updateUniformBuffers(uint32_t m_currentFrame);
 	void	setCamera(Camera *camera);
+
+	void	translateNode(uint32_t node, glm::vec3 translation);
+	void	rotateNode(uint32_t node, glm::vec3 rotation);
+	void	scaleNode(uint32_t node, glm::vec3 scale);
 
 	[[nodiscard]]	const VulkanBuffer getGeneralUniformBuffer(uint32_t currentFrame) { return m_generalUniformBuffers[currentFrame]; };
 	[[nodiscard]] const VulkanBuffer getLightUniformBuffer(uint32_t currentFrame) {

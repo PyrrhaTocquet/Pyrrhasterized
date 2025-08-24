@@ -36,7 +36,7 @@ public:
 	const float fastCameraSpeed = 20.f;
 
 	Camera(VulkanContext* context);
-	void update() override;
+	void update(VulkanScene* scene) override;
 
 	[[nodiscard]] glm::mat4 getViewMatrix();
 	[[nodiscard]] glm::mat4 getProjMatrix(VulkanContext* context);

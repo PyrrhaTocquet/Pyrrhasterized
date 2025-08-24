@@ -13,7 +13,7 @@ DirectionalLight::DirectionalLight(VulkanContext* context, const glm::vec4& dire
 
 
 //Make sure the camera reference is set !
-void DirectionalLight::update()
+void DirectionalLight::update(VulkanScene *scene)
 {
 	//TODO CLEAN THIS STUFF
 	if (m_shadowCaster)

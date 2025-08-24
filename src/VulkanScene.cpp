@@ -9,6 +9,13 @@ VulkanScene::VulkanScene(VulkanContext* context, DirectionalLight* sun) {
 	m_sun = sun;
 	m_sun->setShadowCaster();
 	addLight(sun);
+
+	m_localTransforms.reserve(100);
+	m_globalTransforms.reserve(100);
+	m_hierarchies.reserve(100);
+	m_models.reserve(100);
+	m_nodeNames.reserve(100);
+	m_modelsToLoad.reserve(100);
 }
 
 VulkanScene::~VulkanScene()
@@ -29,12 +36,7 @@ VulkanScene::~VulkanScene()
 			m_context->getAllocator()->destroyBuffer(m_materialUniformBuffers[i][k].m_Buffer, m_materialUniformBuffers[i][k].m_Allocation);
 		}
 	}
-
-	for (const auto& model : m_models) {
-		delete model;
-	}
 	//No need to delete lights, they are deleted as entities
-
 }
 
 /* Disabled because no support for a scene graph yet.
@@ -46,23 +48,70 @@ void VulkanScene::addChildren(VulkanScene* childrenScene) {
 	m_childrenScenes.push_back(childrenScene);
 }*/
 
-//Adds the model information to the model information list for further loading
-void VulkanScene::addModel(const std::filesystem::path& path, const Transform& transform)
+// Adds a node with an unloaded model
+uint32_t VulkanScene::addMeshNode(const std::filesystem::path& path, Transform localTransform, int parent)
 {
-	ModelLoadingInfo modelInfo{
-		.path = path,
-		.transform = transform,
-	};
-	m_modelLoadingInfos.push_back(modelInfo);
+	Model model(m_context, path);
+	uint32_t modelId = static_cast<uint32_t>(m_models.size());
+	m_modelsToLoad.push_back(modelId);
+
+	return addMeshNode(model, localTransform, parent);
 }
 
-//Adds the model to the model list
-void VulkanScene::addModel(Model* model)
+// Adds a mesh node to the scene graph, returns the node id that indexes the data arrays
+uint32_t VulkanScene::addMeshNode(Model &model, Transform localTransform, int parent/* = -1*/)
 {
+	uint32_t node = addNode(localTransform, model.path().string(), parent);
+
+	uint32_t modelId = static_cast<uint32_t>(m_models.size());
 	m_models.push_back(model);
+	modelForNode[node] = modelId;
+
+	return node;
 }
 
+// Adds a node to the scene graph, returns the node id that indexes the data arrays
+uint32_t VulkanScene::addNode(Transform localTransform, std::string name/* = "empty node"*/, int parent/* = -1*/)
+{
+	m_localTransforms.push_back(localTransform);
+	m_nodeNames.push_back(name);
 
+	glm::mat4 globalTransform = parent > -1 ? m_globalTransforms[parent] : glm::mat4(1.0f);
+	globalTransform = globalTransform * localTransform.computeMatrix();
+	m_globalTransforms.push_back(globalTransform);
+	uint32_t newNode = static_cast<uint32_t>(m_hierarchies.size());
+
+	Hierarchy newHierarchy {.parent = parent};
+	m_hierarchies.push_back(newHierarchy);
+	uint32_t level = 0;
+	if (parent > -1)
+	{
+		const int s = m_hierarchies[parent].firstChild;
+		if (s == -1)
+		{
+			m_hierarchies[parent].firstChild = newNode;
+			m_hierarchies[newNode].lastSibling = newNode;
+		}
+		else
+		{
+			int dest = m_hierarchies[s].lastSibling;
+			assert(dest >= -1);
+			if (dest == -1)
+			{
+				for (dest = s; m_hierarchies[dest].nextSibling != -1; dest = m_hierarchies[dest].nextSibling);
+			}
+			m_hierarchies[dest].nextSibling = newNode;
+			m_hierarchies[s].lastSibling = newNode;
+		}
+		level = m_hierarchies[parent].level + 1;
+	}
+
+	m_hierarchies[newNode].level = level;
+	m_hierarchies[newNode].nextSibling = -1;
+	m_hierarchies[newNode].firstChild = -1;
+
+	return newNode;
+}
 
 void VulkanScene::createGeometryDescriptorSet(vk::DescriptorSetLayout geometryDescriptorSetLayout)
 {
@@ -165,28 +214,22 @@ vk::DescriptorSet VulkanScene::getGeometryDescriptorSet()
 
 //Function used in order to multithread model loading
 static std::mutex modelsMutex;
-static void newModel(VulkanContext* context, std::filesystem::path path, Transform transform, std::vector<Model*>* models, int modelId) {
-	Model* model = new Model(context, path, transform);
-	std::lock_guard<std::mutex> lock(modelsMutex);
-	models->at(modelId) = model;
+static void loadModel(VulkanContext* context, std::vector<Model> &models, int modelId) {
+	models[modelId].loadModel();
 };
 
 // Loads the models in the model info list (multithreaded)
 void VulkanScene::loadModels()
 {
-	size_t modelsCount = m_modelLoadingInfos.size();
+	size_t modelsCount = m_modelsToLoad.size();
 	std::vector<std::jthread> modelLoadingThreads;
 	modelLoadingThreads.resize(modelsCount);
-	m_models.resize(modelsCount);
+
 	for (uint32_t i = 0; i < modelsCount; i++)
 	{
-		modelLoadingThreads[i] = std::jthread(newModel, m_context, m_modelLoadingInfos[i].path, m_modelLoadingInfos[i].transform, &m_models, i);
+		uint32_t modelId = m_modelsToLoad[i];
+		modelLoadingThreads[i] = std::jthread(loadModel, m_context, std::ref(m_models), modelId);
 	}
-}
-
-//Adds the entity modl to the scene
-void VulkanScene::addEntity(Entity* entity) {
-	addModel(entity->getModelPtr());
 }
 
 template <typename T>
@@ -209,14 +252,14 @@ void copyStdVectorToGPUBuffer(VulkanContext* context, vma::Allocator* allocator,
 void VulkanScene::createGeometryBuffers()
 {
 	/* Buffers Sizes*/
-	for(auto model: m_models)
+	for(auto &model: m_models)
 	{
-		for(auto mesh: model->getMeshes())
+		for(auto &mesh: model.getMeshes())
 		{
 			m_meshletCount += static_cast<uint32_t>(mesh.meshlets.size());
 			m_vertexCount += static_cast<uint32_t>(mesh.vertices.size());
 
-			for(auto meshlet: mesh.meshlets)
+			for(auto &meshlet: mesh.meshlets)
 			{
 				m_primitiveCount += static_cast<uint32_t>(meshlet.primitiveIndices.size());
 				m_indexCount += static_cast<uint32_t>(meshlet.uniqueVertexIndices.size());
@@ -246,7 +289,7 @@ void VulkanScene::createGeometryBuffers()
 	uint32_t i = 0;
 	for(auto& model: m_models)
 	{
-		for (auto& mesh: model->getMeshes())
+		for (auto& mesh: model.getMeshes())
 		{			
 
 			for(auto& meshlet: mesh.meshlets)
@@ -292,8 +335,10 @@ void VulkanScene::createGeometryBuffers()
 const uint32_t VulkanScene::getIndexBufferSize()
 {
 	uint32_t indicesCount = 0;
-	for (const auto& model : m_models) {
-		for (const auto& texturedMesh : model->getRawMeshes()) {
+	for (Model& model : m_models) 
+	{
+		for (const RawMesh &texturedMesh : model.getRawMeshes()) 
+		{
 			indicesCount += static_cast<uint32_t>(texturedMesh.loadingIndices.size());
 		}
 
@@ -320,7 +365,7 @@ void VulkanScene::updateLights()
 {
 	for (auto& light : m_lights)
 	{
-		light->update();
+		light->update(this);
 	}
 }
 
@@ -334,9 +379,11 @@ void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, v
 	VkDeviceSize offset = 0;
 
 	uint32_t indexOffset = 0;
+	
 	//Draws each model in a scene
-	for (auto& model : m_models) {
-		model->drawModel(commandBuffer, pipelineLayout, indexOffset, pushConstant);
+	for (size_t i = 0; i < m_localTransforms.size(); i++) {
+		pushConstant.model = m_globalTransforms[i];
+		m_models[modelForNode[i]].drawModel(commandBuffer, pipelineLayout, indexOffset, pushConstant);
 	}
 }
 
@@ -356,7 +403,7 @@ void VulkanScene::createIndexBuffer()
 	uint32_t indexOffset = 0;
 	for (uint32_t modelIndex = 0; modelIndex < m_models.size(); modelIndex++) 
 	{
-		auto texturedMeshes = m_models[modelIndex]->getRawMeshes();
+		auto &texturedMeshes = m_models[modelIndex].getRawMeshes();
 		for (uint32_t texturedMeshIndex = 0; texturedMeshIndex < static_cast<uint32_t>(texturedMeshes.size()); texturedMeshIndex++) {
 			
 			auto& texturedMesh = texturedMeshes[texturedMeshIndex];
@@ -385,8 +432,8 @@ void VulkanScene::createIndexBuffer()
 void VulkanScene::createVertexBuffer() 
 {
 	size_t verticesCount = 0;
-	for (const auto& model : m_models) {
-		for (const auto& texturedMesh : model->getRawMeshes()) {
+	for (auto& model : m_models) {
+		for (auto& texturedMesh : model.getRawMeshes()) {
 			verticesCount += texturedMesh.loadingVertices.size();
 		}
 		
@@ -400,8 +447,8 @@ void VulkanScene::createVertexBuffer()
 
 	char* data = static_cast<char*>(m_allocator->mapMemory(stagingBuffer.m_Allocation));
 
-	for (const auto& model : m_models) {
-		for (const auto& texturedMesh : model->getRawMeshes()) {
+	for (auto& model : m_models) {
+		for (const auto& texturedMesh : model.getRawMeshes()) {
 			memcpy(data, texturedMesh.loadingVertices.data(), static_cast<size_t>(texturedMesh.loadingVertices.size() * sizeof(Vertex)));
 			data += texturedMesh.loadingVertices.size() * sizeof(Vertex);
 		}
@@ -456,7 +503,7 @@ void VulkanScene::createUniformBuffers()
 		materialUBOs.push_back(defaultMaterial);
 		//Retrieving Material UBOs
 		for (auto& model : m_models) {
-			for (auto& mesh : model->getRawMeshes()) {
+			for (auto& mesh : model.getRawMeshes()) {
 				if (mesh.material != nullptr)
 				{
 					mesh.materialId = static_cast<uint32_t>(materialUBOs.size());
@@ -511,8 +558,8 @@ static void appendImageInfo(std::vector<vk::DescriptorImageInfo>& textureImageIn
 {
 	std::vector<vk::DescriptorImageInfo> textureImageInfo;
 	uint32_t textureId = 0;
-	for (auto& model : m_models) {
-		for (auto& texturedMesh : model->getRawMeshes()) {
+	for (auto &model : m_models) {
+		for (auto &texturedMesh : model.getRawMeshes()) {
 			Material* material = texturedMesh.material;
 			if (material == nullptr)
 				continue;
@@ -693,4 +740,62 @@ void	VulkanScene::updateLightUniformBuffer(uint32_t currentFrame)
 	void* data = m_context->getAllocator()->mapMemory(m_lightUniformBuffers[currentFrame].m_Allocation);
 	memcpy(data, lightsUbo.data(), sizeof(LightUBO) * lightsUbo.size());
 	m_context->getAllocator()->unmapMemory(m_lightUniformBuffers[currentFrame].m_Allocation);
+}
+
+
+//Translates the model by the inputed vector (do before computing model matrix)
+void VulkanScene::translateNode(uint32_t node, glm::vec3 translation)
+{
+	m_localTransforms[node].translate += translation;
+	dirtyNode(node);
+}
+
+//Rotates the model by the inputed vector (do before computing model matrix). Rotations are in degrees.
+void VulkanScene::rotateNode(uint32_t node, glm::vec3 rotation)
+{
+	m_localTransforms[node].rotate += rotation;
+	dirtyNode(node);
+}
+
+//Scales the model by the inputed vector (do before computing model matrix)
+void VulkanScene::scaleNode(uint32_t node, glm::vec3 scale)
+{
+	m_localTransforms[node].scale += scale;
+	dirtyNode(node);
+}
+
+// Adds recursively the nodes whose transforms need to be updated in a buffer
+void	VulkanScene::dirtyNode(uint32_t node)
+{
+	const uint32_t level = m_hierarchies[node].level;
+	m_changedThisFrame[level].push_back(node);
+	m_localTransforms[node].dirty = true;
+	m_localTransforms[node].matReady = false;
+	for (int child = m_hierarchies[node].firstChild; child != -1; child = m_hierarchies[child].nextSibling) 
+	{
+		if (!m_localTransforms[child].dirty)
+			dirtyNode(child);
+	}
+}
+
+void VulkanScene::updateTransforms()
+{
+	for (uint32_t dirtyNode : m_changedThisFrame[0])
+	{
+		Transform &localTransform = m_localTransforms[dirtyNode];
+		m_globalTransforms[dirtyNode] = localTransform.computeMatrix();
+		localTransform.dirty = false;
+	}
+
+	for (uint32_t i = 1; i < MAX_SCENE_DEPTH; i++)
+	{
+		for (uint32_t dirtyNode : m_changedThisFrame[i])
+		{
+			Transform &localTransform = m_localTransforms[dirtyNode];
+			int parent = m_hierarchies[dirtyNode].parent;
+			m_globalTransforms[dirtyNode] = m_globalTransforms[parent] * localTransform.computeMatrix();
+			localTransform.dirty = false;
+		}
+		m_changedThisFrame[i].clear();
+	}
 }

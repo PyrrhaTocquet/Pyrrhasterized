@@ -42,7 +42,7 @@ public:
 	Light(VulkanContext* context, const glm::vec4& lightColor);
 	Light(VulkanContext* context);
 	void setCamera(Camera* camera);
-	virtual void update()override = 0;
+	virtual void update(VulkanScene *scene)override = 0;
 	virtual LightUBO getUniformData() = 0;
 	void setIntensity(float intensity);
 };
