@@ -1,7 +1,8 @@
 #include "DepthOnlyPass.h"
 
-DepthOnlyPass::DepthOnlyPass(VulkanContext* context) : VulkanRenderPass(context)
+DepthOnlyPass::DepthOnlyPass(VulkanContext* context)
 {
+	m_context = context;
 	m_framebuffers.resize(1);
 }
 

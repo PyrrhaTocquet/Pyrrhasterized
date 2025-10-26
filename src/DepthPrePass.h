@@ -15,7 +15,7 @@ private:
 	std::array<std::vector<vma::Allocation>, MAX_FRAMES_IN_FLIGHT> m_materialUniformBufferAllocations;
 
 public:
-	DepthPrePass(VulkanContext* context);
+	DepthPrePass(VulkanContext* context, vk::DescriptorSetLayout geometryDescriptorSetLayout);
 	virtual ~DepthPrePass();
 	virtual void createRenderPass();
 	virtual void createFramebuffer();

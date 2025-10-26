@@ -93,7 +93,7 @@ private:
 
 	//RENDER PASS
 	void createGeometryDescriptorSetLayout();
-	void createRenderPasses();
+	void createRenderPasses(vk::DescriptorSetLayout geometryDescriptorSetLayout);
 
 	//FRAMEBUFFERS
 	void createFramebuffers();

@@ -1,13 +1,24 @@
 #include "MainRenderPass.h"
 
 //Always create this render pass after creating the shadow render pass
-MainRenderPass::MainRenderPass(VulkanContext *context, ShadowCascadeRenderPass *shadowRenderPass, DepthPrePass *depthPrePass) : VulkanRenderPass(context)
+MainRenderPass::MainRenderPass(VulkanContext *context, vk::DescriptorSetLayout geometryDescriptorSetLayout, ShadowCascadeRenderPass *shadowRenderPass, DepthPrePass *depthPrePass)
 {
+	m_context = context;
     std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews(); // REMOVE ? useless ?
     m_framebuffers.resize(m_context->getSwapchainImagesCount());
 
     m_shadowRenderPass = shadowRenderPass;
     m_depthPrePass = depthPrePass;
+
+	createRenderPass();
+
+	createPushConstantsRanges();
+    createDescriptorSetLayout();
+    createDescriptorPool();
+    createPipelineRessources();
+
+    createPipelineLayout(geometryDescriptorSetLayout);
+    createDefaultPipeline();
 }
 
 MainRenderPass::~MainRenderPass()

@@ -2,16 +2,6 @@
 
 
 #pragma region CONSTRUCTORS_DESTRUCTORS
-static void initRenderPass(VulkanRenderPass* renderPass, vk::DescriptorSetLayout geometryDescriptorSetLayout) {
-    renderPass->createPushConstantsRanges();
-    renderPass->createDescriptorSetLayout();
-    renderPass->createDescriptorPool();
-    renderPass->createPipelineRessources();
-
-    renderPass->createPipelineLayout(geometryDescriptorSetLayout);
-    renderPass->createDefaultPipeline();
-}
-
 VulkanRenderer::VulkanRenderer(VulkanContext* context)
 {
      //Retrieving important values and references from VulkanContext
@@ -26,15 +16,8 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     m_camera = new Camera(m_context);
     
     createGeometryDescriptorSetLayout();
-    createRenderPasses();
+    createRenderPasses(m_geometryDescriptorSetLayout);
 
-    { 
-    std::vector<std::jthread> renderPassCreationThreads(m_renderPasses.size());
-        for (size_t i = 0; i < m_renderPasses.size(); i++)
-        {
-            renderPassCreationThreads[i] = std::jthread(initRenderPass, m_renderPasses[i], m_geometryDescriptorSetLayout);
-        }
-    }
     //Rendering pipeline creation
     createFramebuffers();
    
@@ -321,21 +304,18 @@ void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
 #pragma endregion
 
 #pragma region RENDER_PASSES
-void VulkanRenderer::createRenderPasses() {
+void VulkanRenderer::createRenderPasses(vk::DescriptorSetLayout geometryDescriptorSetLayout) {
     //Render pass 1: Shadow Render Pass
-    ShadowCascadeRenderPass* shadowRenderPass = new ShadowCascadeRenderPass(m_context);
+    ShadowCascadeRenderPass* shadowRenderPass = new ShadowCascadeRenderPass(m_context, geometryDescriptorSetLayout);
     m_shadowPass = shadowRenderPass;
-    shadowRenderPass->createRenderPass();
     m_renderPasses.push_back(shadowRenderPass);
 
     // Render pass 2: Depth Pre-Pass
-    DepthPrePass* depthPrePass = new DepthPrePass(m_context);
-    depthPrePass->createRenderPass();
+    DepthPrePass* depthPrePass = new DepthPrePass(m_context, geometryDescriptorSetLayout);
     m_renderPasses.push_back(depthPrePass);
 
     //Render pass 3: Main Render Pass
-    MainRenderPass* mainRenderPass = new MainRenderPass(m_context, shadowRenderPass, depthPrePass);
-    mainRenderPass->createRenderPass();
+    MainRenderPass* mainRenderPass = new MainRenderPass(m_context, geometryDescriptorSetLayout, shadowRenderPass, depthPrePass);
     m_mainPass = mainRenderPass;
     m_renderPasses.push_back(mainRenderPass);
 }

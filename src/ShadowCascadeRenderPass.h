@@ -21,7 +21,7 @@ private:
 public:
 	float m_cascadeSplitLambda = 0.95f;
 	float m_shadowMapsBlendWidth = 0.5f;
-	ShadowCascadeRenderPass(VulkanContext* context);
+	ShadowCascadeRenderPass(VulkanContext* context, vk::DescriptorSetLayout geometryDescriptorSetLayout);
 	virtual ~ShadowCascadeRenderPass()override;
 	void createFramebuffer()override;
 	void createAttachments()override;

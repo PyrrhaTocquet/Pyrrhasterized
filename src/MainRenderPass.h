@@ -42,7 +42,7 @@ class MainRenderPass : public VulkanRenderPass {
 	float gravityFactor = 0.02f;
 	float hairDensity = 1000.f;
 public:
-	MainRenderPass(VulkanContext *context, ShadowCascadeRenderPass *shadowRenderPass, DepthPrePass *depthPrePass);
+	MainRenderPass(VulkanContext *context, vk::DescriptorSetLayout geometryDescriptorSetLayout, ShadowCascadeRenderPass *shadowRenderPass, DepthPrePass *depthPrePass);
 	virtual ~MainRenderPass()override;
 	void createRenderPass() override;
 	void createFramebuffer() override;

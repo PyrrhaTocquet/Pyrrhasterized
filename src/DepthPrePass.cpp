@@ -1,9 +1,17 @@
 #include "DepthPrePass.h"
 
-DepthPrePass::DepthPrePass(VulkanContext* context)
+DepthPrePass::DepthPrePass(VulkanContext* context, vk::DescriptorSetLayout geometryDescriptorSetLayout)
 :	DepthOnlyPass(context)
 {
-	m_framebuffers.resize(MAX_FRAMES_IN_FLIGHT);
+	createRenderPass();
+
+	createPushConstantsRanges();
+    createDescriptorSetLayout();
+    createDescriptorPool();
+    createPipelineRessources();
+
+    createPipelineLayout(geometryDescriptorSetLayout);
+    createDefaultPipeline();
 }
 
 DepthPrePass::~DepthPrePass()
@@ -70,6 +78,7 @@ void DepthPrePass::createRenderPass()
 
 void DepthPrePass::createFramebuffer()
 {
+	m_framebuffers.resize(MAX_FRAMES_IN_FLIGHT);
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		vk::Extent2D extent = getRenderPassExtent();

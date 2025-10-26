@@ -1,6 +1,6 @@
 #include "ShadowCascadeRenderPass.h"
 
-ShadowCascadeRenderPass::ShadowCascadeRenderPass(VulkanContext* context)
+ShadowCascadeRenderPass::ShadowCascadeRenderPass(VulkanContext* context, vk::DescriptorSetLayout geometryDescriptorSetLayout)
 {
 	m_context = context;
 	std::vector<vk::ImageView> swapchainImageViews = m_context->getSwapchainImageViews();
@@ -8,6 +8,15 @@ ShadowCascadeRenderPass::ShadowCascadeRenderPass(VulkanContext* context)
 	m_framebuffers.resize(SHADOW_CASCADE_COUNT);
 	m_shadowDepthLayerViews.resize(SHADOW_CASCADE_COUNT);
 
+	createRenderPass();
+
+	createPushConstantsRanges();
+    createDescriptorSetLayout();
+    createDescriptorPool();
+    createPipelineRessources();
+
+    createPipelineLayout(geometryDescriptorSetLayout);
+    createDefaultPipeline();
 }
 
 ShadowCascadeRenderPass::~ShadowCascadeRenderPass() {
