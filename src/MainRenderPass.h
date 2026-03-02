@@ -44,27 +44,25 @@ class MainRenderPass : public VulkanRenderPass {
 public:
 	MainRenderPass(VulkanContext *context, vk::DescriptorSetLayout geometryDescriptorSetLayout, ShadowCascadeRenderPass *shadowRenderPass, DepthPrePass *depthPrePass);
 	virtual ~MainRenderPass()override;
-	void createPass() override;
-	void createFramebuffer() override;
-	void createAttachments() override;
-	void cleanAttachments() override;
 	void recreatePass() override;
-	void createDescriptorPool()override;
-	void createDescriptorSetLayout()override;
-	void createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo> textureImageInfos)override;
-	void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout)override;
-	void createDefaultPipeline()override;
-	void createPipelineRessources()override;
-	void createPushConstantsRanges()override;
-	void updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)override;
 	[[nodiscard]] vk::Extent2D getRenderPassExtent() override;
 	void renderImGui(vk::CommandBuffer commandBuffer);
 	void executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) override;
 private:
+	void createPass();
+	void createDescriptorPool();
+	void createDescriptorSetLayout();
+	void createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo> textureImageInfos);
+	void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout);
+	void createDefaultPipeline();
+	void createPipelineRessources();
+	void createPushConstantsRanges();
+
+	void createFramebuffer();
+	void createAttachments();
+	void cleanAttachments();
+
 	void createShadowMapSampler();
 	void createMainDescriptorSet(VulkanScene* scene);
 	void createMaterialDescriptorSet(VulkanScene* scene);
-	void updateMaterialUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes);
-
-
 };

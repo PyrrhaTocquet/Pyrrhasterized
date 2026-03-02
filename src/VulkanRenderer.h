@@ -95,10 +95,6 @@ private:
 	void createGeometryDescriptorSetLayout();
 	void createRenderPasses(vk::DescriptorSetLayout geometryDescriptorSetLayout);
 
-	//FRAMEBUFFERS
-	void createFramebuffers();
-
-
 	void cleanSwapchainSizedObjects();
 
 	//COMMAND BUFFERS

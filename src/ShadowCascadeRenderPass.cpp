@@ -11,12 +11,14 @@ ShadowCascadeRenderPass::ShadowCascadeRenderPass(VulkanContext* context, vk::Des
 	createPass();
 
 	createPushConstantsRanges();
-    createDescriptorSetLayout();
-    createDescriptorPool();
-    createPipelineRessources();
+    createDepthOnlyDescriptorSetLayout();
+    createDepthOnlyDescriptorPool();
 
-    createPipelineLayout(geometryDescriptorSetLayout);
+    createDepthOnlyPipelineLayout(geometryDescriptorSetLayout);
     createDefaultPipeline();
+
+	createAttachments();
+	createDepthOnlyFramebuffer();
 }
 
 ShadowCascadeRenderPass::~ShadowCascadeRenderPass() {
@@ -51,7 +53,7 @@ void ShadowCascadeRenderPass::createAttachments() {
 }
 
 
-void ShadowCascadeRenderPass::cleanAttachments() {
+void ShadowCascadeRenderPass::cleanDepthOnlyAttachments() {
 	for (auto& imageView : m_shadowDepthLayerViews)
 	{
 		m_context->getDevice().destroyImageView(imageView);
@@ -128,10 +130,6 @@ void ShadowCascadeRenderPass::createDefaultPipeline()
 	};
 
 	m_mainPipeline = new VulkanRenderPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());
-}
-
-void ShadowCascadeRenderPass::createPipelineRessources()
-{
 }
 
 void ShadowCascadeRenderPass::createPushConstantsRanges()
@@ -265,7 +263,7 @@ vk::Extent2D ShadowCascadeRenderPass::getRenderPassExtent()
 	};
 }
 
-void ShadowCascadeRenderPass::createFramebuffer()
+void ShadowCascadeRenderPass::createDepthOnlyFramebuffer()
 {
 	vk::Extent2D extent = getRenderPassExtent();
 	vk::Format depthFormat = findDepthFormat();

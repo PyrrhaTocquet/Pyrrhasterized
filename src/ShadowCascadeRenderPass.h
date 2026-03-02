@@ -23,20 +23,22 @@ public:
 	float m_shadowMapsBlendWidth = 0.5f;
 	ShadowCascadeRenderPass(VulkanContext* context, vk::DescriptorSetLayout geometryDescriptorSetLayout);
 	virtual ~ShadowCascadeRenderPass()override;
-	void createFramebuffer()override;
-	void createAttachments()override;
-	void cleanAttachments()override;
 	void createPass()override;
-	void createDefaultPipeline()override;
-	void createPipelineRessources()override;
-	void createPushConstantsRanges()override;
 	void updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)override;
 	virtual void executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t currentFrame, std::vector<VulkanScene*> scenes)override;
 	void recreatePass() override;
 	vk::Extent2D getRenderPassExtent() override;
 
+protected:
+	void cleanDepthOnlyAttachments()override;
 
 private:
+	virtual void createDepthOnlyFramebuffer()override;
+
+	void createPushConstantsRanges();
+	void createAttachments();
+	void createDefaultPipeline();
+
 	void recordShadowCascadeMemoryDependency(vk::CommandBuffer commandBuffer);
 	vk::DescriptorBufferInfo getUboInfo(VulkanScene *scene, const uint32_t frame);
 };

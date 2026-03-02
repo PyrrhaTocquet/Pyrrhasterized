@@ -19,6 +19,9 @@ MainRenderPass::MainRenderPass(VulkanContext *context, vk::DescriptorSetLayout g
 
     createPipelineLayout(geometryDescriptorSetLayout);
     createDefaultPipeline();
+
+	createAttachments();
+	createFramebuffer();
 }
 
 MainRenderPass::~MainRenderPass()
@@ -608,9 +611,7 @@ void MainRenderPass::createFramebuffer() {
         catch (vk::SystemError err) {
             throw std::runtime_error("failed to create framebuffer !");
         }
-
     }
-
 }
 
 void MainRenderPass::executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes)
@@ -653,24 +654,6 @@ void MainRenderPass::createPushConstantsRanges()
         .size = 128,
     };
 
-}
-
-void MainRenderPass::updateMaterialUniformBuffer(uint32_t, std::vector<VulkanScene*>)
-{
-    /*MaterialUBO materialUbo = material->getUBO();
-    materialUbo.metallicFactor = metallicFactorGui;
-    materialUbo.roughnessFactor = roughnessFactorGui;
-
-    void* data = m_context->getAllocator()->mapMemory(m_materialUniformBufferAllocations[currentFrame]);
-    memcpy(data, &materialUbo, sizeof(MaterialUBO));
-    m_context->getAllocator()->unmapMemory(m_materialUniformBufferAllocations[currentFrame]);
-    */
-}
-
-//Populates the uniform buffers for rendering
-void MainRenderPass::updatePipelineRessources(uint32_t, std::vector<VulkanScene*>)
-{
-    
 }
 
 //Creates the sampler used for shadow mapping sampling

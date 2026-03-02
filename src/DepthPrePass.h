@@ -18,20 +18,20 @@ public:
 	DepthPrePass(VulkanContext* context, vk::DescriptorSetLayout geometryDescriptorSetLayout);
 	virtual ~DepthPrePass();
 	virtual void createPass();
-	virtual void createFramebuffer();
-	virtual void createAttachments();
 	virtual void recreatePass();
-	virtual void createDefaultPipeline();
-	virtual void createPushConstantsRanges();
-
 	virtual vk::Extent2D getRenderPassExtent();
 	virtual void executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes);
 	virtual void updateDescriptorSets() {};
 
 	const VulkanImage* getDepthAttachment() { assert(m_depthAttachment != nullptr); return m_depthAttachment; };
 
+protected:
+	virtual void createDepthOnlyFramebuffer()override;
+
 private:
+	void createAttachments();
+	void createDefaultPipeline();
+	void createPushConstantsRanges();
+
 	vk::DescriptorBufferInfo getUboInfo(VulkanScene *scene, const uint32_t frame);
-
-
 };

@@ -6,12 +6,14 @@ DepthPrePass::DepthPrePass(VulkanContext* context, vk::DescriptorSetLayout geome
 	createPass();
 
 	createPushConstantsRanges();
-    createDescriptorSetLayout();
-    createDescriptorPool();
-    createPipelineRessources();
+    createDepthOnlyDescriptorSetLayout();
+    createDepthOnlyDescriptorPool();
 
-    createPipelineLayout(geometryDescriptorSetLayout);
+    createDepthOnlyPipelineLayout(geometryDescriptorSetLayout);
     createDefaultPipeline();
+
+	createAttachments();
+	createDepthOnlyFramebuffer();
 }
 
 DepthPrePass::~DepthPrePass()
@@ -76,7 +78,7 @@ void DepthPrePass::createPass()
 		throw std::runtime_error("failed to create depth pre-pass render pass");
 }
 
-void DepthPrePass::createFramebuffer()
+void DepthPrePass::createDepthOnlyFramebuffer()
 {
 	m_framebuffers.resize(MAX_FRAMES_IN_FLIGHT);
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -128,10 +130,10 @@ void DepthPrePass::recreatePass()
 {
 	m_context->getDevice().destroyPipeline(m_mainPipeline->getPipeline());
 	m_mainPipeline->recreatePipeline(getRenderPassExtent());
-	cleanAttachments();
+	cleanDepthOnlyAttachments();
 	cleanFramebuffer();
 	createAttachments();
-	createFramebuffer();
+	createDepthOnlyFramebuffer();
 }
 
 void DepthPrePass::createDefaultPipeline()

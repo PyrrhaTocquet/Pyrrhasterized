@@ -16,9 +16,6 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     
     createGeometryDescriptorSetLayout();
     createRenderPasses(m_geometryDescriptorSetLayout);
-
-    //Rendering pipeline creation
-    createFramebuffers();
    
     //Command execution related objects
     createCommandBuffers();
@@ -109,15 +106,6 @@ void VulkanRenderer::cleanSwapchainSizedObjects() {
     
     m_context->cleanupSwapchain();
 
-}
-
-// ----------------------------------------------------------------------------------
-//creates framebuffer and attachments for each render passes
-void VulkanRenderer::createFramebuffers() {
-    for (auto& renderPass : m_renderPasses) {
-        renderPass->createAttachments();
-        renderPass->createFramebuffer();
-    }
 }
 #pragma endregion
 

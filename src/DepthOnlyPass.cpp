@@ -8,15 +8,15 @@ DepthOnlyPass::DepthOnlyPass(VulkanContext* context)
 
 DepthOnlyPass::~DepthOnlyPass()
 {
-	cleanAttachments();
+	cleanDepthOnlyAttachments();
 }
 
-void DepthOnlyPass::cleanAttachments()
+void DepthOnlyPass::cleanDepthOnlyAttachments()
 {
 	delete m_depthAttachment;
 }
 
-void DepthOnlyPass::createDescriptorPool()
+void DepthOnlyPass::createDepthOnlyDescriptorPool()
 {
 	vk::Device device = m_context->getDevice();
 
@@ -66,7 +66,7 @@ void DepthOnlyPass::createDescriptorPool()
 	}
 }
 
-void DepthOnlyPass::createDescriptorSetLayout()
+void DepthOnlyPass::createDepthOnlyDescriptorSetLayout()
 {
 	vk::Device device = m_context->getDevice();
 
@@ -277,7 +277,7 @@ void DepthOnlyPass::createDescriptorSets(VulkanScene* scene, std::vector<vk::Des
 	}
 }
 
-void DepthOnlyPass::createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout)
+void DepthOnlyPass::createDepthOnlyPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout)
 {
 	std::array<vk::DescriptorSetLayout, 3> layouts = { geometryDescriptorSetLayout, m_mainDescriptorSetLayout, m_materialDescriptorSetLayout };
 
@@ -300,7 +300,7 @@ void DepthOnlyPass::recreatePass()
 {
 	//No need to recreate attachments, the shadow map is fixed sized
 	cleanFramebuffer();
-	createFramebuffer();
+	createDepthOnlyFramebuffer();
 }
 
 vk::ImageView DepthOnlyPass::getDepthAttachment()
