@@ -296,7 +296,7 @@ void DepthOnlyPass::createPipelineLayout(vk::DescriptorSetLayout geometryDescrip
 	}
 }
 
-void DepthOnlyPass::recreateRenderPass()
+void DepthOnlyPass::recreatePass()
 {
 	//No need to recreate attachments, the shadow map is fixed sized
 	cleanFramebuffer();

@@ -10,7 +10,7 @@ MainRenderPass::MainRenderPass(VulkanContext *context, vk::DescriptorSetLayout g
     m_shadowRenderPass = shadowRenderPass;
     m_depthPrePass = depthPrePass;
 
-	createRenderPass();
+	createPass();
 
 	createPushConstantsRanges();
     createDescriptorSetLayout();
@@ -30,7 +30,7 @@ MainRenderPass::~MainRenderPass()
     cleanAttachments();
 }
 
-void MainRenderPass::createRenderPass()
+void MainRenderPass::createPass()
 {
     vk::SampleCountFlagBits msaaSampleCount = m_context->getMaxUsableSampleCount();
 
@@ -155,7 +155,7 @@ void MainRenderPass::cleanAttachments()
     if (ENABLE_MSAA)delete m_colorAttachment;
 }
 
-void MainRenderPass::recreateRenderPass()
+void MainRenderPass::recreatePass()
 {
     m_context->getDevice().destroyPipeline(m_mainPipeline->getPipeline());
     m_mainPipeline->recreatePipeline(getRenderPassExtent());
@@ -497,14 +497,14 @@ void MainRenderPass::createPipelineLayout(vk::DescriptorSetLayout geometryDescri
 
 void MainRenderPass::createDefaultPipeline()
 {
-    PipelineInfo pipelineInfo{
+    RenderPipelineInfo pipelineInfo{
         .taskShaderPath = "shaders/amplificationPBR.spv",
         .meshShaderPath = "shaders/meshPBR.spv",
         .fragShaderPath = "shaders/fragmentPBR.spv",
         .depthWriteEnable = VK_FALSE,
     };
 
-    m_mainPipeline = new VulkanPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());
+    m_mainPipeline = new VulkanRenderPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());
 
 }
 
@@ -614,7 +614,7 @@ void MainRenderPass::createFramebuffer() {
 
 }
 
-void MainRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes)
+void MainRenderPass::executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes)
 {
     vk::RenderPassBeginInfo renderPassInfo{
        .renderPass = m_renderPass,

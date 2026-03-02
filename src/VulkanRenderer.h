@@ -86,7 +86,7 @@ public:
 	~VulkanRenderer();
 
 	void recreateSwapchainSizedObjects();
-	void addPipeline(VulkanPipeline* pipeline);
+	void addPipeline(VulkanRenderPipeline* pipeline);
 
 	void registerEntity(Entity* entity);
 private:

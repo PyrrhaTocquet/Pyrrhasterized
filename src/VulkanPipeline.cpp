@@ -1,23 +1,8 @@
 #include "VulkanPipeline.h"
 
-
-VulkanPipeline::VulkanPipeline(VulkanContext* context, PipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, vk::Extent2D extent)
-{
-    m_pipelineInfo = pipelineInfo;
-    m_pipelineLayout = pipelineLayout;
-    m_renderPass = renderPass;
-    m_context = context;
-
-    recreatePipeline(extent);
-
-}
-
-VulkanPipeline::~VulkanPipeline()
-{
-    m_context->getDevice().destroyPipeline(m_pipeline);
-}
-
-
+// ----------------------------------------------------------------------------------
+	// VulkanPipeline
+// ----------------------------------------------------------------------------------
 vk::ShaderModule VulkanPipeline::createShaderModule( std::vector<char>& shaderCode)
 {
     try {
@@ -33,12 +18,36 @@ vk::ShaderModule VulkanPipeline::createShaderModule( std::vector<char>& shaderCo
     }
 }
 
+// ----------------------------------------------------------------------------------
+
 void VulkanPipeline::cleanPipeline()
 {
     m_context->getDevice().destroyPipeline(m_pipeline);
 }
 
-void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
+VulkanRenderPipeline::VulkanRenderPipeline(VulkanContext* context, RenderPipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, vk::Extent2D extent)
+{
+    m_pipelineInfo = pipelineInfo;
+    m_pipelineLayout = pipelineLayout;
+    m_renderPass = renderPass;
+    m_context = context;
+
+    recreatePipeline(extent);
+
+}
+
+// ----------------------------------------------------------------------------------
+	// VulkanRenderPipeline
+// ----------------------------------------------------------------------------------
+
+VulkanRenderPipeline::~VulkanRenderPipeline()
+{
+    m_context->getDevice().destroyPipeline(m_pipeline);
+}
+
+// ----------------------------------------------------------------------------------
+
+void VulkanRenderPipeline::recreatePipeline(vk::Extent2D extent)
 {
     const bool hasTaskShader = m_pipelineInfo.taskShaderPath.has_value();
 
@@ -83,22 +92,13 @@ void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
         shaderStages.insert(shaderStages.begin(), taskStageCreateInfo);
     }
 
-
     auto bindingDescription = Vertex::getBindingDescription();
     auto attributeDescriptions = Vertex::getAttributeDescriptions();
-
-    /*vk::PipelineVertexInputStateCreateInfo vertexInputInfo = {
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &bindingDescription,
-        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
-        .pVertexAttributeDescriptions = attributeDescriptions.data()
-    };*/
 
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly = {
         .topology = vk::PrimitiveTopology::eTriangleList,
         .primitiveRestartEnable = VK_FALSE,
     };
-
 
     vk::Viewport viewport = {
         .x = 0.0f,
@@ -162,8 +162,6 @@ void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
 
-
-
     vk::PipelineDepthStencilStateCreateInfo depthStencilState{
         .depthTestEnable = m_pipelineInfo.depthTestEnable,
         .depthWriteEnable = m_pipelineInfo.depthWriteEnable,
@@ -175,7 +173,6 @@ void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
         .minDepthBounds = 0.0f,
         .maxDepthBounds = 1.0f,
     };
-
 
     vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {
         .stageCount = static_cast<uint32_t>(shaderStages.size()),
@@ -206,10 +203,27 @@ void VulkanPipeline::recreatePipeline(vk::Extent2D extent)
         device.destroyShaderModule(taskShaderModule);
 
     m_pipeline = pipelineResult.value;
-    m_context->setDebugObjectName((uint64_t)static_cast<VkPipeline>(m_pipeline), static_cast<VkDebugReportObjectTypeEXT>(m_pipeline.debugReportObjectType), "PARCE QUE C'EST NOTRE PIPELINE");
+    m_context->setDebugObjectName((uint64_t)static_cast<VkPipeline>(m_pipeline), static_cast<VkDebugReportObjectTypeEXT>(m_pipeline.debugReportObjectType), m_pipelineInfo.fragShaderPath);
 }
 
-vk::Pipeline VulkanPipeline::getPipeline()
+// ----------------------------------------------------------------------------------
+	// VulkanComputePipeline
+// ----------------------------------------------------------------------------------
+VulkanComputePipeline::VulkanComputePipeline(VulkanContext *context, ComputePipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::Extent2D extent)
 {
-    return m_pipeline;
+	// TODO
+}
+
+// ----------------------------------------------------------------------------------
+
+VulkanComputePipeline::~VulkanComputePipeline()
+{
+	// TODO
+}
+
+// ----------------------------------------------------------------------------------
+
+void VulkanComputePipeline::recreatePipeline(vk::Extent2D extent)
+{
+	// TODO
 }

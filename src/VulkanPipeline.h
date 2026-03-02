@@ -5,7 +5,7 @@
 #include "VulkanTools.h"
 #include <optional>
 
-struct PipelineInfo {
+struct RenderPipelineInfo {
 	std::optional<const char*> taskShaderPath = std::nullopt;
 	const char* meshShaderPath;
 	const char* fragShaderPath;
@@ -15,25 +15,50 @@ struct PipelineInfo {
 	float lineWidth = 1.0f;
 	vk::Bool32 depthTestEnable = VK_TRUE;
 	vk::Bool32 depthWriteEnable = VK_TRUE;
-	RenderPassesId renderPassId = RenderPassesId::MainRenderPassId;
+	PassesId renderPassId = PassesId::MainRenderPassId;
 	bool isMultisampled = true;
 	float depthBias[2] = { 0.f, 0.f }; //[0] is constant facto [1] is slope factor
 };
 
-class VulkanPipeline {
-private:
-	PipelineInfo m_pipelineInfo;
-	vk::PipelineLayout m_pipelineLayout;
-	vk::RenderPass m_renderPass;
-	vk::Pipeline m_pipeline;
-	VulkanContext* m_context;
+struct ComputePipelineInfo
+{
+	const char* computePath;
+	PassesId computePassId;
+};
 
+class VulkanPipeline
+{
+protected:
+	VulkanContext* m_context = nullptr;
+	vk::Pipeline m_pipeline;
+	vk::PipelineLayout m_pipelineLayout;
+public:
+	VulkanPipeline(){};
+	VulkanPipeline(VulkanContext *context) { m_context = context; };
+	virtual void cleanPipeline();
+	virtual void recreatePipeline(vk::Extent2D extent) = 0;
+	virtual vk::Pipeline getPipeline() { return m_pipeline; };
+	virtual vk::ShaderModule createShaderModule(std::vector<char>& shaderCode);
+};
+
+class VulkanComputePipeline : public VulkanPipeline
+{
+	VulkanContext *m_context;
+	ComputePipelineInfo m_pipelineInfo;
+	
+	VulkanComputePipeline(VulkanContext *context, ComputePipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::Extent2D extent);
+	~VulkanComputePipeline();
+	virtual void recreatePipeline(vk::Extent2D extent);
+};
+
+
+class VulkanRenderPipeline : public VulkanPipeline {
+private:
+	RenderPipelineInfo m_pipelineInfo;
+	vk::RenderPass m_renderPass;
 public:
 	
-	VulkanPipeline(VulkanContext* context, PipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, vk::Extent2D extent);
-	~VulkanPipeline();
-	vk::ShaderModule createShaderModule(std::vector<char>& shaderCode);
-	void cleanPipeline();
-	void recreatePipeline(vk::Extent2D extent);
-	vk::Pipeline getPipeline();
+	VulkanRenderPipeline(VulkanContext* context, RenderPipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, vk::Extent2D extent);
+	~VulkanRenderPipeline();
+	virtual void recreatePipeline(vk::Extent2D extent) override;
 };

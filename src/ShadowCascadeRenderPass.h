@@ -26,13 +26,13 @@ public:
 	void createFramebuffer()override;
 	void createAttachments()override;
 	void cleanAttachments()override;
-	void createRenderPass()override;
+	void createPass()override;
 	void createDefaultPipeline()override;
 	void createPipelineRessources()override;
 	void createPushConstantsRanges()override;
 	void updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)override;
-	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t currentFrame, std::vector<VulkanScene*> scenes)override;
-	void recreateRenderPass() override;
+	virtual void executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t currentFrame, std::vector<VulkanScene*> scenes)override;
+	void recreatePass() override;
 	vk::Extent2D getRenderPassExtent() override;
 
 

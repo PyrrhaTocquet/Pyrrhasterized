@@ -27,7 +27,7 @@ public:
 	DepthOnlyPass(VulkanContext* context);
 	DepthOnlyPass() {};
 	virtual ~DepthOnlyPass() override;
-	virtual void createRenderPass() = 0;
+	virtual void createPass() = 0;
 	virtual void createFramebuffer() = 0;
 	virtual void createAttachments() = 0;
 	virtual void cleanAttachments() override;
@@ -36,8 +36,8 @@ public:
 	virtual void createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo> textureImageInfos)override;
 	virtual void createPipelineLayout(vk::DescriptorSetLayout geometryDescriptorSetLayout)override;
 	virtual void createDefaultPipeline() = 0;
-	virtual void recreateRenderPass() = 0;
-	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) = 0;
+	virtual void recreatePass() = 0;
+	virtual void executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) = 0;
 	virtual vk::Extent2D getRenderPassExtent() = 0;
 	[[nodiscard]] vk::ImageView getDepthAttachment();
 private:

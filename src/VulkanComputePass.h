@@ -1,3 +1,8 @@
+/*
+author: Pyrrha Tocquet
+date: 26/10/25
+desc: Abstraction of Compute passes
+*/
 #pragma once
 
 #define VULKAN_HPP_NO_CONSTRUCTORS
@@ -5,22 +10,24 @@
 #include "VulkanPipeline.h"
 
 //Abstract class to implement render passes
-class VulkanRenderPass : public VulkanPass {
+class VulkanComputePass : VulkanPass {
 
 protected:
-	std::vector<vk::Framebuffer>	m_framebuffers;
-	vk::RenderPass					m_renderPass = VK_NULL_HANDLE;
 	
-	VulkanRenderPipeline*			m_mainPipeline = nullptr;
-	vk::DescriptorPool				m_materialDescriptorPool = VK_NULL_HANDLE;
+	vk::PipelineLayout				m_pipelineLayout = VK_NULL_HANDLE;
+	VulkanPipeline*					m_mainPipeline = nullptr;
+
+	vk::DescriptorPool				m_mainDescriptorPool, m_materialDescriptorPool = VK_NULL_HANDLE;
+	vk::DescriptorSetLayout			m_mainDescriptorSetLayout = VK_NULL_HANDLE;
+	std::vector<vk::DescriptorSet>	m_mainDescriptorSet;
+
+	vk::PushConstantRange m_pushConstant;
 public :
-	VulkanRenderPass(VulkanContext* context);
-	VulkanRenderPass();
-	virtual ~VulkanRenderPass();
+	vk::Format findDepthFormat() ;
+	VulkanComputePass(VulkanContext* context);
+	VulkanComputePass() {};
+	virtual ~VulkanComputePass();
 	virtual void createPass() = 0;
-	virtual void createFramebuffer() = 0;
-	virtual void createAttachments() = 0;
-	virtual void cleanAttachments() = 0;
 	virtual void recreatePass() = 0;
 	virtual void createDescriptorPool() = 0;
 	virtual void createDescriptorSetLayout() = 0;
@@ -33,9 +40,6 @@ public :
 	virtual vk::Extent2D getRenderPassExtent() = 0;
 	virtual void executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) = 0;
 	virtual void updateDescriptorSets() {};
-	[[nodiscard]]vk::RenderPass getRenderPass();
-	[[nodiscard]]vk::Framebuffer getFramebuffer(uint32_t index);
-	void cleanFramebuffer();
 
 private:
 };

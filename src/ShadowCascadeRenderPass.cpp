@@ -8,7 +8,7 @@ ShadowCascadeRenderPass::ShadowCascadeRenderPass(VulkanContext* context, vk::Des
 	m_framebuffers.resize(SHADOW_CASCADE_COUNT);
 	m_shadowDepthLayerViews.resize(SHADOW_CASCADE_COUNT);
 
-	createRenderPass();
+	createPass();
 
 	createPushConstantsRanges();
     createDescriptorSetLayout();
@@ -60,7 +60,7 @@ void ShadowCascadeRenderPass::cleanAttachments() {
 
 }
 
-void ShadowCascadeRenderPass::createRenderPass()
+void ShadowCascadeRenderPass::createPass()
 {
 	vk::AttachmentDescription shadowDepthWriteDescription
 	{
@@ -116,18 +116,18 @@ void ShadowCascadeRenderPass::createRenderPass()
 void ShadowCascadeRenderPass::createDefaultPipeline()
 {
 
-	PipelineInfo pipelineInfo
+	RenderPipelineInfo pipelineInfo
 	{
 		.taskShaderPath = "shaders/ampCSM.spv",
 		.meshShaderPath = "shaders/meshCSM.spv",
 		.fragShaderPath = "shaders/fragDepthOnly.spv",
 		.cullmode = vk::CullModeFlagBits::eNone,
-		.renderPassId = RenderPassesId::ShadowMappingPassId,
+		.renderPassId = PassesId::ShadowMappingPassId,
 		.isMultisampled = false,
 		.depthBias = {c_constantDepthBias, c_slopeScaleDepthBias}
 	};
 
-	m_mainPipeline = new VulkanPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());
+	m_mainPipeline = new VulkanRenderPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());
 }
 
 void ShadowCascadeRenderPass::createPipelineRessources()
@@ -149,7 +149,7 @@ void ShadowCascadeRenderPass::updatePipelineRessources(uint32_t currentFrame, st
 }
 
 
-void ShadowCascadeRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t currentFrame, std::vector<VulkanScene*> scenes)
+void ShadowCascadeRenderPass::executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t currentFrame, std::vector<VulkanScene*> scenes)
 {
 				//Wait for the end of the previous frame operations on the shadow cascade
 	vk::ImageMemoryBarrier2 memoryBarrier{
@@ -210,7 +210,7 @@ void ShadowCascadeRenderPass::drawRenderPass(vk::CommandBuffer commandBuffer, ui
 	recordShadowCascadeMemoryDependency(commandBuffer);
 }
 
-void ShadowCascadeRenderPass::recreateRenderPass()
+void ShadowCascadeRenderPass::recreatePass()
 {
 	updateDescriptorSets();
 	m_context->getDevice().destroyPipeline(m_mainPipeline->getPipeline());

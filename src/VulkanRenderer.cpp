@@ -1,6 +1,5 @@
 #include "VulkanRenderer.h"
 
-
 #pragma region CONSTRUCTORS_DESTRUCTORS
 VulkanRenderer::VulkanRenderer(VulkanContext* context)
 {
@@ -28,7 +27,7 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     //IMGUI
     ImGui_ImplVulkan_InitInfo initInfo = m_context->getImGuiInitInfo();
     initInfo.MSAASamples = static_cast<VkSampleCountFlagBits>(m_msaaSampleCount);
-    ImGui_ImplVulkan_Init(&initInfo, m_renderPasses[RenderPassesId::MainRenderPassId]->getRenderPass());
+    ImGui_ImplVulkan_Init(&initInfo, m_renderPasses[PassesId::MainRenderPassId]->getRenderPass());
     m_device.waitIdle();
 
     //execute a gpu command to upload imgui font textures
@@ -41,6 +40,8 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     
     registerEntity(m_camera);
 }
+
+// ----------------------------------------------------------------------------------
 
 VulkanRenderer::~VulkanRenderer()
 {
@@ -67,7 +68,7 @@ VulkanRenderer::~VulkanRenderer()
 
 #pragma region PIPELINE
 //adds a pipeline to the pipeline list
-/*void VulkanRenderer::addPipeline(VulkanPipeline* pipeline) {
+/*void VulkanRenderer::addPipeline(VulkanRenderPipeline* pipeline) {
     m_pipelines.push_back(pipeline);
 }*/
 
@@ -77,6 +78,7 @@ VulkanRenderer::~VulkanRenderer()
 
 #pragma region FRAMEBUFFERS
 
+// ----------------------------------------------------------------------------------
 
 //Recreate objects that depend on the swapchain image size to handle window resizing
 void VulkanRenderer::recreateSwapchainSizedObjects() {
@@ -84,7 +86,7 @@ void VulkanRenderer::recreateSwapchainSizedObjects() {
     m_context->recreateSwapchain();
     for (const auto& renderPass : m_renderPasses)
     {
-        renderPass->recreateRenderPass();
+        renderPass->recreatePass();
     }
 
     //createPipelineLayout();
@@ -95,6 +97,7 @@ void VulkanRenderer::recreateSwapchainSizedObjects() {
     
 }
 
+// ----------------------------------------------------------------------------------
 //Destroys  objects that depend on the swapchain image size to handle window resizing
 void VulkanRenderer::cleanSwapchainSizedObjects() {
     vkDeviceWaitIdle(m_device);
@@ -108,6 +111,7 @@ void VulkanRenderer::cleanSwapchainSizedObjects() {
 
 }
 
+// ----------------------------------------------------------------------------------
 //creates framebuffer and attachments for each render passes
 void VulkanRenderer::createFramebuffers() {
     for (auto& renderPass : m_renderPasses) {
@@ -118,6 +122,8 @@ void VulkanRenderer::createFramebuffers() {
 #pragma endregion
 
 #pragma region COMMAND_BUFFERS
+
+// ----------------------------------------------------------------------------------
 //creates the main command buffers
 void VulkanRenderer::createCommandBuffers() {
     m_commandBuffers.resize(m_context->getSwapchainImagesCount());
@@ -137,20 +143,23 @@ void VulkanRenderer::createCommandBuffers() {
     }
 }
 
+// ----------------------------------------------------------------------------------
 //Records the main command buffer for frame generation
 void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex) 
 {
     vk::CommandBufferBeginInfo beginInfo{};
     commandBuffer.begin(beginInfo); //TODO Revirtualise it well
-    m_renderPasses[RenderPassesId::ShadowMappingPassId]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
-    m_renderPasses[RenderPassesId::DepthPrePassId]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
-    m_renderPasses[RenderPassesId::MainRenderPassId]->drawRenderPass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes); // this is indeed very ugly
+    m_renderPasses[PassesId::ShadowMappingPassId]->executePass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
+    m_renderPasses[PassesId::DepthPrePassId]->executePass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
+    m_renderPasses[PassesId::MainRenderPassId]->executePass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes); // this is indeed very ugly
     commandBuffer.end();
 }
 #pragma endregion
      
 
 #pragma region SYNCHRONISATION
+
+// ----------------------------------------------------------------------------------
 //create Synchronisation objects to manage frame generation execution
 void VulkanRenderer::createSyncObjects()
 {
@@ -177,6 +186,7 @@ void VulkanRenderer::createSyncObjects()
 #pragma endregion
 
 #pragma region EXECUTION_FLOW
+// ----------------------------------------------------------------------------------
 //Starts the window management and frame drawing loop
 void VulkanRenderer::mainloop() {
     while (m_context->isWindowOpen() && !m_shouldStopRendering)
@@ -190,6 +200,7 @@ void VulkanRenderer::mainloop() {
     m_device.waitIdle();
 }
 
+// ----------------------------------------------------------------------------------
 //Draws and presents a frame when a swapchain image is available
 void VulkanRenderer::drawFrame() {
 
@@ -279,6 +290,8 @@ bool VulkanRenderer::present(vk::Semaphore *signalSemaphores, uint32_t imageInde
 #pragma endregion
 
 #pragma region SCENES
+
+// ----------------------------------------------------------------------------------
 //Adds a scene to the scenes to be renderer. Generates the descriptor sets with the textures before adding.
 void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
     //TODO MAKE SURE THERE IS A UNIQUE SCENE !!!!!
@@ -304,6 +317,8 @@ void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
 #pragma endregion
 
 #pragma region RENDER_PASSES
+// ----------------------------------------------------------------------------------
+
 void VulkanRenderer::createRenderPasses(vk::DescriptorSetLayout geometryDescriptorSetLayout) {
     //Render pass 1: Shadow Render Pass
     ShadowCascadeRenderPass* shadowRenderPass = new ShadowCascadeRenderPass(m_context, geometryDescriptorSetLayout);
@@ -319,6 +334,8 @@ void VulkanRenderer::createRenderPasses(vk::DescriptorSetLayout geometryDescript
     m_mainPass = mainRenderPass;
     m_renderPasses.push_back(mainRenderPass);
 }
+
+// ----------------------------------------------------------------------------------
 
 void VulkanRenderer::createGeometryDescriptorSetLayout()
 {
@@ -365,6 +382,8 @@ void VulkanRenderer::createGeometryDescriptorSetLayout()
 #pragma endregion RENDER_PASSES
 
 #pragma region INPUT
+
+// ----------------------------------------------------------------------------------
 //Function that manages keyboard input behavior
 void VulkanRenderer::manageInput() {
 
@@ -379,6 +398,8 @@ void VulkanRenderer::manageInput() {
 
 
 #pragma region ENTITIES
+
+// ----------------------------------------------------------------------------------
 //Iterates the entity list to call their update function
 void VulkanRenderer::updateEntities() {
    // TODO only one scene please
@@ -390,6 +411,7 @@ void VulkanRenderer::updateEntities() {
     }
 }
 
+// ----------------------------------------------------------------------------------
 //Adds the entity pointer to the entity list
 void VulkanRenderer::registerEntity(Entity* entity) {
     m_entities.push_back(entity);

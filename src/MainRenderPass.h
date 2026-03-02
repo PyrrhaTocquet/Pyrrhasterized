@@ -44,11 +44,11 @@ class MainRenderPass : public VulkanRenderPass {
 public:
 	MainRenderPass(VulkanContext *context, vk::DescriptorSetLayout geometryDescriptorSetLayout, ShadowCascadeRenderPass *shadowRenderPass, DepthPrePass *depthPrePass);
 	virtual ~MainRenderPass()override;
-	void createRenderPass() override;
+	void createPass() override;
 	void createFramebuffer() override;
 	void createAttachments() override;
 	void cleanAttachments() override;
-	void recreateRenderPass() override;
+	void recreatePass() override;
 	void createDescriptorPool()override;
 	void createDescriptorSetLayout()override;
 	void createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo> textureImageInfos)override;
@@ -59,7 +59,7 @@ public:
 	void updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)override;
 	[[nodiscard]] vk::Extent2D getRenderPassExtent() override;
 	void renderImGui(vk::CommandBuffer commandBuffer);
-	void drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) override;
+	void executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) override;
 private:
 	void createShadowMapSampler();
 	void createMainDescriptorSet(VulkanScene* scene);

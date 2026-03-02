@@ -18,10 +18,11 @@ const uint32_t MAX_MATERIAL_COUNT = 4096;
 const std::filesystem::path BAKED_ASSETS_PATH = "baked_assets/";
 
 /* ENUMS */
-enum RenderPassesId {
+enum PassesId {
 	ShadowMappingPassId = 0,
 	DepthPrePassId,
 	MainRenderPassId,
+	ComputeCulling,
 };
 
 enum AlphaMode {

@@ -3,7 +3,7 @@
 DepthPrePass::DepthPrePass(VulkanContext* context, vk::DescriptorSetLayout geometryDescriptorSetLayout)
 :	DepthOnlyPass(context)
 {
-	createRenderPass();
+	createPass();
 
 	createPushConstantsRanges();
     createDescriptorSetLayout();
@@ -22,7 +22,7 @@ DepthPrePass::~DepthPrePass()
 }
 
 
-void DepthPrePass::createRenderPass()
+void DepthPrePass::createPass()
 {
 	vk::AttachmentDescription depthDescription
 	{
@@ -124,7 +124,7 @@ void DepthPrePass::createAttachments()
 	m_depthAttachment = new VulkanImage(m_context, imageParams, imageViewParams);
 }
 
-void DepthPrePass::recreateRenderPass()
+void DepthPrePass::recreatePass()
 {
 	m_context->getDevice().destroyPipeline(m_mainPipeline->getPipeline());
 	m_mainPipeline->recreatePipeline(getRenderPassExtent());
@@ -136,13 +136,13 @@ void DepthPrePass::recreateRenderPass()
 
 void DepthPrePass::createDefaultPipeline()
 {
-	PipelineInfo pipelineInfo{
+	RenderPipelineInfo pipelineInfo{
        .taskShaderPath = "shaders/amplificationPBR.spv",
        .meshShaderPath = "shaders/meshPBR.spv",
        .fragShaderPath = "shaders/fragDepthOnly.spv",
     };
 
-	m_mainPipeline = new VulkanPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());
+	m_mainPipeline = new VulkanRenderPipeline(m_context, pipelineInfo, m_pipelineLayout, m_renderPass, getRenderPassExtent());
 }
 
 void DepthPrePass::createPushConstantsRanges()
@@ -161,7 +161,7 @@ vk::Extent2D DepthPrePass::getRenderPassExtent()
 	return m_context->getSwapchainExtent();
 }
 
-void DepthPrePass::drawRenderPass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes)
+void DepthPrePass::executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes)
 {
 	vk::RenderPassBeginInfo renderPassInfo{
        .renderPass = m_renderPass,
