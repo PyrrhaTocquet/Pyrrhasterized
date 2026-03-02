@@ -32,13 +32,14 @@ enum LightType {
 
 class Light : public Entity {
 protected:
-	Camera* m_camera;
+	Camera* m_camera{};
 	glm::vec4 m_lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	float m_intensity = 1.0f;
-	LightType m_lightType;
+	LightType m_lightType{};
 	bool m_enabled = true;
 	bool m_shadowCaster = false;
 public:
+	Light() = default;
 	Light(VulkanContext* context, const glm::vec4& lightColor);
 	Light(VulkanContext* context);
 	void setCamera(Camera* camera);

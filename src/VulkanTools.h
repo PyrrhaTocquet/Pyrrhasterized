@@ -6,7 +6,7 @@
 #include <fstream>
 
 namespace vkTools {
-	static std::vector<char> readFile(const std::string& filename) {
+	inline std::vector<char> readFile(const std::string& filename) {
 		std::ifstream file(filename, std::ios::ate | std::ios::binary); //Start reading at the end of the file, Read the file as a binary file
 
 		if (!file.is_open()) {

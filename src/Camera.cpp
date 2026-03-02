@@ -8,7 +8,7 @@ Camera::Camera(VulkanContext* context) : Entity(context)
 	cameraTransform.rotate = m_cameraCoords.pitchYawRoll;
 }
 
-void Camera::update(VulkanScene* scene)
+void Camera::update(VulkanScene*)
 {
   
     static bool zPressed = false;

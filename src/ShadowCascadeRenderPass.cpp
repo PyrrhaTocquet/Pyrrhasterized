@@ -143,13 +143,13 @@ void ShadowCascadeRenderPass::createPushConstantsRanges()
 	};
 }
 
-void ShadowCascadeRenderPass::updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)
+void ShadowCascadeRenderPass::updatePipelineRessources(uint32_t, std::vector<VulkanScene*> scenes)
 {
 	m_sun = scenes[0]->getSun();
 }
 
 
-void ShadowCascadeRenderPass::executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t currentFrame, std::vector<VulkanScene*> scenes)
+void ShadowCascadeRenderPass::executePass(vk::CommandBuffer commandBuffer, uint32_t, uint32_t currentFrame, std::vector<VulkanScene*> scenes)
 {
 				//Wait for the end of the previous frame operations on the shadow cascade
 	vk::ImageMemoryBarrier2 memoryBarrier{
@@ -198,7 +198,8 @@ void ShadowCascadeRenderPass::executePass(vk::CommandBuffer commandBuffer, uint3
 		commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_mainPipeline->getPipeline());
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scenes[0]->getGeometryDescriptorSet(), m_mainDescriptorSet[currentFrame], m_materialDescriptorSet[currentFrame] }, nullptr);
-		VkDeviceSize offset = 0;
+
+
 		//Draws each scene
 		for (auto& scene : scenes)
 		{

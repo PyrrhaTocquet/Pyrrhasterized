@@ -3,7 +3,7 @@
 #include <stb_image.h>
 
 //creates the VkImage and Allocation part of the VulkanImage
-void VulkanImage::constructVkImage(VulkanContext* context, VulkanImageParams imageParams)
+void VulkanImage::constructVkImage(VulkanImageParams imageParams)
 {
 	vk::ImageCreateInfo imageInfo{
 		.imageType = vk::ImageType::e2D,
@@ -31,7 +31,6 @@ void VulkanImage::constructVkImage(VulkanContext* context, VulkanImageParams ima
 	}
 
 	std::tie(m_image, m_allocation) = m_allocator->createImage(imageInfo, allocInfo); 
-
 }
 
 //builds the image view part of the VulkanImage
@@ -66,7 +65,7 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 	m_allocator = context->getAllocator();
 	m_device = context->getDevice();
 	m_commandPool = context->createCommandPool();
-	constructVkImage(context, imageParams);
+	constructVkImage(imageParams);
 	constructVkImageView(context, imageParams, imageViewParams);
 
 #ifndef NDEBUG
@@ -93,7 +92,7 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 
 	//Staging buffer (CPU visible)
 	VulkanBuffer stagingBuffer;
-	vk::DeviceSize imageSize = texWidth * texHeight * 4;
+	vk::DeviceSize imageSize =  4ull * texWidth * texHeight;
 	stagingBuffer = context->createBuffer(imageSize, vk::BufferUsageFlagBits::eTransferSrc, vma::MemoryUsage::eCpuToGpu, "Vulkan Image Staging Buffer");
 
 	//Copy the pixel values to the buffer
@@ -109,16 +108,16 @@ VulkanImage::VulkanImage(VulkanContext* context, VulkanImageParams imageParams, 
 	imageParams.width = texWidth;
 	imageParams.mipLevels = mipLevels;
 	imageParams.usage |= vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc;
-	constructVkImage(context, imageParams);
+	constructVkImage(imageParams);
 
 	//Copy the staging buffer to the texture image
-	transitionImageLayout( context, imageParams.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, imageParams.mipLevels); 
+	transitionImageLayout( context, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, imageParams.mipLevels); 
 	context->copyBufferToImage(stagingBuffer.m_Buffer, m_image, m_commandPool, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 	m_allocator->destroyBuffer(stagingBuffer.m_Buffer, stagingBuffer.m_Allocation);
 
 
 	//Generating the mip maps transitions the image to shader reading layout
-	generateMipmaps(context, m_image, imageParams.format, imageParams.width, imageParams.height, imageParams.mipLevels);
+	generateMipmaps(context, imageParams.format, imageParams.width, imageParams.height, imageParams.mipLevels);
 
 	//Image View
 	constructVkImageView(context, imageParams, imageViewParams);
@@ -141,7 +140,7 @@ VulkanImage::~VulkanImage()
 
 
 //Generates mipmaps for an image and converts it to shader read layout
-void VulkanImage::generateMipmaps(VulkanContext* context, vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
+void VulkanImage::generateMipmaps(VulkanContext* context, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
 	vk::FormatProperties formatProperties = context->getFormatProperties(imageFormat);
 
 	//Required for blitting
@@ -234,7 +233,7 @@ void VulkanImage::setVMADebugName(std::string name)
 }
 
 //Transition the image from the oldLayout to a newLayout
-void VulkanImage::transitionImageLayout(VulkanContext* context, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) 
+void VulkanImage::transitionImageLayout(VulkanContext* context, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels) 
 {
 	vk::CommandBuffer commandBuffer = context->beginSingleTimeCommands(m_commandPool);
 

@@ -8,11 +8,11 @@ desc: Manages directional light data
 
 
 class DirectionalLight : public Light {
-	glm::vec4 m_directionWorld;
-	glm::vec4 m_directionView;
+	glm::vec4 m_directionWorld{};
+	glm::vec4 m_directionView{};
 
 	//TODO Proper sun and not this
-	glm::vec4 m_firstDirectionWorld;
+	glm::vec4 m_firstDirectionWorld{};
 
 public:
 	DirectionalLight(VulkanContext* context, const glm::vec4& direction);

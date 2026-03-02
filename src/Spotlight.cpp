@@ -2,20 +2,22 @@
 
 Spotlight::Spotlight(VulkanContext* context, const glm::vec4& position, const glm::vec4& direction, float spotlightAngle, float range) : Spotlight(context, position, direction, spotlightAngle, range, m_lightColor)
 {
-
 }
 
-Spotlight::Spotlight(VulkanContext* context, const glm::vec4& position, const glm::vec4& direction, float spotlightAngle, float range, const glm::vec4& lightColor) : Light(context, lightColor)
+Spotlight::Spotlight(VulkanContext* context, const glm::vec4& position, const glm::vec4& direction, float spotlightAngle, float range, const glm::vec4& lightColor) 
+	: Light(context, lightColor)
+	, m_positionWorld{position}
+	, m_positionView{}
+	, m_directionWorld{glm::normalize(direction)}
+	, m_directionView{}
+	, m_spotlightAngle{spotlightAngle}
+	, m_range{range}
 {
 	m_lightType = LightType::SpotlightType;
-	m_positionWorld = position;
-	m_directionWorld = glm::normalize(direction);
-	m_spotlightAngle = spotlightAngle;
-	m_range = range;
 }
 
 //Make sure the camera reference is set !
-void Spotlight::update(VulkanScene *scene)
+void Spotlight::update(VulkanScene*)
 {
 	glm::mat4 viewMat = m_camera->getViewMatrix();
 	m_positionView = viewMat * m_positionWorld;

@@ -161,7 +161,7 @@ vk::Extent2D DepthPrePass::getRenderPassExtent()
 	return m_context->getSwapchainExtent();
 }
 
-void DepthPrePass::executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes)
+void DepthPrePass::executePass(vk::CommandBuffer commandBuffer, uint32_t, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes)
 {
 	vk::RenderPassBeginInfo renderPassInfo{
        .renderPass = m_renderPass,
@@ -174,7 +174,7 @@ void DepthPrePass::executePass(vk::CommandBuffer commandBuffer, uint32_t swapcha
        .pClearValues = SHADOW_DEPTH_CLEAR_VALUES.data(),
     };
     ModelPushConstant pushConstant; // TODO Remove useless push constant
-	pushConstant.shellCount = 1;
+	pushConstant.m_shellCount = 1;
     commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_mainPipeline->getPipeline()); //Only one main draw pipeline per frame in this renderer

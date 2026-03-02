@@ -1,7 +1,7 @@
 LIB_PATH = "third_party/"
 
 function useVulkan()
-    includedirs { LIB_PATH .. "Vulkan-Headers/include" }
+    externalincludedirs { LIB_PATH .. "Vulkan-Headers/include" }
 
     local sdk_path = os.getenv("VULKAN_SDK")
     if sdk_path == "" then
@@ -19,11 +19,11 @@ function useVulkan()
 end
 
 function useVMA()
-    includedirs {  LIB_PATH .. "vma" }
+    externalincludedirs {  LIB_PATH .. "vma" }
 end
 
 function useGLFW()
-    includedirs {  LIB_PATH .. "glfw/include" }
+    externalincludedirs {  LIB_PATH .. "glfw/include" }
     filter "system:windows"
         libdirs { LIB_PATH .. "glfw/lib" }
         links "glfw3"
@@ -34,7 +34,7 @@ function useGLFW()
 end
 
 function useGLM()
-    includedirs {  LIB_PATH .. "glm" }
+    externalincludedirs {  LIB_PATH .. "glm" }
 end
 
 function useImGUI()
@@ -48,7 +48,7 @@ function useSpirVReflect()
 end
 
 function userHeaderOnlyLibs()
-    includedirs { 
+    externalincludedirs { 
         LIB_PATH .. "tinygltfloader",
         LIB_PATH .. "tinyobjloader",
         LIB_PATH .. "stbimage"
@@ -83,12 +83,16 @@ workspace "Pyrrhasterized"
 project "Pyrrhasterized"
     kind "ConsoleApp"
     language "C++"
-    cppdialect "C++20"
+    cppdialect "C++23"
     location "generated"
     architecture "x86_64"
     targetdir ("build/bin/%{prj.name}/%{cfg.longname}")
     objdir ("build/obj/%{prj.name}/%{cfg.longname}")
     debugdir ""
+    warnings ("Extra")
+    fatalwarnings { "All" }
+    multiprocessorcompile ("On")
+    externalwarnings ("Off")
     
     libdirs{}
 

@@ -13,7 +13,7 @@ PointLight::PointLight(VulkanContext* context, const glm::vec4& position, float 
 }
 
 //Make sure the camera reference is set !
-void PointLight::update(VulkanScene *scene)
+void PointLight::update(VulkanScene*)
 {
 	m_positionView = m_camera->getViewMatrix() * m_positionWorld;
 }

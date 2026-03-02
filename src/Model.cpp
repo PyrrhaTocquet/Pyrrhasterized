@@ -13,10 +13,13 @@ desc: Manages model loading and drawing
 #include <thread>
 
 
-Model::Model(VulkanContext* context, std::filesystem::path path) {
-	m_context = context;
-	m_path = path;
-
+Model::Model(VulkanContext* context, std::filesystem::path path)
+	: 	m_context{context}
+	,	m_path{path}
+	,	m_rawMeshes{}
+	,	m_meshes{}
+	,	m_isLoaded{false}
+{
 	//TODO Dynamic loading
 	vkDrawMeshTasks = (PFN_vkCmdDrawMeshTasksEXT)vkGetDeviceProcAddr(m_context->getDevice(), "vkCmdDrawMeshTasksEXT");
 }
@@ -187,7 +190,7 @@ static void createMaterialFromGltf(VulkanContext* context, RawMesh& texturedMesh
 }
 
 //Write command buffer at scene drawing
-void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, uint32_t &indexOffset, ModelPushConstant& pushConstant)
+void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant)
 {
 	uint32_t k = 0;
 	for (int i = 0; i < m_rawMeshes.size(); i++)
@@ -205,7 +208,6 @@ void Model::drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipeli
 			
 		k += static_cast<uint32_t>(m_meshes[i].meshlets.size());
 	}
-
 }
 
 //returns textured meshes dividing the model
@@ -293,30 +295,31 @@ void Model::loadGltf(const std::filesystem::path& path, bool isBaked)
 		{
 			for (const auto& attribute : mesh.primitives) 
 			{
-				int positionBufferIndex = attribute.attributes.at("POSITION");
-				int texCoordBufferIndex = attribute.attributes.at("TEXCOORD_0");
-				int normalBufferIndex = attribute.attributes.at("NORMAL");
-				int indicesBufferIndex = attribute.indices;
+				size_t positionBufferIndex = attribute.attributes.at("POSITION");
+				size_t texCoordBufferIndex = attribute.attributes.at("TEXCOORD_0");
+				size_t normalBufferIndex = attribute.attributes.at("NORMAL");
+				size_t indicesBufferIndex = attribute.indices;
 
 				//Vertices
-				for (int i = 0; i < gltfModel.accessors[indicesBufferIndex].count; i++) {
-					int positionBufferOffset = static_cast<int>(gltfModel.accessors[positionBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteOffset);
-					int texCoordBufferOffset = static_cast<int>(gltfModel.accessors[texCoordBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteOffset);
-					int indicesBufferOffset = static_cast<int>(gltfModel.accessors[indicesBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[indicesBufferIndex].bufferView].byteOffset);
-					int normalBufferOffset = static_cast<int>(gltfModel.accessors[normalBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteOffset);
+				for (size_t i = 0; i < gltfModel.accessors[indicesBufferIndex].count; i++)
+				{
+					size_t positionBufferOffset = gltfModel.accessors[positionBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteOffset;
+					size_t texCoordBufferOffset = gltfModel.accessors[texCoordBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteOffset;
+					size_t indicesBufferOffset = gltfModel.accessors[indicesBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[indicesBufferIndex].bufferView].byteOffset;
+					size_t normalBufferOffset = gltfModel.accessors[normalBufferIndex].byteOffset + gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteOffset;
 
-					int positionBufferStride = static_cast<int>(gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteStride);
-					int texCoordBufferStride = static_cast<int>(gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteStride);
-					int normalBufferStride = static_cast<int>(gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteStride);
+					size_t positionBufferStride = gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteStride;
+					size_t texCoordBufferStride = gltfModel.bufferViews[gltfModel.accessors[texCoordBufferIndex].bufferView].byteStride;
+					size_t normalBufferStride = gltfModel.bufferViews[gltfModel.accessors[normalBufferIndex].bufferView].byteStride;
 
-					if (positionBufferStride == 0)positionBufferStride = 4 * 3;
-					if (texCoordBufferStride == 0)texCoordBufferStride = 4 * 2;
-					if (normalBufferStride == 0)normalBufferStride = 4 * 3;
+					if (positionBufferStride == 0)positionBufferStride = size_t(4 * 3);
+					if (texCoordBufferStride == 0)texCoordBufferStride =  size_t(4 * 2);
+					if (normalBufferStride == 0)normalBufferStride =  size_t(4 * 3);
 
-					uint16_t index = *(uint16_t*)(&gltfModel.buffers[0].data[indicesBufferOffset + 2 * i]); //TODO better index type handling
+					size_t index = *(uint16_t*)(&gltfModel.buffers[0].data[indicesBufferOffset + 2 * i]); //TODO better index type handling
 
 					Vertex vertex{};
-					if (positionBufferStride * index + 2 * 4 > gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteLength)
+					if (positionBufferStride * index + size_t(2 * 4) > gltfModel.bufferViews[gltfModel.accessors[positionBufferIndex].bufferView].byteLength)
 					{
 						std::cout << "position exceeded !" << std::endl;
 					}
@@ -409,7 +412,7 @@ void Model::loadModel() {
 
 //Used in a new thread by generateTangents to compute tangent data
 static void generateTangentData(RawMesh* texturedMesh) {
-	for (uint32_t i = 0; i < texturedMesh->loadingIndices.size(); i += 3)
+	for (size_t i = 0; i < texturedMesh->loadingIndices.size(); i += 3)
 	{
 		uint32_t i0 = texturedMesh->loadingIndices[i + 0];
 		uint32_t i1 = texturedMesh->loadingIndices[i + 1];

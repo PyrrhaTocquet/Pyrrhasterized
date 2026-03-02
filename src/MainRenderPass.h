@@ -36,11 +36,11 @@ class MainRenderPass : public VulkanRenderPass {
 	//IMGUI
 	bool m_hideImGui = false;
 
-	uint32_t selectedId = 0;
-	uint32_t shellCount = 128;
-	float hairLength = 0.03f;
-	float gravityFactor = 0.02f;
-	float hairDensity = 1000.f;
+	uint32_t m_selectedShellCountId = 0;
+	uint32_t m_shellCount = 128;
+	float m_hairLength = 0.03f;
+	float m_gravityFactor = 0.02f;
+	float m_hairDensity = 1000.f;
 public:
 	MainRenderPass(VulkanContext *context, vk::DescriptorSetLayout geometryDescriptorSetLayout, ShadowCascadeRenderPass *shadowRenderPass, DepthPrePass *depthPrePass);
 	virtual ~MainRenderPass()override;

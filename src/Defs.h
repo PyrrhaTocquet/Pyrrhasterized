@@ -40,9 +40,9 @@ struct GeneralUniformBufferObject {
 	glm::vec3 cameraPos;
 	float shadowMapsBlendWidth;
 	float time;
-	float hairLength;
-	float gravityFactor;
-	float hairDensity;
+	float m_hairLength;
+	float m_gravityFactor;
+	float m_hairDensity;
 };
 
 struct CascadeUniformObject {
@@ -56,7 +56,7 @@ struct ModelPushConstant {
 	glm::uint32 cascadeId = 0u;
 	glm::uint32 meshlet = 0u;
 	glm::uint32 meshletCount = 0u;
-	glm::uint32 shellCount = 8u;
+	glm::uint32 m_shellCount = 8u;
 	//float padding[5];
 };
 

@@ -41,7 +41,7 @@ public:
 	vk::ImageView m_imageView = VK_NULL_HANDLE;
 	vk::CommandPool m_commandPool = VK_NULL_HANDLE;
 private:
-	void constructVkImage(VulkanContext* context, VulkanImageParams imageParams);
+	void constructVkImage(VulkanImageParams imageParams);
 	void constructVkImageView(VulkanContext* context, VulkanImageParams imageParams, VulkanImageViewParams imageViewParams);
 	vk::Device m_device;
 	bool m_loadingFailed = false;
@@ -57,8 +57,8 @@ public:
 	VulkanImage(VulkanContext* context, VulkanImageParams imageParams, VulkanImageViewParams imageViewParams, std::string path);
 	~VulkanImage();
 
-	void transitionImageLayout(VulkanContext* context, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels);
-	void generateMipmaps(VulkanContext* context, vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
+	void transitionImageLayout(VulkanContext* context, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels);
+	void generateMipmaps(VulkanContext* context, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 	[[nodiscard]]bool hasLoadingFailed();
 	void setVMADebugName(std::string name);
 };

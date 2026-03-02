@@ -470,7 +470,7 @@ void MainRenderPass::createMaterialDescriptorSet(VulkanScene* scene)
     }
 }
 
-void MainRenderPass::createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo> textureImageInfos)
+void MainRenderPass::createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo>)
 {
     createMainDescriptorSet(scene);
     createMaterialDescriptorSet(scene);
@@ -542,17 +542,16 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
     ImGui::Text("----------");
     
     ImGui::Text("Shell Texturing");
-    uint32_t currentChoice = 0;
     std::array<std::string, 11> shellCountList = {"1", "2", "4", "8", "16", "32", "64", "128", "256", "512", "1024"};
     uint32_t k = 0;
     if (ImGui::ListBoxHeader("Shell Count"))
     {
-        for (auto shellCountStr : shellCountList)
+        for (const auto &shellCountStr : shellCountList)
         {
-            if (ImGui::Selectable(shellCountStr.c_str(), selectedId == k ? true : false))
+            if (ImGui::Selectable(shellCountStr.c_str(), m_selectedShellCountId == k ? true : false))
             {
-                selectedId = k;
-                shellCount = static_cast<uint32_t>(pow(2, selectedId));
+                m_selectedShellCountId = k;
+                m_shellCount = static_cast<uint32_t>(pow(2, m_selectedShellCountId));
             }
             k++;
         }
@@ -560,9 +559,9 @@ void MainRenderPass::renderImGui(vk::CommandBuffer commandBuffer)
     }
    
     
-    ImGui::SliderFloat("Hair Length: ", &hairLength, 0.001f, .1f, "%.5f", 0);
-    ImGui::SliderFloat("Hair Gravity: ", &gravityFactor, 0.001f, 0.1f, "%.5f", 0);
-    ImGui::SliderFloat("Hair Density: ", &hairDensity, 50.f, 3000.f, "%.5f", 0);
+    ImGui::SliderFloat("Hair Length: ", &m_hairLength, 0.001f, .1f, "%.5f", 0);
+    ImGui::SliderFloat("Hair Gravity: ", &m_gravityFactor, 0.001f, 0.1f, "%.5f", 0);
+    ImGui::SliderFloat("Hair Density: ", &m_hairDensity, 50.f, 3000.f, "%.5f", 0);
     
     ImGui::End();
 
@@ -627,7 +626,7 @@ void MainRenderPass::executePass(vk::CommandBuffer commandBuffer, uint32_t swapc
        .pClearValues = MAIN_CLEAR_VALUES.data(),
     };
     ModelPushConstant pushConstant;
-    pushConstant.shellCount = shellCount;
+    pushConstant.m_shellCount = m_shellCount;
     commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_mainPipeline->getPipeline()); //Only one main draw pipeline per frame in this renderer
@@ -656,7 +655,7 @@ void MainRenderPass::createPushConstantsRanges()
 
 }
 
-void MainRenderPass::updateMaterialUniformBuffer(uint32_t currentFrame, std::vector<VulkanScene*> scenes)
+void MainRenderPass::updateMaterialUniformBuffer(uint32_t, std::vector<VulkanScene*>)
 {
     /*MaterialUBO materialUbo = material->getUBO();
     materialUbo.metallicFactor = metallicFactorGui;
@@ -669,7 +668,7 @@ void MainRenderPass::updateMaterialUniformBuffer(uint32_t currentFrame, std::vec
 }
 
 //Populates the uniform buffers for rendering
-void MainRenderPass::updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes)
+void MainRenderPass::updatePipelineRessources(uint32_t, std::vector<VulkanScene*>)
 {
     
 }

@@ -7,8 +7,8 @@
 
 struct RenderPipelineInfo {
 	std::optional<const char*> taskShaderPath = std::nullopt;
-	const char* meshShaderPath;
-	const char* fragShaderPath;
+	const char* meshShaderPath{};
+	const char* fragShaderPath{};
 	vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
 	vk::CullModeFlags cullmode = vk::CullModeFlagBits::eBack;
 	vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise;
@@ -30,11 +30,11 @@ class VulkanPipeline
 {
 protected:
 	VulkanContext* m_context = nullptr;
-	vk::Pipeline m_pipeline;
-	vk::PipelineLayout m_pipelineLayout;
+	vk::Pipeline m_pipeline{};
+	vk::PipelineLayout m_pipelineLayout{};
 public:
-	VulkanPipeline(){};
-	VulkanPipeline(VulkanContext *context) { m_context = context; };
+	VulkanPipeline() = default;
+	VulkanPipeline(VulkanContext *context, vk::PipelineLayout layout) : m_context(context), m_pipelineLayout(layout) {};
 	virtual void cleanPipeline();
 	virtual void recreatePipeline(vk::Extent2D extent) = 0;
 	virtual vk::Pipeline getPipeline() { return m_pipeline; };
@@ -43,8 +43,8 @@ public:
 
 class VulkanComputePipeline : public VulkanPipeline
 {
-	VulkanContext *m_context;
-	ComputePipelineInfo m_pipelineInfo;
+	VulkanContext *m_context = nullptr;
+	ComputePipelineInfo m_pipelineInfo{};
 	
 	VulkanComputePipeline(VulkanContext *context, ComputePipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::Extent2D extent);
 	~VulkanComputePipeline();
@@ -54,10 +54,10 @@ class VulkanComputePipeline : public VulkanPipeline
 
 class VulkanRenderPipeline : public VulkanPipeline {
 private:
-	RenderPipelineInfo m_pipelineInfo;
-	vk::RenderPass m_renderPass;
+	RenderPipelineInfo m_pipelineInfo{};
+	vk::RenderPass m_renderPass{};
 public:
-	
+	VulkanRenderPipeline() = default;
 	VulkanRenderPipeline(VulkanContext* context, RenderPipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, vk::Extent2D extent);
 	~VulkanRenderPipeline();
 	virtual void recreatePipeline(vk::Extent2D extent) override;

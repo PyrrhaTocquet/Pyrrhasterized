@@ -7,25 +7,26 @@
 #include "SerializationTools.h"
 #include "GeometryTools.h"
 
-struct RawMesh {
-	std::vector<Vertex> loadingVertices;
-	std::vector<uint32_t> loadingIndices;
-	uint32_t verticesCount = 0;
-	uint32_t indicesCount = 0;
-	uint32_t materialId;
-	Material* material;
+struct RawMesh
+{
+	std::vector<Vertex> loadingVertices{};
+	std::vector<uint32_t> loadingIndices{};
+	uint32_t verticesCount{};
+	uint32_t indicesCount{};
+	uint32_t materialId{};
+	Material *material = nullptr;
 };
 
 
 class Model {
 private:
 	VulkanContext* m_context = nullptr;
-	std::filesystem::path m_path;
-	std::vector<RawMesh> m_rawMeshes;
-	std::vector<Mesh> m_meshes;
+	std::filesystem::path m_path{};
+	std::vector<RawMesh> m_rawMeshes{};
+	std::vector<Mesh> m_meshes{};
 	bool m_isLoaded = false;
 
-	PFN_vkCmdDrawMeshTasksEXT vkDrawMeshTasks;
+	PFN_vkCmdDrawMeshTasksEXT vkDrawMeshTasks{};
 
 
 	void loadGltf(const std::filesystem::path& path, bool isBaked);
@@ -34,7 +35,7 @@ public:
 	Model(VulkanContext* context, std::filesystem::path path);
 	~Model();
 	void loadModel();
-	void drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, uint32_t& indexOffset, ModelPushConstant& pushConstant);
+	void drawModel(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant);
 	[[nodiscard]]std::vector<Mesh>& getMeshes();
 	[[nodiscard]]std::vector<RawMesh>& getRawMeshes();
 

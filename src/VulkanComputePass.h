@@ -36,7 +36,7 @@ public :
 	virtual void createDefaultPipeline() = 0;
 	virtual void createPipelineRessources() {};
 	virtual void createPushConstantsRanges() = 0;
-	virtual void updatePipelineRessources(uint32_t currentFrame, std::vector<VulkanScene*> scenes) {};
+	virtual void updatePipelineRessources(uint32_t, std::vector<VulkanScene*>) {};
 	virtual vk::Extent2D getRenderPassExtent() = 0;
 	virtual void executePass(vk::CommandBuffer commandBuffer, uint32_t swapchainImageIndex, uint32_t m_currentFrame, std::vector<VulkanScene*> scenes) = 0;
 	virtual void updateDescriptorSets() {};

@@ -214,7 +214,8 @@ vk::DescriptorSet VulkanScene::getGeometryDescriptorSet()
 
 //Function used in order to multithread model loading
 static std::mutex modelsMutex;
-static void loadModel(VulkanContext* context, std::vector<Model> &models, int modelId) {
+static void loadModel(std::vector<Model> &models, int modelId) 
+{
 	models[modelId].loadModel();
 };
 
@@ -228,7 +229,7 @@ void VulkanScene::loadModels()
 	for (uint32_t i = 0; i < modelsCount; i++)
 	{
 		uint32_t modelId = m_modelsToLoad[i];
-		modelLoadingThreads[i] = std::jthread(loadModel, m_context, std::ref(m_models), modelId);
+		modelLoadingThreads[i] = std::jthread(loadModel, std::ref(m_models), modelId);
 	}
 }
 
@@ -374,16 +375,15 @@ DirectionalLight* VulkanScene::getSun()
 	return m_sun;
 }
 
-void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t currentFrame, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant)
+void VulkanScene::draw(vk::CommandBuffer commandBuffer, uint32_t, vk::PipelineLayout pipelineLayout, ModelPushConstant& pushConstant)
 {
-	VkDeviceSize offset = 0;
-
-	uint32_t indexOffset = 0;
+	assert(m_localTransforms.size() < std::numeric_limits<uint32_t>::max());
 	
 	//Draws each model in a scene
-	for (size_t i = 0; i < m_localTransforms.size(); i++) {
+	for (size_t i = 0; i < m_localTransforms.size(); i++) 
+	{
 		pushConstant.model = m_globalTransforms[i];
-		m_models[modelForNode[i]].drawModel(commandBuffer, pipelineLayout, indexOffset, pushConstant);
+		m_models[modelForNode[static_cast<uint32_t>(i)]].drawModel(commandBuffer, pipelineLayout, pushConstant);
 	}
 }
 
@@ -594,9 +594,9 @@ void	VulkanScene::updateGeneralUniformBuffer(uint32_t currentFrame)
 	ubo.cameraPos = m_camera->getCameraPos();
 	ubo.time = m_context->getTime().elapsedSinceStart;
 	ubo.shadowMapsBlendWidth = 0.5f;
-	ubo.hairLength = 0.03f; // TODO Scene accessible IMGUI stuff
-	ubo.gravityFactor = 0.02f;
-	ubo.hairDensity = 1000.f;
+	ubo.m_hairLength = 0.03f; // TODO Scene accessible IMGUI stuff
+	ubo.m_gravityFactor = 0.02f;
+	ubo.m_hairDensity = 1000.f;
 
 	//Get the cascade view/proj matrices and frustrum splits previously calculated in the shadowRenderPass
 	CascadeUniformObject cascadeUbo = m_cascadeUbos[currentFrame];
@@ -657,8 +657,8 @@ void	VulkanScene::updateShadowCascadeUniformBuffer(uint32_t currentFrame)
 
 	// Calculate orthographic projection matrix for each cascade
 	float lastSplitDist = 0.0;
-	for (uint32_t i = 0; i < SHADOW_CASCADE_COUNT; i++) {
-		float splitDist = cascadeSplits[i];
+	for (uint32_t cascadeId = 0; cascadeId < SHADOW_CASCADE_COUNT; cascadeId++) {
+		float splitDist = cascadeSplits[cascadeId];
 
 		glm::vec3 frustumCorners[8] = {
 			glm::vec3(-1.0f,  1.0f, 0.0f),
@@ -708,10 +708,10 @@ void	VulkanScene::updateShadowCascadeUniformBuffer(uint32_t currentFrame)
 		glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z + higher);
 
 		// Store split distance and matrix in cascade
-		ubo.cascadeSplits[i] = (m_camera->nearPlane + splitDist * clipRange) * -1.0f;
-		ubo.cascadeViewProjMat[i] = lightOrthoMatrix * lightViewMatrix;
+		ubo.cascadeSplits[cascadeId] = (m_camera->nearPlane + splitDist * clipRange) * -1.0f;
+		ubo.cascadeViewProjMat[cascadeId] = lightOrthoMatrix * lightViewMatrix;
 
-		lastSplitDist = cascadeSplits[i];
+		lastSplitDist = cascadeSplits[cascadeId];
 	}
 	m_cascadeUbos[currentFrame] = ubo;
 
@@ -724,7 +724,7 @@ void	VulkanScene::updateShadowCascadeUniformBuffer(uint32_t currentFrame)
 void	VulkanScene::updateLightUniformBuffer(uint32_t currentFrame)
 {
 	std::vector<Light*> lights = getLights();
-	std::array<LightUBO, MAX_LIGHT_COUNT> lightsUbo;
+	std::array<LightUBO, MAX_LIGHT_COUNT> lightsUbo{};
 	for (uint32_t i = 0; i < MAX_LIGHT_COUNT; i++)
 	{
 		if (i < lights.size())

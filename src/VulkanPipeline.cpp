@@ -26,14 +26,11 @@ void VulkanPipeline::cleanPipeline()
 }
 
 VulkanRenderPipeline::VulkanRenderPipeline(VulkanContext* context, RenderPipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, vk::Extent2D extent)
+	: VulkanPipeline(context, pipelineLayout)
+	, m_pipelineInfo{pipelineInfo}
+	, m_renderPass{renderPass}
 {
-    m_pipelineInfo = pipelineInfo;
-    m_pipelineLayout = pipelineLayout;
-    m_renderPass = renderPass;
-    m_context = context;
-
     recreatePipeline(extent);
-
 }
 
 // ----------------------------------------------------------------------------------
@@ -81,7 +78,7 @@ void VulkanRenderPipeline::recreatePipeline(vk::Extent2D extent)
     {
         auto taskShaderCode = vkTools::readFile(m_pipelineInfo.taskShaderPath.value());
         spv_reflect::ShaderModule taskShaderModuleInfo(taskShaderCode.size(), taskShaderCode.data());
-        auto taskShaderModule = createShaderModule(taskShaderCode);
+        taskShaderModule = createShaderModule(taskShaderCode);
 
         vk::PipelineShaderStageCreateInfo taskStageCreateInfo{
             .flags = vk::PipelineShaderStageCreateFlags(),
@@ -209,7 +206,7 @@ void VulkanRenderPipeline::recreatePipeline(vk::Extent2D extent)
 // ----------------------------------------------------------------------------------
 	// VulkanComputePipeline
 // ----------------------------------------------------------------------------------
-VulkanComputePipeline::VulkanComputePipeline(VulkanContext *context, ComputePipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::Extent2D extent)
+VulkanComputePipeline::VulkanComputePipeline(VulkanContext*, ComputePipelineInfo, vk::PipelineLayout, vk::Extent2D)
 {
 	// TODO
 }
@@ -223,7 +220,7 @@ VulkanComputePipeline::~VulkanComputePipeline()
 
 // ----------------------------------------------------------------------------------
 
-void VulkanComputePipeline::recreatePipeline(vk::Extent2D extent)
+void VulkanComputePipeline::recreatePipeline(vk::Extent2D)
 {
 	// TODO
 }

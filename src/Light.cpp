@@ -1,8 +1,9 @@
 #include "Light.h"
 
-Light::Light(VulkanContext* context, const glm::vec4& lightColor) : Entity(context)
+Light::Light(VulkanContext* context, const glm::vec4& lightColor) 
+	: Entity(context)
+	, m_lightColor{lightColor}
 {
-	m_lightColor = lightColor;
 }
 
 Light::Light(VulkanContext* context) : Entity(context)

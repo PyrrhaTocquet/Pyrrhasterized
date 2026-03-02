@@ -108,9 +108,9 @@ Time VulkanContext::getTime()
 	VKAPI_ATTR and VKAPI_CALL ensure that the function has the right signature for Vulkan to use it
 */
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-	VkDebugUtilsMessageTypeFlagsEXT messageType,
-	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData
+	VkDebugUtilsMessageSeverityFlagBitsEXT,
+	VkDebugUtilsMessageTypeFlagsEXT,
+	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void*
 ) {
 	std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 
@@ -271,7 +271,7 @@ vk::PhysicalDevice VulkanContext::getBestDevice(std::vector<vk::PhysicalDevice> 
 
 	vk::PhysicalDevice bestDevice;
 	float bestScore = 0.f;
-	for (auto device : devices)
+	for (const auto &device : devices)
 	{
 		float score = 0;
 		switch (device.getProperties().deviceType)
@@ -318,7 +318,7 @@ vk::PhysicalDevice VulkanContext::getBestDevice(std::vector<vk::PhysicalDevice> 
 vk::PhysicalDevice VulkanContext::getWorstDedicatedDevice(std::vector<vk::PhysicalDevice> devices) {
 	vk::PhysicalDevice bestDevice;
 	float bestScore = std::numeric_limits<float>::max();
-	for (auto device : devices)
+	for (const auto &device : devices)
 	{
 		float score = std::numeric_limits<float>::max();
 		if (device.getProperties().deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
@@ -806,10 +806,8 @@ vk::Format VulkanContext::findSupportedFormat(const std::vector<vk::Format>& can
 		else if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features) {
 			return format;
 		}
-		throw std::runtime_error("failed to find supported format!");
 	}
-	return vk::Format::eUndefined;
-
+	throw std::runtime_error("failed to find supported format!");
 }
 // Returns the maximum sample count used. Return vk::SamplecountFlagBits::e1 if MSAA is not enabled
 vk::SampleCountFlagBits VulkanContext::getMaxUsableSampleCount() const
