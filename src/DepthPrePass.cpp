@@ -18,9 +18,6 @@ DepthPrePass::DepthPrePass(VulkanContext* context, vk::DescriptorSetLayout geome
 
 DepthPrePass::~DepthPrePass()
 {
-	vk::Device device = m_context->getDevice();
-	device.destroyDescriptorPool(m_materialDescriptorPool);
-	device.destroyDescriptorSetLayout(m_materialDescriptorSetLayout);
 }
 
 
@@ -183,7 +180,7 @@ void DepthPrePass::executePass(vk::CommandBuffer commandBuffer, uint32_t, uint32
     //Draws each scene
     for (auto& scene : scenes)
     {
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scene->getGeometryDescriptorSet() , m_mainDescriptorSet[m_currentFrame], m_materialDescriptorSet[m_currentFrame] }, nullptr);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scene->getGeometryDescriptorSet() , m_mainDescriptorSets[m_currentFrame], m_materialDescriptorSet[m_currentFrame] }, nullptr);
 		scene->draw(commandBuffer, m_currentFrame, m_pipelineLayout, pushConstant);
     }
     

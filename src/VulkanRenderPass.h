@@ -12,11 +12,17 @@ protected:
 	vk::RenderPass					m_renderPass = VK_NULL_HANDLE;
 	
 	VulkanRenderPipeline*			m_mainPipeline = nullptr;
-	vk::DescriptorPool				m_materialDescriptorPool = VK_NULL_HANDLE;
+	vk::PushConstantRange			m_pushConstant;
 public :
 	VulkanRenderPass(VulkanContext* context);
-	VulkanRenderPass();
+	VulkanRenderPass() = default;
 	virtual ~VulkanRenderPass();
+	VulkanRenderPass(const VulkanRenderPass&) = delete;
+	VulkanRenderPass operator=(const VulkanRenderPass&) = delete;
+	VulkanRenderPass(VulkanRenderPass&&) = delete;
+	VulkanRenderPass operator=(VulkanRenderPass&&) = delete;
+
+
 	virtual void recreatePass() = 0;
 	virtual void updatePipelineRessources(uint32_t, std::vector<VulkanScene*>) {};
 	virtual vk::Extent2D getRenderPassExtent() = 0;

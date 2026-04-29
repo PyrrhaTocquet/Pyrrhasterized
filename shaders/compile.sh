@@ -19,5 +19,6 @@ glslc --target-spv=spv1.5 meshCSM.mesh -o meshCSM.spv -g
 ../slang/bin/slangc.exe mainPBRMaterial.frag.slang -profile spirv_1_4 -o fragmentPBR.spv -entry fragMain -g
 ../slang/bin/slangc.exe mainPBRMaterial.amp.slang -profile spirv_1_4 -o amplificationPBR.spv -entry amplificationMain -g
 ../slang/bin/slangc.exe DepthOnlyPass.frag.slang -profile spirv_1_4 -o fragDepthOnly.spv -entry fragMain -g
+../slang/bin/slangc.exe frustumGrid.comp.slang -profile spirv_1_4 -o frustumGrid.spv -entry main -g
 echo "done"
 read 

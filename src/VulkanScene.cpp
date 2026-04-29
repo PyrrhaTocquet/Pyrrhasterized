@@ -591,7 +591,10 @@ void	VulkanScene::updateGeneralUniformBuffer(uint32_t currentFrame)
 	GeneralUniformBufferObject ubo{};
 	ubo.view = m_camera->getViewMatrix();
 	ubo.proj = m_camera->getProjMatrix(m_context);
+	ubo.invProj = glm::inverse(ubo.proj);
 	ubo.cameraPos = m_camera->getCameraPos();
+	vk::Extent2D extent = m_context->getSwapchainExtent();
+	ubo.screenRes = glm::vec2(extent.width, extent.height);
 	ubo.time = m_context->getTime().elapsedSinceStart;
 	ubo.shadowMapsBlendWidth = 0.5f;
 	ubo.m_hairLength = 0.03f; // TODO Scene accessible IMGUI stuff

@@ -206,21 +206,51 @@ void VulkanRenderPipeline::recreatePipeline(vk::Extent2D extent)
 // ----------------------------------------------------------------------------------
 	// VulkanComputePipeline
 // ----------------------------------------------------------------------------------
-VulkanComputePipeline::VulkanComputePipeline(VulkanContext*, ComputePipelineInfo, vk::PipelineLayout, vk::Extent2D)
+VulkanComputePipeline::VulkanComputePipeline(VulkanContext* context, ComputePipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout)
+	: VulkanPipeline(context, pipelineLayout)
+	, m_pipelineInfo{pipelineInfo}
 {
-	// TODO
+	recreatePipeline(vk::Extent2D());
 }
 
 // ----------------------------------------------------------------------------------
 
 VulkanComputePipeline::~VulkanComputePipeline()
 {
-	// TODO
+	m_context->getDevice().destroyPipeline(m_pipeline);
 }
 
 // ----------------------------------------------------------------------------------
 
 void VulkanComputePipeline::recreatePipeline(vk::Extent2D)
 {
-	// TODO
+	vk::Device device = m_context->getDevice();
+
+	auto csCode = vkTools::readFile(m_pipelineInfo.computePath);
+
+	vk::ShaderModule module = createShaderModule(csCode);
+
+	vk::PipelineShaderStageCreateInfo stageCreateInfo 
+	{
+		.stage = vk::ShaderStageFlagBits::eCompute,
+		.module = module,
+		.pName = "main",
+	};
+
+	vk::ComputePipelineCreateInfo pipelineCreateInfo
+	{
+		.stage = stageCreateInfo,
+		.layout = m_pipelineLayout,
+	};
+
+	auto pipelineResult = device.createComputePipeline(nullptr, pipelineCreateInfo);
+	
+	if (pipelineResult.result != vk::Result::eSuccess)
+	{
+		throw std::runtime_error("could not create compute pipeline");
+	}
+
+	m_pipeline = pipelineResult.value;
+	device.destroyShaderModule(module);
+	m_context->setDebugObjectName((uint64_t)static_cast<VkPipeline>(m_pipeline), static_cast<VkDebugReportObjectTypeEXT>(m_pipeline.debugReportObjectType), m_pipelineInfo.computePath);
 }

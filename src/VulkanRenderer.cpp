@@ -24,7 +24,7 @@ VulkanRenderer::VulkanRenderer(VulkanContext* context)
     //IMGUI
     ImGui_ImplVulkan_InitInfo initInfo = m_context->getImGuiInitInfo();
     initInfo.MSAASamples = static_cast<VkSampleCountFlagBits>(m_msaaSampleCount);
-    ImGui_ImplVulkan_Init(&initInfo, m_renderPasses[PassesId::MainRenderPassId]->getRenderPass());
+    ImGui_ImplVulkan_Init(&initInfo, reinterpret_cast<MainRenderPass*>(m_passes[PassesId::MainRenderPassId])->getRenderPass());
     m_device.waitIdle();
 
     //execute a gpu command to upload imgui font textures
@@ -55,7 +55,7 @@ VulkanRenderer::~VulkanRenderer()
     m_device.freeCommandBuffers(m_context->getCommandPool(), m_commandBuffers);
     delete m_camera;
     
-    for (auto& renderPass : m_renderPasses)
+    for (auto& renderPass : m_passes)
     {
         delete renderPass;
     }
@@ -81,7 +81,7 @@ VulkanRenderer::~VulkanRenderer()
 void VulkanRenderer::recreateSwapchainSizedObjects() {
     cleanSwapchainSizedObjects();
     m_context->recreateSwapchain();
-    for (const auto& renderPass : m_renderPasses)
+    for (const auto& renderPass : m_passes)
     {
         renderPass->recreatePass();
     }
@@ -137,9 +137,10 @@ void VulkanRenderer::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32
 {
     vk::CommandBufferBeginInfo beginInfo{};
     commandBuffer.begin(beginInfo); //TODO Revirtualise it well
-    m_renderPasses[PassesId::ShadowMappingPassId]->executePass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
-    m_renderPasses[PassesId::DepthPrePassId]->executePass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
-    m_renderPasses[PassesId::MainRenderPassId]->executePass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes); // this is indeed very ugly
+    m_passes[PassesId::ShadowMappingPassId]->executePass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
+    m_passes[PassesId::DepthPrePassId]->executePass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes);
+	 m_passes[PassesId::LightCulling]->executePass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes); // this is indeed very ugly
+    m_passes[PassesId::MainRenderPassId]->executePass(commandBuffer, swapchainImageIndex, m_currentFrame, m_scenes); // this is indeed very ugly
     commandBuffer.end();
 }
 #pragma endregion
@@ -206,7 +207,7 @@ void VulkanRenderer::drawFrame() {
         scene->updateUniformBuffers(m_currentFrame);
     }
 
-    for (auto& renderPass : m_renderPasses)
+    for (auto& renderPass : m_passes)
     {
         renderPass->updatePipelineRessources(m_currentFrame, m_scenes);
     }
@@ -291,7 +292,7 @@ void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
     // Gorefix: the generateTextureImageInfo needs to generate the textureIds before the MaterialUBO is created and sent to the GPU
     std::vector<vk::DescriptorImageInfo> textureImageInfos = vulkanScene->generateTextureImageInfo();
     vulkanScene->createUniformBuffers();
-    for (auto& renderPass : m_renderPasses)
+    for (auto& renderPass : m_passes)
     {
         renderPass->createDescriptorSets(vulkanScene, textureImageInfos);
     }
@@ -309,18 +310,22 @@ void VulkanRenderer::addScene(VulkanScene* vulkanScene) {
 
 void VulkanRenderer::createRenderPasses(vk::DescriptorSetLayout geometryDescriptorSetLayout) {
     //Render pass 1: Shadow Render Pass
-    ShadowCascadeRenderPass* shadowRenderPass = new ShadowCascadeRenderPass(m_context, geometryDescriptorSetLayout);
+    ShadowCascadeRenderPass *shadowRenderPass = new ShadowCascadeRenderPass(m_context, geometryDescriptorSetLayout);
     m_shadowPass = shadowRenderPass;
-    m_renderPasses.push_back(shadowRenderPass);
+    m_passes.push_back(shadowRenderPass);
 
     // Render pass 2: Depth Pre-Pass
-    DepthPrePass* depthPrePass = new DepthPrePass(m_context, geometryDescriptorSetLayout);
-    m_renderPasses.push_back(depthPrePass);
+    DepthPrePass *depthPrePass = new DepthPrePass(m_context, geometryDescriptorSetLayout);
+    m_passes.push_back(depthPrePass);
 
-    //Render pass 3: Main Render Pass
-    MainRenderPass* mainRenderPass = new MainRenderPass(m_context, geometryDescriptorSetLayout, shadowRenderPass, depthPrePass);
+	// Compute pass 3: Light Culling Compute
+	LightCullingPass *lightCullingPass = new LightCullingPass(m_context);
+	m_passes.push_back(lightCullingPass);
+
+    //Render pass 4: Main Render Pass
+    MainRenderPass *mainRenderPass = new MainRenderPass(m_context, geometryDescriptorSetLayout, shadowRenderPass, depthPrePass);
     m_mainPass = mainRenderPass;
-    m_renderPasses.push_back(mainRenderPass);
+    m_passes.push_back(mainRenderPass);
 }
 
 // ----------------------------------------------------------------------------------

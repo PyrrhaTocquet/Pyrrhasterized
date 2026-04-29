@@ -29,10 +29,12 @@ namespace Global
     {
         public float4x4 view;
         public float4x4 proj;
+        public float4x4 invProj;
         public float4x4[4] cascadeViewProj;
         public float4 cascadeSplits;
         public float3 cameraPosition;
         public float shadowMapsBlendWidth;
+        public float2 screenRes;
         public float time;
         public float hairLength;
         public float gravityFactor;

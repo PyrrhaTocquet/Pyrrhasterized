@@ -1,11 +1,5 @@
 #include "VulkanRenderPass.h"
 
-VulkanRenderPass::VulkanRenderPass()
-{
-}
-
-// ----------------------------------------------------------------------------------
-
 VulkanRenderPass::VulkanRenderPass(VulkanContext *context) : VulkanPass(context)
 {
 }

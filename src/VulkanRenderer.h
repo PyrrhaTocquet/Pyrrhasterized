@@ -22,6 +22,7 @@ desc: Manages the rendering flow and logic. "Heart of the Renderer"
 #include "MainRenderPass.h"
 #include "ShadowCascadeRenderPass.h"
 #include "DepthPrePass.h"
+#include "LightCullingPass.h"
 #include "Camera.h"
 #include "VulkanPipeline.h"
 #include "Material.h"
@@ -54,7 +55,7 @@ private:
 	vk::SampleCountFlagBits m_msaaSampleCount = vk::SampleCountFlagBits::e1;
 	
 	//RENDER PASS
-	std::vector<VulkanRenderPass*> m_renderPasses;
+	std::vector<VulkanPass*> m_passes;
 	ShadowCascadeRenderPass *m_shadowPass;
 	MainRenderPass *m_mainPass;
 	vk::DescriptorSetLayout m_geometryDescriptorSetLayout;

@@ -43,12 +43,12 @@ public:
 
 class VulkanComputePipeline : public VulkanPipeline
 {
-	VulkanContext *m_context = nullptr;
+public:
 	ComputePipelineInfo m_pipelineInfo{};
-	
-	VulkanComputePipeline(VulkanContext *context, ComputePipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::Extent2D extent);
+	VulkanComputePipeline() = default;
+	VulkanComputePipeline(VulkanContext *context, ComputePipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout);
 	~VulkanComputePipeline();
-	virtual void recreatePipeline(vk::Extent2D extent);
+	virtual void recreatePipeline(vk::Extent2D extent) override;
 };
 
 
@@ -57,7 +57,7 @@ private:
 	RenderPipelineInfo m_pipelineInfo{};
 	vk::RenderPass m_renderPass{};
 public:
-	VulkanRenderPipeline() = default;
+	VulkanRenderPipeline() = delete;
 	VulkanRenderPipeline(VulkanContext* context, RenderPipelineInfo pipelineInfo, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, vk::Extent2D extent);
 	~VulkanRenderPipeline();
 	virtual void recreatePipeline(vk::Extent2D extent) override;

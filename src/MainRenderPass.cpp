@@ -173,7 +173,7 @@ void MainRenderPass::createDescriptorPool()
     vk::Device device = m_context->getDevice();
     //General Data, Lights, Shadow Maps, Textures
     {
-        std::array<vk::DescriptorPoolSize, 4> poolSizes;
+		std::array<vk::DescriptorPoolSize, 4> poolSizes{};
         poolSizes[0].type = vk::DescriptorType::eUniformBuffer;
         poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
         poolSizes[1].type = vk::DescriptorType::eUniformBuffer;
@@ -314,7 +314,7 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
     //Creates a vector of descriptorImageInfo from the scene's textures
     std::vector<vk::DescriptorImageInfo> textureImageInfos = scene->generateTextureImageInfo();
 
-    m_mainDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
+    m_mainDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
     std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_mainDescriptorSetLayout);
 
     /* Dynamic Descriptor Counts */
@@ -335,7 +335,7 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
     };
 
     try {
-        m_mainDescriptorSet = m_context->getDevice().allocateDescriptorSets(allocInfo);
+        m_mainDescriptorSets = m_context->getDevice().allocateDescriptorSets(allocInfo);
     }
     catch (vk::SystemError err) {
         throw std::runtime_error("could not allocate descriptor sets");
@@ -365,28 +365,28 @@ void MainRenderPass::createMainDescriptorSet(VulkanScene* scene)
      
 
         std::array<vk::WriteDescriptorSet, 4> descriptorWrites;
-        descriptorWrites[0].dstSet = m_mainDescriptorSet[currentFrame];
+        descriptorWrites[0].dstSet = m_mainDescriptorSets[currentFrame];
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].dstArrayElement = 0;
         descriptorWrites[0].descriptorType = vk::DescriptorType::eUniformBuffer;
         descriptorWrites[0].descriptorCount = 1;
         descriptorWrites[0].pBufferInfo = &generalUboBufferInfo;
 
-        descriptorWrites[1].dstSet = m_mainDescriptorSet[currentFrame];
+        descriptorWrites[1].dstSet = m_mainDescriptorSets[currentFrame];
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorType = vk::DescriptorType::eUniformBuffer;
         descriptorWrites[1].descriptorCount = 1;
         descriptorWrites[1].pBufferInfo = &lightUboBufferInfo;
 
-        descriptorWrites[2].dstSet = m_mainDescriptorSet[currentFrame];
+        descriptorWrites[2].dstSet = m_mainDescriptorSets[currentFrame];
         descriptorWrites[2].dstBinding = 2;
         descriptorWrites[2].dstArrayElement = 0;
         descriptorWrites[2].descriptorType = vk::DescriptorType::eCombinedImageSampler;
         descriptorWrites[2].descriptorCount = 1;
         descriptorWrites[2].pImageInfo = &shadowImageInfo;
 
-        descriptorWrites[3].dstSet = m_mainDescriptorSet[currentFrame];
+        descriptorWrites[3].dstSet = m_mainDescriptorSets[currentFrame];
         descriptorWrites[3].dstBinding = 3;
         descriptorWrites[3].descriptorCount = static_cast<uint32_t>(textureImageInfos.size());
         descriptorWrites[3].dstArrayElement = 0;
@@ -634,7 +634,7 @@ void MainRenderPass::executePass(vk::CommandBuffer commandBuffer, uint32_t swapc
     //Draws each scene
     for (auto& scene : scenes)
     {
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scene->getGeometryDescriptorSet() , m_mainDescriptorSet[m_currentFrame], m_materialDescriptorSet[m_currentFrame]}, nullptr);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scene->getGeometryDescriptorSet() , m_mainDescriptorSets[m_currentFrame], m_materialDescriptorSet[m_currentFrame]}, nullptr);
         scene->draw(commandBuffer, m_currentFrame, m_pipelineLayout, pushConstant);
     }
     

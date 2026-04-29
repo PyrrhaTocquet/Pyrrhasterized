@@ -23,8 +23,7 @@ protected:
 	vk::PipelineLayout				m_pipelineLayout = VK_NULL_HANDLE;
 	vk::DescriptorPool				m_mainDescriptorPool;
 	vk::DescriptorSetLayout			m_mainDescriptorSetLayout = VK_NULL_HANDLE;
-	std::vector<vk::DescriptorSet>	m_mainDescriptorSet;
-	vk::PushConstantRange m_pushConstant;
+	std::vector<vk::DescriptorSet>	m_mainDescriptorSets{};
 public :
 	VulkanPass();
 	VulkanPass(VulkanContext* context);

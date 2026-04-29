@@ -25,7 +25,8 @@ protected:
 	std::vector<vk::DescriptorSet> m_materialDescriptorSet;
 public:
 	DepthOnlyPass(VulkanContext* context);
-	DepthOnlyPass() {};
+	DepthOnlyPass() = default;
+
 	virtual ~DepthOnlyPass() override;
 	virtual void createPass() = 0;
 	virtual void createDescriptorSets(VulkanScene* scene, std::vector<vk::DescriptorImageInfo> textureImageInfos)override;

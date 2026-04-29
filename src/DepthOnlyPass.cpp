@@ -1,8 +1,8 @@
 #include "DepthOnlyPass.h"
 
 DepthOnlyPass::DepthOnlyPass(VulkanContext* context)
+	: VulkanRenderPass(context)
 {
-	m_context = context;
 	m_framebuffers.resize(1);
 }
 
@@ -14,6 +14,11 @@ DepthOnlyPass::~DepthOnlyPass()
 void DepthOnlyPass::cleanDepthOnlyAttachments()
 {
 	delete m_depthAttachment;
+
+	vk::Device device = m_context->getDevice();
+
+	device.destroyDescriptorPool(m_materialDescriptorPool);
+	device.destroyDescriptorSetLayout(m_materialDescriptorSetLayout);
 }
 
 void DepthOnlyPass::createDepthOnlyDescriptorPool()
@@ -152,7 +157,7 @@ void DepthOnlyPass::createDescriptorSets(VulkanScene* scene, std::vector<vk::Des
 {
 	//Creates a vector of descriptorImageInfo from the scene's textures (DUPLICATE, REFACTOR INTO SCENE)
 	{
-		m_mainDescriptorSet.resize(MAX_FRAMES_IN_FLIGHT);
+		m_mainDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
 		std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_mainDescriptorSetLayout);
 
 		/* Dynamic Descriptor Counts */
@@ -175,7 +180,7 @@ void DepthOnlyPass::createDescriptorSets(VulkanScene* scene, std::vector<vk::Des
 
 		try 
 		{
-			m_mainDescriptorSet = m_context->getDevice().allocateDescriptorSets(allocInfo);
+			m_mainDescriptorSets = m_context->getDevice().allocateDescriptorSets(allocInfo);
 		}
 		catch (vk::SystemError err) {
 			throw std::runtime_error("could not allocate descriptor sets");
@@ -187,14 +192,14 @@ void DepthOnlyPass::createDescriptorSets(VulkanScene* scene, std::vector<vk::Des
 			vk::DescriptorBufferInfo uboBufferInfo = getUboInfo(scene, currentFrame);
 
 			std::array<vk::WriteDescriptorSet, 2> descriptorWrites;
-			descriptorWrites[0].dstSet = m_mainDescriptorSet[currentFrame];
+			descriptorWrites[0].dstSet = m_mainDescriptorSets[currentFrame];
 			descriptorWrites[0].dstBinding = 0;
 			descriptorWrites[0].dstArrayElement = 0;
 			descriptorWrites[0].descriptorType = vk::DescriptorType::eUniformBuffer;
 			descriptorWrites[0].descriptorCount = 1;
 			descriptorWrites[0].pBufferInfo = &uboBufferInfo;
 
-			descriptorWrites[1].dstSet = m_mainDescriptorSet[currentFrame];
+			descriptorWrites[1].dstSet = m_mainDescriptorSets[currentFrame];
 			descriptorWrites[1].dstBinding = 1;
 			descriptorWrites[1].descriptorCount = static_cast<uint32_t>(textureImageInfos.size());
 			descriptorWrites[1].dstArrayElement = 0;

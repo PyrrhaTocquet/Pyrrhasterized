@@ -195,7 +195,7 @@ void ShadowCascadeRenderPass::executePass(vk::CommandBuffer commandBuffer, uint3
 
 		commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_mainPipeline->getPipeline());
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scenes[0]->getGeometryDescriptorSet(), m_mainDescriptorSet[currentFrame], m_materialDescriptorSet[currentFrame] }, nullptr);
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, { scenes[0]->getGeometryDescriptorSet(), m_mainDescriptorSets[currentFrame], m_materialDescriptorSet[currentFrame] }, nullptr);
 
 
 		//Draws each scene

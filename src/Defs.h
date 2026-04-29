@@ -21,8 +21,8 @@ const std::filesystem::path BAKED_ASSETS_PATH = "baked_assets/";
 enum PassesId {
 	ShadowMappingPassId = 0,
 	DepthPrePassId,
+	LightCulling,
 	MainRenderPassId,
-	ComputeCulling,
 };
 
 enum AlphaMode {
@@ -35,10 +35,12 @@ enum AlphaMode {
 struct GeneralUniformBufferObject {
 	glm::mat4 view;
 	glm::mat4 proj;
+	glm::mat4 invProj;
 	glm::mat4 cascadeViewProj[4];
 	float cascadeSplits[4] = {0.f};
 	glm::vec3 cameraPos;
 	float shadowMapsBlendWidth;
+	glm::vec2 screenRes;
 	float time;
 	float m_hairLength;
 	float m_gravityFactor;
@@ -165,8 +167,8 @@ struct Mesh {
 
 struct VulkanBuffer 
 {
-	vk::Buffer m_Buffer;
-	vma::Allocation m_Allocation;
+	vk::Buffer m_Buffer{};
+	vma::Allocation m_Allocation{};
 };
 
 
