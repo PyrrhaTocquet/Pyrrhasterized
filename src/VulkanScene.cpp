@@ -20,6 +20,9 @@ VulkanScene::VulkanScene(VulkanContext* context, DirectionalLight* sun) {
 
 VulkanScene::~VulkanScene()
 {
+	vk::Device device = m_context->getDevice();
+	device.destroyDescriptorPool(m_geometryDescriptorPool);
+
 	// TODO less verbose stuff
 	m_allocator->destroyBuffer(m_indexBuffer.m_Buffer, m_indexBuffer.m_Allocation);
 	m_allocator->destroyBuffer(m_vertexBuffer.m_Buffer, m_vertexBuffer.m_Allocation);
@@ -128,6 +131,7 @@ void VulkanScene::createGeometryDescriptorSet(vk::DescriptorSetLayout geometryDe
         };
         try {
             m_geometryDescriptorPool = device.createDescriptorPool(poolInfo);
+			SET_DEBUG_NAME(m_geometryDescriptorPool, VkDescriptorPool, "Geometry descriptor pool");
         }
         catch (vk::SystemError err)
         {

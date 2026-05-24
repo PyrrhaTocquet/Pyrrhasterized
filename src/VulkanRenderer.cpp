@@ -60,6 +60,7 @@ VulkanRenderer::~VulkanRenderer()
         delete renderPass;
     }
 
+	m_device.destroyDescriptorSetLayout(m_geometryDescriptorSetLayout);
 }
 #pragma endregion
 
@@ -365,6 +366,7 @@ void VulkanRenderer::createGeometryDescriptorSetLayout()
 
     try {
         m_geometryDescriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
+		SET_DEBUG_NAME(m_geometryDescriptorSetLayout, VkDescriptorSetLayout, "Geometry descriptor set layout");
     }
     catch (vk::SystemError err)
     {

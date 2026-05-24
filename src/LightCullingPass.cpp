@@ -126,6 +126,7 @@ void LightCullingPass::createDescriptorSetLayout()
 	try
 	{
 		m_mainDescriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
+		SET_DEBUG_NAME(m_mainDescriptorSetLayout, VkDescriptorSetLayout, "LightCullingPass main descriptor set layout");
 	}
 	catch (vk::SystemError err)
 	{
@@ -156,6 +157,7 @@ void LightCullingPass::createDescriptorPool()
 
     try {
 		m_mainDescriptorPool = device.createDescriptorPool(poolInfo);
+		SET_DEBUG_NAME(m_mainDescriptorPool, VkDescriptorPool, "LightCullingPass main descriptor pool");
     }
     catch (vk::SystemError err)
     {

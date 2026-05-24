@@ -21,6 +21,9 @@ desc: Manages Vulkan device, queues, swapchain, window and useful globals(time)
 #include <limits>
 #include <mutex>
 
+#define SET_DEBUG_NAME(_obj, _CType, _name) m_context->setDebugObjectName((uint64_t)  static_cast<_CType>(_obj), static_cast<VkDebugReportObjectTypeEXT>(_obj.debugReportObjectType), _name); \
+//std::cout << "Created " << _name << " : " << std::hex << (uint64_t)  static_cast<_CType>(_obj) << "\n";
+
 
 /* STRUCTS */
 struct QueueFamilyIndices {

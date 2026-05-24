@@ -24,7 +24,7 @@ protected:
 	vk::DescriptorSetLayout m_materialDescriptorSetLayout;
 	std::vector<vk::DescriptorSet> m_materialDescriptorSet;
 public:
-	DepthOnlyPass(VulkanContext* context);
+	explicit DepthOnlyPass(VulkanContext* context);
 	DepthOnlyPass() = default;
 
 	virtual ~DepthOnlyPass() override;

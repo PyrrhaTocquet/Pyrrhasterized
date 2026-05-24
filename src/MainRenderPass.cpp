@@ -191,6 +191,7 @@ void MainRenderPass::createDescriptorPool()
 
         try {
             m_mainDescriptorPool = device.createDescriptorPool(poolInfo);
+			SET_DEBUG_NAME(m_mainDescriptorPool, VkDescriptorPool, "MainRenderPass main descriptor pool");
         }
         catch (vk::SystemError err)
         {
@@ -211,6 +212,7 @@ void MainRenderPass::createDescriptorPool()
 
         try {
             m_materialDescriptorPool = device.createDescriptorPool(materialPoolInfo);
+			SET_DEBUG_NAME(m_materialDescriptorPool, VkDescriptorPool, "MainRenderPass material descriptor pool");
         }
         catch (vk::SystemError err)
         {
@@ -271,6 +273,7 @@ void MainRenderPass::createDescriptorSetLayout()
 
     try {
         m_mainDescriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
+		SET_DEBUG_NAME(m_mainDescriptorSetLayout, VkDescriptorSetLayout, "MainRenderPass main descriptor set layout");
     }
     catch (vk::SystemError err)
     {
@@ -301,6 +304,8 @@ void MainRenderPass::createDescriptorSetLayout()
 
     try {
         m_materialDescriptorSetLayout = device.createDescriptorSetLayout(materialLayoutInfo);
+		SET_DEBUG_NAME(m_materialDescriptorSetLayout, VkDescriptorSetLayout, "Main Render Pass material descriptor set layout");
+		
     }
     catch (vk::SystemError err)
     {

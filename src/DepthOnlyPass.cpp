@@ -9,16 +9,16 @@ DepthOnlyPass::DepthOnlyPass(VulkanContext* context)
 DepthOnlyPass::~DepthOnlyPass()
 {
 	cleanDepthOnlyAttachments();
-}
-
-void DepthOnlyPass::cleanDepthOnlyAttachments()
-{
-	delete m_depthAttachment;
 
 	vk::Device device = m_context->getDevice();
 
 	device.destroyDescriptorPool(m_materialDescriptorPool);
 	device.destroyDescriptorSetLayout(m_materialDescriptorSetLayout);
+}
+
+void DepthOnlyPass::cleanDepthOnlyAttachments()
+{
+	delete m_depthAttachment;
 }
 
 void DepthOnlyPass::createDepthOnlyDescriptorPool()
@@ -42,6 +42,7 @@ void DepthOnlyPass::createDepthOnlyDescriptorPool()
 	try
 	{
 		m_mainDescriptorPool = device.createDescriptorPool(poolInfo);
+		SET_DEBUG_NAME(m_mainDescriptorPool, VkDescriptorPool, "DepthOnlyPass main descriptor pool");
 	}
 	catch (vk::SystemError)
 	{
@@ -63,6 +64,7 @@ void DepthOnlyPass::createDepthOnlyDescriptorPool()
 		try 
 		{
 			m_materialDescriptorPool = device.createDescriptorPool(materialPoolInfo);
+			SET_DEBUG_NAME(m_materialDescriptorPool, VkDescriptorPool, "DepthOnlyPass material descriptor pool");
 		}
 		catch (vk::SystemError err)
 		{
@@ -113,6 +115,7 @@ void DepthOnlyPass::createDepthOnlyDescriptorSetLayout()
 	try 
 	{
 		m_mainDescriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
+		SET_DEBUG_NAME(m_mainDescriptorSetLayout, VkDescriptorSetLayout, "Depth only pass main descriptor set layout");
 	}
 	catch (vk::SystemError err)
 	{
@@ -146,6 +149,7 @@ void DepthOnlyPass::createDepthOnlyDescriptorSetLayout()
 
 	try {
 		m_materialDescriptorSetLayout = device.createDescriptorSetLayout(materialLayoutInfo);
+		SET_DEBUG_NAME(m_materialDescriptorSetLayout, VkDescriptorSetLayout, "Depth only pass material descriptor set layout");
 	}
 	catch (vk::SystemError err)
 	{
